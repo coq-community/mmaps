@@ -43,12 +43,9 @@ Module PositiveMap <: S with Module E:=PositiveOrderedTypeBits.
 
   Definition key := positive : Type.
 
-  Definition eq_key {A} (p p':key*A) := E.eq (fst p) (fst p').
-
-  Definition eq_key_elt {A} (p p':key*A) :=
-    E.eq (fst p) (fst p') /\ (snd p) = (snd p').
-
-  Definition lt_key {A} (p p':key*A) := E.lt (fst p) (fst p').
+  Definition eq_key {A} := @ME.eqk A.
+  Definition eq_key_elt {A} := @ME.eqke A.
+  Definition lt_key {A} := @ME.ltk A.
 
   Instance eqk_equiv {A} : Equivalence (@eq_key A) := _.
   Instance eqke_equiv {A} : Equivalence (@eq_key_elt A) := _.
@@ -262,7 +259,7 @@ Module PositiveMap <: S with Module E:=PositiveOrderedTypeBits.
     - intros j acc k e. case o as [e'|];
       rewrite IHl, ?InA_cons, IHr; clear IHl IHr; split.
       + intros [[H|[H|H]]|H]; auto.
-        * unfold eq_key_elt, E.eq, fst, snd in H. destruct H as (->,<-).
+        * change (E.eq k (rev j) /\ e = e') in H. destruct H as (->,<-).
           right. now exists 1.
         * destruct H as (x,(->,H)). right. now exists x~1.
         * destruct H as (x,(->,H)). right. now exists x~0.

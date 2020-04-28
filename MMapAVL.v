@@ -16,7 +16,7 @@
     See the comments at the beginning of MSetAVL for more details.
 *)
 
-Require Import Bool PeanoNat BinInt Int MMapInterface MMapList.
+Require Import Bool PeanoNat BinInt FunInd Int MMapInterface MMapList.
 Require Import Orders OrdersFacts OrdersLists.
 
 Set Implicit Arguments.
@@ -1745,6 +1745,7 @@ Proof. now destruct o. Qed.
 
 Ltac nonify e :=
  let E := fresh "E" in
+ let U := fresh "U" in
  assert (E : e = None);
    [ rewrite not_find_iff; auto; intro U;
      try apply gmerge_in in U; intuition_in; order
