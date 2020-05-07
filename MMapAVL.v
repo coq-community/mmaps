@@ -16,11 +16,13 @@
     See the comments at the beginning of MSetAVL for more details.
 *)
 
-Require Import Bool PeanoNat BinInt FunInd Int MMapInterface MMapList.
+Require Import Bool PeanoNat BinInt FunInd Int.
+Require Import MMapInterface MMapList MMapGenTree.
 Require Import Orders OrdersFacts OrdersLists.
 
-Set Implicit Arguments.
-Unset Strict Implicit.
+Local Set Implicit Arguments.
+Local Unset Strict Implicit.
+
 (* For nicer extraction, we create inductive principles
    only when needed *)
 Local Unset Elimination Schemes.
@@ -36,78 +38,37 @@ Notation "s #2" := (snd s) (at level 9, format "s '#2'") : pair_scope.
    preservation *)
 
 Module Raw (Import I:Int)(X: OrderedType).
+
+(** ** Generic trees instantiated with integer height *)
+
+(** We reuse a generic definition of trees where the information
+    parameter is a [Int.t]. Functions like mem or fold are also
+    provided by this generic functor. *)
+
+Include MMapGenTree.Ops X I.
+
 Local Open Scope pair_scope.
 Local Open Scope lazy_bool_scope.
 Local Open Scope Int_scope.
 Local Notation int := I.t.
 
-Definition key := X.t.
-Hint Transparent key.
-
-(** * Trees *)
-
 Section Elt.
-
 Variable elt : Type.
-
-(** * Trees
-
-   The fifth field of [Node] is the height of the tree *)
-
-Inductive tree :=
-  | Leaf : tree
-  | Node : tree -> key -> elt -> tree -> int -> tree.
-
-Notation t := tree.
+Local Notation t := (tree elt).
+Implicit Types l r m : t.
+Implicit Types e : elt.
 
 (** * Basic functions on trees: height and cardinal *)
 
 Definition height (m : t) : int :=
   match m with
-  | Leaf => 0
-  | Node _ _ _ _ h => h
+  | Leaf _ => 0
+  | Node h _ _ _ _ => h
   end.
 
-Fixpoint cardinal (m : t) : nat :=
-  match m with
-   | Leaf => 0%nat
-   | Node l _ _ r _ => S (cardinal l + cardinal r)
-  end.
+(** * Singleton set *)
 
-(** * Empty Map *)
-
-Definition empty := Leaf.
-
-(** * Emptyness test *)
-
-Definition is_empty m := match m with Leaf => true | _ => false end.
-
-(** * Membership *)
-
-(** The [mem] function is deciding membership. It exploits the [Bst] property
-    to achieve logarithmic complexity. *)
-
-Fixpoint mem x m : bool :=
-  match m with
-    |  Leaf => false
-    |  Node l y _ r _ =>
-       match X.compare x y with
-         | Eq => true
-         | Lt => mem x l
-         | Gt => mem x r
-       end
-  end.
-
-Fixpoint find x m : option elt :=
-  match m with
-    |  Leaf => None
-    |  Node l y d r _ =>
-       match X.compare x y with
-         | Eq => Some d
-         | Lt => find x l
-         | Gt => find x r
-       end
-   end.
+Definition singleton x e := Node 1 (Leaf _) x e (Leaf _).
 
 (** * Helper functions *)
 
@@ -115,7 +76,7 @@ Fixpoint find x m : option elt :=
     to be balanced and [|height l - height r| <= 2]. *)
 
 Definition create l x e r :=
-   Node l x e r (max (height l) (height r) + 1).
+   Node (max (height l) (height r) + 1) l x e r.
 
 (** [bal l x e r] acts as [create], but performs one step of
     rebalancing if necessary, i.e. assumes [|height l - height r| <= 3]. *)
@@ -127,28 +88,28 @@ Fixpoint bal l x d r :=
   let hr := height r in
   if (hr+2) <? hl then
     match l with
-     | Leaf => assert_false l x d r
-     | Node ll lx ld lr _ =>
+     | Leaf _ => assert_false l x d r
+     | Node _ ll lx ld lr =>
        if (height lr) <=? (height ll) then
          create ll lx ld (create lr x d r)
        else
          match lr with
-          | Leaf => assert_false l x d r
-          | Node lrl lrx lrd lrr _ =>
+          | Leaf _ => assert_false l x d r
+          | Node _ lrl lrx lrd lrr =>
               create (create ll lx ld lrl) lrx lrd (create lrr x d r)
          end
     end
   else
     if (hl+2) <? hr then
       match r with
-       | Leaf => assert_false l x d r
-       | Node rl rx rd rr _ =>
+       | Leaf _ => assert_false l x d r
+       | Node _ rl rx rd rr =>
          if (height rl) <=? (height rr) then
             create (create l x d rl) rx rd rr
          else
            match rl with
-            | Leaf => assert_false l x d r
-            | Node rll rlx rld rlr _ =>
+            | Leaf _ => assert_false l x d r
+            | Node _ rll rlx rld rlr =>
                 create (create l x d rll) rlx rld (create rlr rx rd rr)
            end
       end
@@ -159,10 +120,10 @@ Fixpoint bal l x d r :=
 
 Fixpoint add x d m :=
   match m with
-    | Leaf => Node Leaf x d Leaf 1
-    | Node l y d' r h =>
+    | Leaf _ => Node 1 (Leaf _) x d (Leaf _)
+    | Node h l y d' r =>
       match X.compare x y with
-        | Eq => Node l y d r h
+        | Eq => Node h l y d r
         | Lt => bal (add x d l) y d' r
         | Gt => bal l y d' (add x d r)
       end
@@ -177,8 +138,8 @@ Fixpoint add x d m :=
 
 Fixpoint remove_min l x d r : t*(key*elt) :=
   match l with
-    | Leaf => (r,(x,d))
-    | Node ll lx ld lr lh =>
+    | Leaf _ => (r,(x,d))
+    | Node lh ll lx ld lr =>
        let (l',m) := remove_min ll lx ld lr in
        (bal l' x d r, m)
   end.
@@ -192,9 +153,9 @@ Fixpoint remove_min l x d r : t*(key*elt) :=
 
 Definition merge0 s1 s2 :=
   match s1,s2 with
-    | Leaf, _ => s2
-    | _, Leaf => s1
-    | _, Node l2 x2 d2 r2 h2 =>
+    | Leaf _, _ => s2
+    | _, Leaf _ => s1
+    | _, Node h2 l2 x2 d2 r2 =>
       let '(s2',(x,d)) := remove_min l2 x2 d2 r2 in
       bal s1 x d s2'
   end.
@@ -202,8 +163,8 @@ Definition merge0 s1 s2 :=
 (** * Deletion *)
 
 Fixpoint remove x m := match m with
-  | Leaf => Leaf
-  | Node l y d r h =>
+  | Leaf _ => Leaf _
+  | Node h l y d r =>
       match X.compare x y with
          | Eq => merge0 l r
          | Lt => bal (remove x l) y d r
@@ -219,11 +180,11 @@ Fixpoint remove x m := match m with
 
 Fixpoint join l : key -> elt -> t -> t :=
   match l with
-    | Leaf => add
-    | Node ll lx ld lr lh => fun x d =>
+    | Leaf _ => add
+    | Node lh ll lx ld lr => fun x d =>
        fix join_aux (r:t) : t := match r with
-          | Leaf =>  add x d l
-          | Node rl rx rd rr rh =>
+          | Leaf _ => add x d l
+          | Node rh rl rx rd rr =>
             if rh+2 <? lh then bal ll lx ld (join lr x d r)
             else if lh+2 <? rh then bal (join_aux rl) rx rd rr
             else create l x d r
@@ -242,8 +203,8 @@ Record triple := mktriple { t_left:t; t_opt:option elt; t_right:t }.
 Notation "〚 l , b , r 〛" := (mktriple l b r) (at level 9).
 
 Fixpoint split x m : triple := match m with
-  | Leaf => 〚 Leaf, None, Leaf 〛
-  | Node l y d r h =>
+  | Leaf _ => 〚 Leaf _, None, Leaf _ 〛
+  | Node h l y d r =>
      match X.compare x y with
       | Lt => let (ll,o,rl) := split x l in 〚 ll, o, join rl y d r 〛
       | Eq => 〚 l, Some d, r 〛
@@ -258,98 +219,25 @@ Fixpoint split x m : triple := match m with
 
 Definition concat m1 m2 :=
    match m1, m2 with
-      | Leaf, _ => m2
-      | _ , Leaf => m1
-      | _, Node l2 x2 d2 r2 _ =>
+      | Leaf _, _ => m2
+      | _ , Leaf _ => m1
+      | _, Node _ l2 x2 d2 r2 =>
             let (m2',xd) := remove_min l2 x2 d2 r2 in
             join m1 xd#1 xd#2 m2'
    end.
 
-(** * Bindings *)
-
-(** [bindings_aux acc t] catenates the bindings of [t] in infix
-    order to the list [acc] *)
-
-Fixpoint bindings_aux (acc : list (key*elt)) m : list (key*elt) :=
-  match m with
-   | Leaf => acc
-   | Node l x d r _ => bindings_aux ((x,d) :: bindings_aux acc r) l
-  end.
-
-(** then [bindings] is an instantiation with an empty [acc] *)
-
-Definition bindings := bindings_aux nil.
-
-(** * Fold *)
-
-Fixpoint fold {A} (f : key -> elt -> A -> A) (m : t) : A -> A :=
- fun a => match m with
-  | Leaf => a
-  | Node l x d r _ => fold f r (f x d (fold f l a))
- end.
-
-(** * Comparison *)
-
-Variable cmp : elt->elt->bool.
-
-(** ** Enumeration of the elements of a tree *)
-
-Inductive enumeration :=
- | End : enumeration
- | More : key -> elt -> t -> enumeration -> enumeration.
-
-(** [cons m e] adds the elements of tree [m] on the head of
-    enumeration [e]. *)
-
-Fixpoint cons m e : enumeration :=
- match m with
-  | Leaf => e
-  | Node l x d r h => cons l (More x d r e)
- end.
-
-(** One step of comparison of elements *)
-
-Definition equal_more x1 d1 (cont:enumeration->bool) e2 :=
- match e2 with
- | End => false
- | More x2 d2 r2 e2 =>
-     match X.compare x1 x2 with
-      | Eq => cmp d1 d2 &&& cont (cons r2 e2)
-      | _ => false
-     end
- end.
-
-(** Comparison of left tree, middle element, then right tree *)
-
-Fixpoint equal_cont m1 (cont:enumeration->bool) e2 :=
- match m1 with
-  | Leaf => cont e2
-  | Node l1 x1 d1 r1 _ =>
-     equal_cont l1 (equal_more x1 d1 (equal_cont r1 cont)) e2
-  end.
-
-(** Initial continuation *)
-
-Definition equal_end e2 := match e2 with End => true | _ => false end.
-
-(** The complete comparison *)
-
-Definition equal m1 m2 := equal_cont m1 equal_end (cons m2 End).
-
 End Elt.
-Notation t := tree.
 Notation "〚 l , b , r 〛" := (mktriple l b r) (at level 9).
 Notation "t #l" := (t_left t) (at level 9, format "t '#l'").
 Notation "t #o" := (t_opt t) (at level 9, format "t '#o'").
 Notation "t #r" := (t_right t) (at level 9, format "t '#r'").
 
-
 (** * Map *)
 
 Fixpoint map (elt elt' : Type)(f : elt -> elt')(m : t elt) : t elt' :=
   match m with
-   | Leaf _   => Leaf _
-   | Node l x d r h => Node (map f l) x (f d) (map f r) h
+   | Leaf _  => Leaf _
+   | Node h l x d r => Node h (map f l) x (f d) (map f r)
   end.
 
 (* * Mapi *)
@@ -357,7 +245,7 @@ Fixpoint map (elt elt' : Type)(f : elt -> elt')(m : t elt) : t elt' :=
 Fixpoint mapi (elt elt' : Type)(f : key -> elt -> elt')(m : t elt) : t elt' :=
   match m with
    | Leaf _ => Leaf _
-   | Node l x d r h => Node (mapi f l) x (f x d) (mapi f r) h
+   | Node h l x d r => Node h (mapi f l) x (f x d) (mapi f r)
   end.
 
 (** * Map with removal *)
@@ -366,7 +254,7 @@ Fixpoint mapo (elt elt' : Type)(f : key -> elt -> option elt')(m : t elt)
   : t elt' :=
   match m with
    | Leaf _ => Leaf _
-   | Node l x d r h =>
+   | Node h l x d r =>
       match f x d with
        | Some d' => join (mapo f l) x d' (mapo f r)
        | None => concat (mapo f l) (mapo f r)
@@ -397,7 +285,7 @@ Fixpoint gmerge m1 m2 :=
  match m1, m2 with
   | Leaf _, _ => mapr m2
   | _, Leaf _ => mapl m1
-  | Node l1 x1 d1 r1 h1, _ =>
+  | Node h1 l1 x1 d1 r1, _ =>
      let (l2',o2,r2') := split x1 m2 in
      match f x1 d1 o2 with
       | Some e => join (gmerge l1 l2') x1 e (gmerge r1 r2')
@@ -425,72 +313,9 @@ Definition merge : t elt -> t elt' -> t elt'' :=
 
 End Merge.
 
+(** * Correctness proofs *)
 
-
-(** * Invariants *)
-
-Section Invariants.
-Variable elt : Type.
-
-(** ** Occurrence in a tree *)
-
-Inductive MapsTo (x : key)(e : elt) : t elt -> Prop :=
-  | MapsRoot : forall l r h y,
-      X.eq x y -> MapsTo x e (Node l y e r h)
-  | MapsLeft : forall l r h y e',
-      MapsTo x e l -> MapsTo x e (Node l y e' r h)
-  | MapsRight : forall l r h y e',
-      MapsTo x e r -> MapsTo x e (Node l y e' r h).
-
-Inductive In (x : key) : t elt -> Prop :=
-  | InRoot : forall l r h y e,
-      X.eq x y -> In x (Node l y e r h)
-  | InLeft : forall l r h y e',
-      In x l -> In x (Node l y e' r h)
-  | InRight : forall l r h y e',
-      In x r -> In x (Node l y e' r h).
-
-Definition In0 k m := exists e:elt, MapsTo k e m.
-
-(** ** Binary search trees *)
-
-(** [Above x m] : [x] is strictly greater than any key in [m].
-    [Below x m] : [x] is strictly smaller than any key in [m]. *)
-
-Inductive Above (x:key) : t elt -> Prop :=
- | AbLeaf : Above x (Leaf _)
- | AbNode l r h y e : Above x l -> X.lt y x -> Above x r ->
-   Above x (Node l y e r h).
-
-Inductive Below (x:key) : t elt -> Prop :=
- | BeLeaf : Below x (Leaf _)
- | BeNode l r h y e : Below x l -> X.lt x y -> Below x r ->
-   Below x (Node l y e r h).
-
-Definition Apart (m1 m2 : t elt) : Prop :=
-  forall x1 x2, In x1 m1 -> In x2 m2 -> X.lt x1 x2.
-
-(** Alternative statements, equivalent with [LtTree] and [GtTree] *)
-
-Definition lt_tree x m := forall y, In y m -> X.lt y x.
-Definition gt_tree x m := forall y, In y m -> X.lt x y.
-
-(** [Bst t] : [t] is a binary search tree *)
-
-Inductive Bst : t elt -> Prop :=
-  | BSLeaf : Bst (Leaf _)
-  | BSNode : forall x e l r h, Bst l -> Bst r ->
-     Above x l -> Below x r -> Bst (Node l x e r h).
-
-End Invariants.
-
-
-(** * Correctness proofs, isolated in a sub-module *)
-
-Module Proofs.
- Module MX := OrderedTypeFacts X.
- Module PX := KeyOrderedType X.
- Module L := MMapList.Raw X.
+Include MMapGenTree.Props X I.
 
 Local Infix "∈" := In (at level 70).
 Local Infix "==" := X.eq (at level 70).
@@ -499,15 +324,6 @@ Local Infix "<<" := Below (at level 70).
 Local Infix ">>" := Above (at level 70).
 Local Infix "<<<" := Apart (at level 70).
 
-Scheme tree_ind := Induction for tree Sort Prop.
-Scheme Bst_ind := Induction for Bst Sort Prop.
-Scheme MapsTo_ind := Induction for MapsTo Sort Prop.
-Scheme In_ind := Induction for In Sort Prop.
-Scheme Above_ind := Induction for Above Sort Prop.
-Scheme Below_ind := Induction for Below Sort Prop.
-
-Functional Scheme mem_ind := Induction for mem Sort Prop.
-Functional Scheme find_ind := Induction for find Sort Prop.
 Functional Scheme bal_ind := Induction for bal Sort Prop.
 Functional Scheme add_ind := Induction for add Sort Prop.
 Functional Scheme remove_min_ind := Induction for remove_min Sort Prop.
@@ -524,73 +340,26 @@ Local Hint Constructors tree MapsTo In Bst Above Below.
 Local Hint Unfold lt_tree gt_tree Apart.
 Local Hint Immediate MX.eq_sym.
 Local Hint Resolve MX.eq_refl MX.eq_trans MX.lt_trans.
-
-Tactic Notation "factornode" ident(s) :=
- try clear s;
- match goal with
-   | |- context [Node ?l ?x ?e ?r ?h] =>
-       set (s:=Node l x e r h) in *; clearbody s; clear l x e r h
-   | _ : context [Node ?l ?x ?e ?r ?h] |- _ =>
-       set (s:=Node l x e r h) in *; clearbody s; clear l x e r h
- end.
-
-(** A tactic for cleaning hypothesis after use of functional induction. *)
-
-Ltac cleanf :=
- match goal with
-  | H : X.compare _ _ = Eq |- _ =>
-    rewrite ?H; apply MX.compare_eq in H; cleanf
-  | H : X.compare _ _ = Lt |- _ =>
-    rewrite ?H; apply MX.compare_lt_iff in H; cleanf
-  | H : X.compare _ _ = Gt |- _ =>
-    rewrite ?H; apply MX.compare_gt_iff in H; cleanf
-  | _ => idtac
- end.
-
-
-(** A tactic to repeat [inversion_clear] on all hyps of the
-    form [(f (Node ...))] *)
-
-Ltac inv f :=
-  match goal with
-     | H:f (Leaf _) |- _ => inversion_clear H; inv f
-     | H:f _ (Leaf _) |- _ => inversion_clear H; inv f
-     | H:f _ _ (Leaf _) |- _ => inversion_clear H; inv f
-     | H:f _ _ _ (Leaf _) |- _ => inversion_clear H; inv f
-     | H:f (Node _ _ _ _ _) |- _ => inversion_clear H; inv f
-     | H:f _ (Node _ _ _ _ _) |- _ => inversion_clear H; inv f
-     | H:f _ _ (Node _ _ _ _ _) |- _ => inversion_clear H; inv f
-     | H:f _ _ _ (Node _ _ _ _ _) |- _ => inversion_clear H; inv f
-     | _ => idtac
-  end.
-
-Ltac inv_all f :=
-  match goal with
-   | H: f _ |- _ => inversion_clear H; inv f
-   | H: f _ _ |- _ => inversion_clear H; inv f
-   | H: f _ _ _ |- _ => inversion_clear H; inv f
-   | H: f _ _ _ _ |- _ => inversion_clear H; inv f
-   | _ => idtac
-  end.
-
-Ltac intuition_in := repeat (intuition; inv In; inv MapsTo).
+Local Hint Resolve
+ AboveLt Above_not_In Above_trans
+ BelowGt Below_not_In Below_trans.
 
 (* Function/Functional Scheme can't deal with internal fix.
    Let's do its job by hand: *)
 
 Ltac join_tac l x d r :=
  revert x d r;
- induction l as [| ll _ lx ld lr Hlr lh];
-   [ | intros x d r; induction r as [| rl Hrl rx rd rr _ rh]; unfold join;
+ induction l as [| lh ll _ lx ld lr Hlr];
+   [ | intros x d r; induction r as [| rh rl Hrl rx rd rr _]; unfold join;
      [ | destruct (rh+2 <? lh) eqn:LT;
        [ match goal with |- context [ bal ?u ?v ?w ?z ] =>
            replace (bal u v w z)
-           with (bal ll lx ld (join lr x d (Node rl rx rd rr rh))); [ | auto]
+           with (bal ll lx ld (join lr x d (Node rh rl rx rd rr))); [ | auto]
          end
        | destruct (lh+2 <? rh) eqn:LT';
          [ match goal with |- context [ bal ?u ?v ?w ?z ] =>
              replace (bal u v w z)
-             with (bal (join (Node ll lx ld lr lh) x d rl) rx rd rr); [ | auto]
+             with (bal (join (Node lh ll lx ld lr) x d rl) rx rd rr); [ | auto]
            end
          | ] ] ] ]; intros.
 
@@ -604,236 +373,9 @@ Ltac cleansplit :=
   | _ => idtac
   end.
 
-(** * Basic results about [MapsTo], [In], [lt_tree], [gt_tree], [height] *)
-
-(** Facts about [MapsTo] and [In]. *)
-
-Lemma MapsTo_In {elt} k (e:elt) m : MapsTo k e m -> k ∈ m.
-Proof.
- induction 1; auto.
-Qed.
-Local Hint Resolve MapsTo_In.
-
-Lemma In_MapsTo {elt} k m : k ∈ m -> exists (e:elt), MapsTo k e m.
-Proof.
- induction 1; try destruct IHIn as (e,He); exists e; auto.
-Qed.
-
-Lemma In_alt {elt} k (m:t elt) : In0 k m <-> k ∈ m.
-Proof.
- split.
- intros (e,H); eauto.
- unfold In0; apply In_MapsTo; auto.
-Qed.
-
-Lemma MapsTo_1 {elt} m x y (e:elt) :
-  x == y -> MapsTo x e m -> MapsTo y e m.
-Proof.
- induction m; simpl; intuition_in; eauto.
-Qed.
-Hint Immediate MapsTo_1.
-
-Instance MapsTo_compat {elt} :
-  Proper (X.eq==>Logic.eq==>Logic.eq==>iff) (@MapsTo elt).
-Proof.
- intros x x' Hx e e' He m m' Hm. subst.
- split; now apply MapsTo_1.
-Qed.
-
-Instance In_compat {elt} :
-  Proper (X.eq==>Logic.eq==>iff) (@In elt).
-Proof.
- intros x x' H m m' <-.
- induction m; simpl; intuition_in; eauto.
-Qed.
-
-Lemma In_node_iff {elt} l x (e:elt) r h y :
-  y ∈ (Node l x e r h) <-> y ∈ l \/ y == x \/ y ∈ r.
-Proof.
- intuition_in.
-Qed.
-
-(** Results about [Above] and [Below] *)
-
-Lemma above {elt} (m:t elt) x :
-  x >> m <-> forall y, y ∈ m -> y < x.
-Proof.
- split.
- - induction 1; intuition_in; MX.order.
- - induction m; constructor; auto.
-Qed.
-
-Lemma below {elt} (m:t elt) x :
-  x << m <-> forall y, y ∈ m -> x < y.
-Proof.
- split.
- - induction 1; intuition_in; MX.order.
- - induction m; constructor; auto.
-Qed.
-
-Lemma AboveLt {elt} (m:t elt) x y : x >> m -> y ∈ m -> y < x.
-Proof.
- rewrite above; intuition.
-Qed.
-
-Lemma BelowGt {elt} (m:t elt) x y : x << m -> y ∈ m -> x < y.
-Proof.
- rewrite below; intuition.
-Qed.
-
-Lemma Above_not_In {elt} (m:t elt) x : x >> m -> ~ x ∈ m.
-Proof.
- induction 1; intuition_in; MX.order.
-Qed.
-
-Lemma Below_not_In {elt} (m:t elt) x : x << m -> ~ x ∈ m.
-Proof.
- induction 1; intuition_in; MX.order.
-Qed.
-
-Lemma Above_trans {elt} (m:t elt) x y : x < y -> x >> m -> y >> m.
-Proof.
- induction 2; constructor; trivial; MX.order.
-Qed.
-
-Lemma Below_trans {elt} (m:t elt) x y : y < x -> x << m -> y << m.
-Proof.
- induction 2; constructor; trivial; MX.order.
-Qed.
-
-Local Hint Resolve
- AboveLt Above_not_In Above_trans
- BelowGt Below_not_In Below_trans.
-
-(** Helper tactic concerning order of elements. *)
-
-Ltac order := match goal with
- | U: _ >> ?m, V: _ ∈ ?m |- _ =>
-   generalize (AboveLt U V); clear U; order
- | U: _ << ?m, V: _ ∈ ?m |- _ =>
-   generalize (BelowGt U V); clear U; order
- | U: _ >> ?m, V: MapsTo _ _ ?m |- _ =>
-   generalize (AboveLt U (MapsTo_In V)); clear U; order
- | U: _ << ?m, V: MapsTo _ _ ?m |- _ =>
-   generalize (BelowGt U (MapsTo_In V)); clear U; order
- | _ => MX.order
-end.
-
-Lemma between {elt} (m m':t elt) x :
-  x >> m -> x << m' -> m <<< m'.
-Proof.
- intros H H' y y' Hy Hy'. order.
-Qed.
-
 Section Elt.
 Variable elt:Type.
 Implicit Types m r : t elt.
-
-(** * Membership *)
-
-Lemma find_1 m x e : Bst m -> MapsTo x e m -> find x m = Some e.
-Proof.
- functional induction (find x m); cleanf;
-  intros; inv Bst; intuition_in; order.
-Qed.
-
-Lemma find_2 m x e : find x m = Some e -> MapsTo x e m.
-Proof.
- functional induction (find x m); cleanf; subst; intros; auto.
- - discriminate.
- - injection H as ->. auto.
-Qed.
-
-Lemma find_spec m x e : Bst m ->
- (find x m = Some e <-> MapsTo x e m).
-Proof.
- split; auto using find_1, find_2.
-Qed.
-
-Lemma find_in m x : find x m <> None -> x ∈ m.
-Proof.
- destruct (find x m) eqn:F; intros H.
- - apply MapsTo_In with e. now apply find_2.
- - now elim H.
-Qed.
-
-Lemma in_find m x : Bst m -> x ∈ m -> find x m <> None.
-Proof.
- intros H H'.
- destruct (In_MapsTo H') as (d,Hd).
- now rewrite (find_1 H Hd).
-Qed.
-
-Lemma find_in_iff m x : Bst m ->
- (find x m <> None <-> x ∈ m).
-Proof.
- split; auto using find_in, in_find.
-Qed.
-
-Lemma not_find_iff m x : Bst m ->
- (find x m = None <-> ~ x ∈ m).
-Proof.
- intros H. rewrite <- find_in_iff; trivial.
- destruct (find x m); split; try easy. now destruct 1.
-Qed.
-
-Lemma eq_option_alt (o o':option elt) :
- o=o' <-> (forall e, o=Some e <-> o'=Some e).
-Proof.
-split; intros.
-- now subst.
-- destruct o, o'; rewrite ?H; auto. symmetry; now apply H.
-Qed.
-
-Lemma find_mapsto_equiv : forall m m' x, Bst m -> Bst m' ->
- (find x m = find x m' <->
-  (forall d, MapsTo x d m <-> MapsTo x d m')).
-Proof.
- intros m m' x Hm Hm'. rewrite eq_option_alt.
- split; intros H d. now rewrite <- 2 find_spec. now rewrite 2 find_spec.
-Qed.
-
-Lemma find_in_equiv : forall m m' x, Bst m -> Bst m' ->
- find x m = find x m' ->
- (x ∈ m <-> x ∈ m').
-Proof.
- split; intros; apply find_in; [ rewrite <- H1 | rewrite H1 ];
-  apply in_find; auto.
-Qed.
-
-Lemma find_compat m x x' : Bst m -> X.eq x x' -> find x m = find x' m.
-Proof.
-  intros B E.
-  destruct (find x' m) eqn:H.
-  - apply find_1; trivial. rewrite E. now apply find_2.
-  - rewrite not_find_iff in *; trivial. now rewrite E.
-Qed.
-
-Lemma mem_spec m x : Bst m -> mem x m = true <-> x ∈ m.
-Proof.
- functional induction (mem x m); auto; intros; cleanf;
-  inv Bst; intuition_in; try discriminate; order.
-Qed.
-
-(** * Empty map *)
-
-Lemma empty_bst : Bst (empty elt).
-Proof.
- constructor.
-Qed.
-
-Lemma empty_spec x : find x (empty elt) = None.
-Proof.
- reflexivity.
-Qed.
-
-(** * Emptyness test *)
-
-Lemma is_empty_spec m : is_empty m = true <-> forall x, find x m = None.
-Proof.
- destruct m as [|r x e l h]; simpl; split; try easy.
- intros H. specialize (H x). now rewrite MX.compare_refl in H.
-Qed.
 
 (** * Helper functions *)
 
@@ -945,16 +487,16 @@ Qed.
 Definition RemoveMin m res :=
  match m with
  | Leaf _ => False
- | Node l x e r h => remove_min l x e r = res
+ | Node h l x e r => remove_min l x e r = res
  end.
 
 Lemma RemoveMin_step l x e r h m' p :
- RemoveMin (Node l x e r h) (m',p) ->
+ RemoveMin (Node h l x e r) (m',p) ->
  (l = Leaf _ /\ m' = r /\ p = (x,e) \/
   exists m0, RemoveMin l (m0,p) /\ m' = bal m0 x e r).
 Proof.
- simpl. destruct l as [|ll lx le lr lh]; simpl.
- - intros [= -> ->]. now left.
+ simpl. destruct l as [|lh ll lx le lr]; simpl.
+ - intros [= <- <-]. now left.
  - destruct (remove_min ll lx le lr) as (l',p').
    intros [= <- <-]. right. now exists l'.
 Qed.
@@ -964,7 +506,7 @@ Lemma remove_min_mapsto m m' p : RemoveMin m (m',p) ->
  MapsTo y e m <-> (y == p#1 /\ e = p#2) \/ MapsTo y e m'.
 Proof.
  revert m'.
- induction m as [|l IH x d r _ h]; [destruct 1|].
+ induction m as [|h l IH x d r _]; [destruct 1|].
  intros m' R. apply RemoveMin_step in R.
  destruct R as [(->,(->,->))|[m0 (R,->)]]; intros y e; simpl.
  - intuition_in. subst. now constructor.
@@ -976,7 +518,7 @@ Lemma remove_min_in m m' p : RemoveMin m (m',p) ->
  forall y, y ∈ m <-> y == p#1 \/ y ∈ m'.
 Proof.
  revert m'.
- induction m as [|l IH x e r _ h]; [destruct 1|].
+ induction m as [|h l IH x e r _]; [destruct 1|].
  intros m' R y. apply RemoveMin_step in R.
  destruct R as [(->,(->,->))|[m0 (R,->)]].
  + intuition_in.
@@ -995,7 +537,7 @@ Lemma remove_min_gt m m' p : RemoveMin m (m',p) ->
  Bst m -> p#1 << m'.
 Proof.
  revert m'.
- induction m as [|l IH x e r _ h]; [destruct 1|].
+ induction m as [|h l IH x e r _]; [destruct 1|].
  intros m' R H. inv Bst. apply RemoveMin_step in R.
  destruct R as [(_,(->,->))|[m0 (R,->)]]; auto.
  assert (p#1 << m0) by now apply IH.
@@ -1008,7 +550,7 @@ Lemma remove_min_bst m m' p : RemoveMin m (m',p) ->
  Bst m -> Bst m'.
 Proof.
  revert m'.
- induction m as [|l IH x e r _ h]; [destruct 1|].
+ induction m as [|h l IH x e r _]; [destruct 1|].
  intros m' R H. inv Bst. apply RemoveMin_step in R.
  destruct R as [(_,(->,->))|[m0 (R,->)]]; auto.
  apply bal_bst; eauto using remove_min_lt.
@@ -1025,7 +567,7 @@ Lemma remove_min_find m m' p : RemoveMin m (m',p) ->
    end.
 Proof.
  revert m'.
- induction m as [|l IH x e r _ h]; [destruct 1|].
+ induction m as [|h l IH x e r _]; [destruct 1|].
  intros m' R B y. inv Bst. apply RemoveMin_step in R.
  destruct R as [(->,(->,->))|[m0 (R,->)]]; auto.
  assert (Bst m0) by now apply (remove_min_bst R).
@@ -1041,8 +583,8 @@ Qed.
 
 Ltac factor_remove_min m R := match goal with
  | h:int, H:remove_min ?l ?x ?e ?r = ?p |- _ =>
-   assert (R:RemoveMin (Node l x e r h) p) by exact H;
-   set (m:=Node l x e r h) in *; clearbody m; clear H l x e r
+   assert (R:RemoveMin (Node h l x e r) p) by exact H;
+   set (m:=Node h l x e r) in *; clearbody m; clear H l x e r
 end.
 
 Lemma merge0_in m1 m2 y :
@@ -1315,237 +857,6 @@ Proof.
      * now apply (remove_min_gt R).
 Qed.
 
-
-(** * Elements *)
-
-Notation eqk := (PX.eqk (elt:= elt)).
-Notation eqke := (PX.eqke (elt:= elt)).
-Notation ltk := (PX.ltk (elt:= elt)).
-
-Lemma bindings_aux_mapsto : forall (s:t elt) acc x e,
- InA eqke (x,e) (bindings_aux acc s) <-> MapsTo x e s \/ InA eqke (x,e) acc.
-Proof.
- induction s as [ | l Hl x e r Hr h ]; simpl; auto.
- intuition.
- inversion H0.
- intros.
- rewrite Hl.
- destruct (Hr acc x0 e0); clear Hl Hr.
- intuition; inversion_clear H3; intuition.
- compute in H0. destruct H0; simpl in *; subst; intuition.
-Qed.
-
-Lemma bindings_mapsto : forall (s:t elt) x e,
- InA eqke (x,e) (bindings s) <-> MapsTo x e s.
-Proof.
- intros; generalize (bindings_aux_mapsto s nil x e); intuition.
- inversion_clear H0.
-Qed.
-
-Lemma bindings_in : forall (s:t elt) x, L.PX.In x (bindings s) <-> x ∈ s.
-Proof.
- intros.
- unfold L.PX.In.
- rewrite <- In_alt; unfold In0.
- split; intros (y,H); exists y.
- - now rewrite <- bindings_mapsto.
- - unfold L.PX.MapsTo; now rewrite bindings_mapsto.
-Qed.
-
-Lemma bindings_aux_sort : forall (s:t elt) acc,
- Bst s -> sort ltk acc ->
- (forall x e y, InA eqke (x,e) acc -> y ∈ s -> y < x) ->
- sort ltk (bindings_aux acc s).
-Proof.
- induction s as [ | l Hl y e r Hr h]; simpl; intuition.
- inv Bst.
- apply Hl; auto.
- - constructor.
-   + apply Hr; eauto.
-   + clear Hl Hr.
-     apply InA_InfA with (eqA:=eqke); auto with *.
-     intros (y',e') Hy'.
-     apply bindings_aux_mapsto in Hy'. compute. intuition; eauto.
- - clear Hl Hr. intros x e' y' Hx Hy'.
-   inversion_clear Hx.
-   + compute in H. destruct H; simpl in *. order.
-   + apply bindings_aux_mapsto in H. intuition eauto.
-Qed.
-
-Lemma bindings_sort : forall s : t elt, Bst s -> sort ltk (bindings s).
-Proof.
- intros; unfold bindings; apply bindings_aux_sort; auto.
- intros; inversion H0.
-Qed.
-Hint Resolve bindings_sort.
-
-Lemma bindings_nodup : forall s : t elt, Bst s -> NoDupA eqk (bindings s).
-Proof.
- intros; apply PX.Sort_NoDupA; auto.
-Qed.
-
-Lemma bindings_aux_cardinal m acc :
- (length acc + cardinal m)%nat = length (bindings_aux acc m).
-Proof.
- revert acc. induction m; simpl; intuition.
- rewrite <- IHm1; simpl.
- rewrite <- IHm2. rewrite Nat.add_succ_r, <- Nat.add_assoc.
- f_equal. f_equal. apply Nat.add_comm.
-Qed.
-
-Lemma bindings_cardinal m : cardinal m = length (bindings m).
-Proof.
- exact (bindings_aux_cardinal m nil).
-Qed.
-
-Lemma bindings_app :
- forall (s:t elt) acc, bindings_aux acc s = bindings s ++ acc.
-Proof.
- induction s; simpl; intros; auto.
- rewrite IHs1, IHs2.
- unfold bindings; simpl.
- rewrite 2 IHs1, IHs2, !app_nil_r, !app_ass; auto.
-Qed.
-
-Lemma bindings_node :
- forall (t1 t2:t elt) x e z l,
- bindings t1 ++ (x,e) :: bindings t2 ++ l =
- bindings (Node t1 x e t2 z) ++ l.
-Proof.
- unfold bindings; simpl; intros.
- rewrite !bindings_app, !app_nil_r, !app_ass; auto.
-Qed.
-
-(** * Fold *)
-
-Definition fold' {A} (f : key -> elt -> A -> A)(s : t elt) :=
-  L.fold f (bindings s).
-
-Lemma fold_equiv_aux {A} (s : t elt) (f : key -> elt -> A -> A) (a : A) acc :
- L.fold f (bindings_aux acc s) a = L.fold f acc (fold f s a).
-Proof.
- revert a acc.
- induction s; simpl; trivial.
- intros. rewrite IHs1. simpl. apply IHs2.
-Qed.
-
-Lemma fold_equiv {A} (s : t elt) (f : key -> elt -> A -> A) (a : A) :
- fold f s a = fold' f s a.
-Proof.
- unfold fold', bindings. now rewrite fold_equiv_aux.
-Qed.
-
-Lemma fold_spec (s:t elt)(Hs:Bst s){A}(i:A)(f : key -> elt -> A -> A) :
- fold f s i = fold_left (fun a p => f p#1 p#2 a) (bindings s) i.
-Proof.
- rewrite fold_equiv. unfold fold'. now rewrite L.fold_spec.
-Qed.
-
-(** * Comparison *)
-
-(** [flatten_e e] returns the list of bindings of the enumeration [e]
-    i.e. the list of bindings actually compared *)
-
-Fixpoint flatten_e (e : enumeration elt) : list (key*elt) := match e with
-  | End _ => nil
-  | More x e t r => (x,e) :: bindings t ++ flatten_e r
- end.
-
-Lemma flatten_e_bindings :
- forall (l:t elt) r x d z e,
- bindings l ++ flatten_e (More x d r e) =
- bindings (Node l x d r z) ++ flatten_e e.
-Proof.
- intros; apply bindings_node.
-Qed.
-
-Lemma cons_1 : forall (s:t elt) e,
-  flatten_e (cons s e) = bindings s ++ flatten_e e.
-Proof.
-  induction s; auto; intros.
-  simpl flatten_e; rewrite IHs1; apply flatten_e_bindings; auto.
-Qed.
-
-(** Proof of correction for the comparison *)
-
-Variable cmp : elt->elt->bool.
-
-Definition IfEq b l1 l2 := L.equal cmp l1 l2 = b.
-
-Lemma cons_IfEq : forall b x1 x2 d1 d2 l1 l2,
-  X.eq x1 x2 -> cmp d1 d2 = true ->
-  IfEq b l1 l2 ->
-    IfEq b ((x1,d1)::l1) ((x2,d2)::l2).
-Proof.
- unfold IfEq; destruct b; simpl; intros; case X.compare_spec; simpl;
-  try rewrite H0; auto; order.
-Qed.
-
-Lemma equal_end_IfEq : forall e2,
-  IfEq (equal_end e2) nil (flatten_e e2).
-Proof.
- destruct e2; red; auto.
-Qed.
-
-Lemma equal_more_IfEq :
- forall x1 d1 (cont:enumeration elt -> bool) x2 d2 r2 e2 l,
-  IfEq (cont (cons r2 e2)) l (bindings r2 ++ flatten_e e2) ->
-    IfEq (equal_more cmp x1 d1 cont (More x2 d2 r2 e2)) ((x1,d1)::l)
-       (flatten_e (More x2 d2 r2 e2)).
-Proof.
- unfold IfEq; simpl; intros; destruct X.compare; simpl; auto.
- rewrite <-andb_lazy_alt; f_equal; auto.
-Qed.
-
-Lemma equal_cont_IfEq : forall m1 cont e2 l,
-  (forall e, IfEq (cont e) l (flatten_e e)) ->
-  IfEq (equal_cont cmp m1 cont e2) (bindings m1 ++ l) (flatten_e e2).
-Proof.
- induction m1 as [|l1 Hl1 x1 d1 r1 Hr1 h1]; intros; auto.
- rewrite <- bindings_node; simpl.
- apply Hl1; auto.
- clear e2; intros [|x2 d2 r2 e2].
- simpl; red; auto.
- apply equal_more_IfEq.
- rewrite <- cons_1; auto.
-Qed.
-
-Lemma equal_IfEq : forall (m1 m2:t elt),
-  IfEq (equal cmp m1 m2) (bindings m1) (bindings m2).
-Proof.
- intros; unfold equal.
- rewrite <- (app_nil_r (bindings m1)).
- replace (bindings m2) with (flatten_e (cons m2 (End _)))
-  by (rewrite cons_1; simpl; rewrite app_nil_r; auto).
- apply equal_cont_IfEq.
- intros.
- apply equal_end_IfEq; auto.
-Qed.
-
-Definition Equivb m m' :=
-  (forall k, In k m <-> In k m') /\
-  (forall k e e', MapsTo k e m -> MapsTo k e' m' -> cmp e e' = true).
-
-Lemma Equivb_bindings : forall s s',
- Equivb s s' <-> L.Equivb cmp (bindings s) (bindings s').
-Proof.
-unfold Equivb, L.Equivb; split; split; intros.
-do 2 rewrite bindings_in; firstorder.
-destruct H.
-apply (H2 k); rewrite <- bindings_mapsto; auto.
-do 2 rewrite <- bindings_in; firstorder.
-destruct H.
-apply (H2 k); unfold L.PX.MapsTo; rewrite bindings_mapsto; auto.
-Qed.
-
-Lemma equal_Equivb : forall (s s': t elt), Bst s -> Bst s' ->
-  (equal cmp s s' = true <-> Equivb s s').
-Proof.
- intros s s' B B'.
- rewrite Equivb_bindings, <- equal_IfEq.
- split; [apply L.equal_2|apply L.equal_1]; auto.
-Qed.
-
 End Elt.
 
 Section Map.
@@ -1581,7 +892,7 @@ Lemma mapi_spec m x :
 Proof.
   induction m; simpl.
   - now exists x.
-  - case X.compare_spec; simpl; auto. intros. now exists k.
+  - case X.compare_spec; simpl; auto. intros. now exists t0.
 Qed.
 
 Lemma mapi_in m x : x ∈ (mapi f m) <-> x ∈ m.
@@ -1837,7 +1148,6 @@ eapply gmerge_in with (f0:=f); try eassumption;
 Qed.
 
 End Merge.
-End Proofs.
 End Raw.
 
 (** * Encapsulation
@@ -1848,8 +1158,7 @@ End Raw.
 Module IntMake (I:Int)(X: OrderedType) <: S with Module E := X.
 
  Module E := X.
- Module Raw := Raw I X.
- Import Raw.Proofs.
+ Module Import Raw := Raw I X.
 
  Record tree (elt:Type) :=
   Mk {this :> Raw.tree elt; is_bst : Raw.Bst this}.
@@ -1942,9 +1251,9 @@ Module IntMake (I:Int)(X: OrderedType) <: S with Module E := X.
  Definition Equivb cmp := Equiv (Cmp cmp).
 
  Lemma Equivb_Equivb cmp m m' :
-  Equivb cmp m m' <-> Raw.Proofs.Equivb cmp m m'.
+  Equivb cmp m m' <-> Raw.Equivb cmp m m'.
  Proof.
- unfold Equivb, Equiv, Raw.Proofs.Equivb, In. intuition.
+ unfold Equivb, Equiv, Raw.Equivb, In. intuition.
  generalize (H0 k); do 2 rewrite In_alt; intuition.
  generalize (H0 k); do 2 rewrite In_alt; intuition.
  generalize (H0 k); do 2 rewrite <- In_alt; intuition.
@@ -1991,8 +1300,7 @@ Module IntMake_ord (I:Int)(X: OrderedType)(D : OrderedType) <:
   Module Data := D.
   Module Import MapS := IntMake(I)(X).
   Module LO := MMapList.Make_ord(X)(D).
-  Module R := Raw.
-  Module P := Raw.Proofs.
+  Module Import R := Raw.
 
   Definition t := MapS.t D.t.
 
@@ -2021,7 +1329,7 @@ Module IntMake_ord (I:Int)(X: OrderedType)(D : OrderedType) <:
   Fixpoint compare_cont s1 (cont:R.enumeration D.t -> comparison) e2 :=
    match s1 with
     | R.Leaf _ => cont e2
-    | R.Node l1 x1 d1 r1 _ =>
+    | R.Node _ l1 x1 d1 r1 =>
        compare_cont l1 (compare_more x1 d1 (compare_cont r1 cont)) e2
    end.
 
@@ -2033,7 +1341,7 @@ Module IntMake_ord (I:Int)(X: OrderedType)(D : OrderedType) <:
   (** The complete comparison *)
 
   Definition compare m1 m2 :=
-    compare_cont m1.(this) compare_end (R.cons m2 .(this) (Raw.End _)).
+    compare_cont m1.(this) compare_end (R.cons m2 .(this) (R.End _)).
 
   (** Correctness of this comparison *)
 
@@ -2041,55 +1349,56 @@ Module IntMake_ord (I:Int)(X: OrderedType)(D : OrderedType) <:
    match c with
     | Eq => LO.eq_list
     | Lt => LO.lt_list
-    | Gt => (fun l1 l2 => LO.lt_list l2 l1)
+    | Gt => flip LO.lt_list
    end.
 
   Lemma cons_Cmp c x1 x2 d1 d2 l1 l2 :
    X.eq x1 x2 -> D.eq d1 d2 ->
    Cmp c l1 l2 -> Cmp c ((x1,d1)::l1) ((x2,d2)::l2).
   Proof.
-    destruct c; simpl; intros; case X.compare_spec; auto; try P.MX.order.
+    destruct c; simpl; unfold flip; simpl; intros; case X.compare_spec;
+      auto; try MX.order.
     intros. right. split; auto. now symmetry.
   Qed.
   Hint Resolve cons_Cmp.
 
   Lemma compare_end_Cmp e2 :
-   Cmp (compare_end e2) nil (P.flatten_e e2).
+   Cmp (compare_end e2) nil (R.flatten_e e2).
   Proof.
    destruct e2; simpl; auto.
   Qed.
 
   Lemma compare_more_Cmp x1 d1 cont x2 d2 r2 e2 l :
-    Cmp (cont (R.cons r2 e2)) l (R.bindings r2 ++ P.flatten_e e2) ->
+    Cmp (cont (R.cons r2 e2)) l (R.bindings r2 ++ R.flatten_e e2) ->
      Cmp (compare_more x1 d1 cont (R.More x2 d2 r2 e2)) ((x1,d1)::l)
-       (P.flatten_e (R.More x2 d2 r2 e2)).
+       (R.flatten_e (R.More x2 d2 r2 e2)).
   Proof.
    simpl; case X.compare_spec; simpl;
-   try case D.compare_spec; simpl; auto;
-   case X.compare_spec; try P.MX.order; auto.
+   try case D.compare_spec; simpl; unfold flip; simpl; auto;
+   case X.compare_spec; try R.MX.order; auto.
   Qed.
 
   Lemma compare_cont_Cmp : forall s1 cont e2 l,
-   (forall e, Cmp (cont e) l (P.flatten_e e)) ->
-   Cmp (compare_cont s1 cont e2) (R.bindings s1 ++ l) (P.flatten_e e2).
+   (forall e, Cmp (cont e) l (R.flatten_e e)) ->
+   Cmp (compare_cont s1 cont e2) (R.bindings s1 ++ l) (R.flatten_e e2).
   Proof.
-    induction s1 as [|l1 Hl1 x1 d1 r1 Hr1 h1] using P.tree_ind;
+    induction s1 as [|h1 l1 Hl1 x1 d1 r1 Hr1] using R.tree_ind;
     intros; auto.
-    rewrite <- P.bindings_node; simpl.
+    rewrite <- R.bindings_node; simpl.
     apply Hl1; auto. clear e2. intros [|x2 d2 r2 e2].
-    simpl; auto.
+    simpl; unfold flip; simpl; auto.
     apply compare_more_Cmp.
-    rewrite <- P.cons_1; auto.
+    rewrite <- Raw.cons_1; auto.
   Qed.
 
   Lemma compare_Cmp m1 m2 :
    Cmp (compare m1 m2) (bindings m1) (bindings m2).
   Proof.
     destruct m1 as (s1,H1), m2 as (s2,H2).
-    unfold compare, bindings; simpl.
+    unfold compare; simpl.
     rewrite <- (app_nil_r (R.bindings s1)).
-    replace (R.bindings s2) with (P.flatten_e (R.cons s2 (R.End _))) by
-    (rewrite P.cons_1; simpl; rewrite app_nil_r; auto).
+    replace (R.bindings s2) with (R.flatten_e (R.cons s2 (R.End _))) by
+    (rewrite R.cons_1; simpl; rewrite app_nil_r; auto).
     auto using compare_cont_Cmp, compare_end_Cmp.
   Qed.
 
@@ -2106,7 +1415,7 @@ Module IntMake_ord (I:Int)(X: OrderedType)(D : OrderedType) <:
   (* Proofs about [eq] and [lt] *)
 
   Definition sbindings (m1 : t) :=
-   LO.MapS.Mk (P.bindings_sort m1.(is_bst)).
+   LO.MapS.Mk (R.bindings_sort m1.(is_bst)).
 
   Definition seq (m1 m2 : t) := LO.eq (sbindings m1) (sbindings m2).
   Definition slt (m1 m2 : t) := LO.lt (sbindings m1) (sbindings m2).
@@ -2121,11 +1430,11 @@ Module IntMake_ord (I:Int)(X: OrderedType)(D : OrderedType) <:
    unfold lt, slt, sbindings, bindings, LO.lt; intuition.
   Qed.
 
-  Lemma eq_spec m m' : eq m m' <-> Equivb cmp m m'.
+  Lemma eq_spec m m' : eq m m' <-> MapS.Equivb cmp m m'.
   Proof.
   rewrite eq_seq; unfold seq.
   rewrite Equivb_Equivb.
-  rewrite P.Equivb_bindings. apply LO.eq_spec.
+  rewrite R.Equivb_bindings. apply LO.eq_spec.
   Qed.
 
   Instance eq_equiv : Equivalence eq.
