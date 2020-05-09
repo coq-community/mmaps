@@ -25,8 +25,8 @@ From MMaps Require Import Interface OrdList.
 Local Open Scope list_scope.
 Local Open Scope lazy_bool_scope.
 
-Local Set Implicit Arguments.
-Local Unset Strict Implicit.
+Set Implicit Arguments.
+Unset Strict Implicit.
 
 (* For nicer extraction, we create induction principles
    only when needed *)
@@ -38,9 +38,9 @@ End InfoTyp.
 
 (** * Ops : the pure functions *)
 
-Module Type Ops (X:OrderedType)(Info:InfoTyp).
+Module Type Ops (K:OrderedType)(Info:InfoTyp).
 
-Definition key := X.t.
+Definition key := K.t.
 Hint Transparent key.
 
 Section Elt.
@@ -51,7 +51,7 @@ Variable elt : Type.
 
 Inductive tree  : Type :=
 | Leaf : tree
-| Node : Info.t -> tree -> X.t -> elt -> tree -> tree.
+| Node : Info.t -> tree -> K.t -> elt -> tree -> tree.
 
 Notation t := tree.
 
@@ -74,7 +74,7 @@ Fixpoint mem x t :=
  match t with
  | Leaf => false
  | Node _ l k _ r =>
-   match X.compare x k with
+   match K.compare x k with
      | Lt => mem x l
      | Eq => true
      | Gt => mem x r
@@ -85,7 +85,7 @@ Fixpoint find x m : option elt :=
   match m with
     |  Leaf => None
     |  Node _ l y v r =>
-       match X.compare x y with
+       match K.compare x y with
          | Eq => Some v
          | Lt => find x l
          | Gt => find x r
@@ -204,7 +204,7 @@ Definition equal_more x1 v1 (cont:enumeration->bool) e2 :=
  match e2 with
  | End => false
  | More x2 v2 r2 e2 =>
-     match X.compare x1 x2 with
+     match K.compare x1 x2 with
       | Eq => cmp v1 v2 &&& cont (cons r2 e2)
       | _ => false
      end
@@ -250,7 +250,7 @@ End Ops.
 
 (** * Props : correctness proofs of these generic operations *)
 
-Module Type Props (X:OrderedType)(Info:InfoTyp)(Import M:Ops X Info).
+Module Type Props (K:OrderedType)(Info:InfoTyp)(Import M:Ops K Info).
 
 Section Invariants.
 Variable elt : Type.
@@ -259,7 +259,7 @@ Variable elt : Type.
 
 Inductive MapsTo (x : key)(e : elt) : t elt -> Prop :=
   | MapsRoot : forall l r h y,
-      X.eq x y -> MapsTo x e (Node h l y e r)
+      K.eq x y -> MapsTo x e (Node h l y e r)
   | MapsLeft : forall l r h y e',
       MapsTo x e l -> MapsTo x e (Node h l y e' r)
   | MapsRight : forall l r h y e',
@@ -267,7 +267,7 @@ Inductive MapsTo (x : key)(e : elt) : t elt -> Prop :=
 
 Inductive In (x : key) : t elt -> Prop :=
   | InRoot : forall l r h y e,
-      X.eq x y -> In x (Node h l y e r)
+      K.eq x y -> In x (Node h l y e r)
   | InLeft : forall l r h y e',
       In x l -> In x (Node h l y e' r)
   | InRight : forall l r h y e',
@@ -282,21 +282,21 @@ Definition In0 k m := exists e:elt, MapsTo k e m.
 
 Inductive Above (x:key) : t elt -> Prop :=
  | AbLeaf : Above x (Leaf _)
- | AbNode l r h y e : Above x l -> X.lt y x -> Above x r ->
+ | AbNode l r h y e : Above x l -> K.lt y x -> Above x r ->
    Above x (Node h l y e r).
 
 Inductive Below (x:key) : t elt -> Prop :=
  | BeLeaf : Below x (Leaf _)
- | BeNode l r h y e : Below x l -> X.lt x y -> Below x r ->
+ | BeNode l r h y e : Below x l -> K.lt x y -> Below x r ->
    Below x (Node h l y e r).
 
 Definition Apart (m1 m2 : t elt) : Prop :=
-  forall x1 x2, In x1 m1 -> In x2 m2 -> X.lt x1 x2.
+  forall x1 x2, In x1 m1 -> In x2 m2 -> K.lt x1 x2.
 
 (** Alternative statements, equivalent with [LtTree] and [GtTree] *)
 
-Definition lt_tree x m := forall y, In y m -> X.lt y x.
-Definition gt_tree x m := forall y, In y m -> X.lt x y.
+Definition lt_tree x m := forall y, In y m -> K.lt y x.
+Definition gt_tree x m := forall y, In y m -> K.lt x y.
 
 (** [Bst t] : [t] is a binary search tree *)
 
@@ -311,13 +311,13 @@ Class Ok (m:t elt) : Prop := ok : Bst m.
 
 End Invariants.
 
-Module MX := OrderedTypeFacts X.
-Module PX := KeyOrderedType X.
-Module L := MMaps.OrdList.Raw X.
+Module F := OrderedTypeFacts K.
+Module O := KeyOrderedType K.
+Module L := MMaps.OrdList.Raw K.
 
 Local Infix "∈" := In (at level 70).
-Local Infix "==" := X.eq (at level 70).
-Local Infix "<" := X.lt (at level 70).
+Local Infix "==" := K.eq (at level 70).
+Local Infix "<" := K.lt (at level 70).
 Local Infix "<<" := Below (at level 70).
 Local Infix ">>" := Above (at level 70).
 Local Infix "<<<" := Apart (at level 70).
@@ -335,8 +335,8 @@ Functional Scheme find_ind := Induction for find Sort Prop.
 
 Local Hint Constructors tree MapsTo In Bst Above Below.
 Local Hint Unfold lt_tree gt_tree Apart Ok.
-Local Hint Immediate MX.eq_sym.
-Local Hint Resolve MX.eq_refl MX.eq_trans MX.lt_trans.
+Local Hint Immediate F.eq_sym.
+Local Hint Resolve F.eq_refl F.eq_trans F.lt_trans.
 
 Tactic Notation "factornode" ident(s) :=
  try clear s;
@@ -351,12 +351,12 @@ Tactic Notation "factornode" ident(s) :=
 
 Ltac cleanf :=
  match goal with
-  | H : X.compare _ _ = Eq |- _ =>
-    rewrite ?H; apply MX.compare_eq in H; cleanf
-  | H : X.compare _ _ = Lt |- _ =>
-    rewrite ?H; apply MX.compare_lt_iff in H; cleanf
-  | H : X.compare _ _ = Gt |- _ =>
-    rewrite ?H; apply MX.compare_gt_iff in H; cleanf
+  | H : K.compare _ _ = Eq |- _ =>
+    rewrite ?H; apply F.compare_eq in H; cleanf
+  | H : K.compare _ _ = Lt |- _ =>
+    rewrite ?H; apply F.compare_lt_iff in H; cleanf
+  | H : K.compare _ _ = Gt |- _ =>
+    rewrite ?H; apply F.compare_gt_iff in H; cleanf
   | _ => idtac
  end.
 
@@ -424,14 +424,14 @@ Qed.
 Hint Immediate MapsTo_1.
 
 Global Instance MapsTo_compat {elt} :
-  Proper (X.eq==>Logic.eq==>Logic.eq==>iff) (@MapsTo elt).
+  Proper (K.eq==>Logic.eq==>Logic.eq==>iff) (@MapsTo elt).
 Proof.
  intros x x' Hx e e' He m m' Hm. subst.
  split; now apply MapsTo_1.
 Qed.
 
 Global Instance In_compat {elt} :
-  Proper (X.eq==>Logic.eq==>iff) (@In elt).
+  Proper (K.eq==>Logic.eq==>iff) (@In elt).
 Proof.
  intros x x' H m m' <-.
  induction m; simpl; intuition_in; eauto.
@@ -449,7 +449,7 @@ Lemma above {elt} (m:t elt) x :
   x >> m <-> forall y, y ∈ m -> y < x.
 Proof.
  split.
- - induction 1; intuition_in; MX.order.
+ - induction 1; intuition_in; F.order.
  - induction m; constructor; auto.
 Qed.
 
@@ -462,7 +462,7 @@ Lemma below {elt} (m:t elt) x :
   x << m <-> forall y, y ∈ m -> x < y.
 Proof.
  split.
- - induction 1; intuition_in; MX.order.
+ - induction 1; intuition_in; F.order.
  - induction m; constructor; auto.
 Qed.
 
@@ -483,22 +483,22 @@ Qed.
 
 Lemma Above_not_In {elt} (m:t elt) x : x >> m -> ~ x ∈ m.
 Proof.
- induction 1; intuition_in; MX.order.
+ induction 1; intuition_in; F.order.
 Qed.
 
 Lemma Below_not_In {elt} (m:t elt) x : x << m -> ~ x ∈ m.
 Proof.
- induction 1; intuition_in; MX.order.
+ induction 1; intuition_in; F.order.
 Qed.
 
 Lemma Above_trans {elt} (m:t elt) x y : x < y -> x >> m -> y >> m.
 Proof.
- induction 2; constructor; trivial; MX.order.
+ induction 2; constructor; trivial; F.order.
 Qed.
 
 Lemma Below_trans {elt} (m:t elt) x y : y < x -> x << m -> y << m.
 Proof.
- induction 2; constructor; trivial; MX.order.
+ induction 2; constructor; trivial; F.order.
 Qed.
 
 Local Hint Resolve
@@ -516,7 +516,7 @@ Ltac order := match goal with
    generalize (AboveLt U (MapsTo_In V)); clear U; order
  | U: _ << ?m, V: MapsTo _ _ ?m |- _ =>
    generalize (BelowGt U (MapsTo_In V)); clear U; order
- | _ => MX.order
+ | _ => F.order
 end.
 
 Lemma between {elt} (m m':t elt) x :
@@ -533,7 +533,7 @@ Fixpoint ltb_tree {elt} x (m : t elt) :=
  match m with
   | Leaf _ => true
   | Node _ l y _ r =>
-     match X.compare x y with
+     match K.compare x y with
       | Gt => ltb_tree x l && ltb_tree x r
       | _ => false
      end
@@ -543,7 +543,7 @@ Fixpoint gtb_tree {elt} x (m : t elt) :=
  match m with
   | Leaf _ => true
   | Node _ l y _ r =>
-     match X.compare x y with
+     match K.compare x y with
       | Lt => gtb_tree x l && gtb_tree x r
       | _ => false
      end
@@ -560,7 +560,7 @@ Lemma ltb_tree_iff {elt} x (m:t elt) :
 Proof.
  induction m as [|c l IHl y v r IHr]; simpl.
  - unfold lt_tree; intuition_in.
- - case X.compare_spec.
+ - case K.compare_spec.
    + split; intros; try easy. assert (y<x) by auto. order.
    + split; intros; try easy. assert (y<x) by auto. order.
    + rewrite !andb_true_iff, <-IHl, <-IHr.
@@ -572,11 +572,11 @@ Lemma gtb_tree_iff {elt} x (m:t elt) :
 Proof.
  induction m as [|c l IHl y v r IHr]; simpl.
  - unfold gt_tree; intuition_in.
- - case X.compare_spec.
-   + split; intros; try easy. assert (x<y) by auto. MX.order.
+ - case K.compare_spec.
+   + split; intros; try easy. assert (x<y) by auto. F.order.
    + rewrite !andb_true_iff, <-IHl, <-IHr.
-     unfold gt_tree; intuition_in; MX.order.
-   + split; intros; try easy. assert (x<y) by auto. MX.order.
+     unfold gt_tree; intuition_in; F.order.
+   + split; intros; try easy. assert (x<y) by auto. F.order.
 Qed.
 
 Lemma isok_iff {elt} (m:t elt) : Ok m <-> isok m = true.
@@ -703,14 +703,14 @@ Qed.
 Lemma is_empty_spec m : is_empty m = true <-> forall x, find x m = None.
 Proof.
  destruct m as [|h r x e l]; simpl; split; try easy.
- intros H. specialize (H x). now rewrite MX.compare_refl in H.
+ intros H. specialize (H x). now rewrite F.compare_refl in H.
 Qed.
 
 (** * Elements *)
 
-Notation eqk := (PX.eqk (elt:= elt)).
-Notation eqke := (PX.eqke (elt:= elt)).
-Notation ltk := (PX.ltk (elt:= elt)).
+Notation eqk := (O.eqk (elt:= elt)).
+Notation eqke := (O.eqke (elt:= elt)).
+Notation ltk := (O.ltk (elt:= elt)).
 
 Ltac red_eqke :=
   match goal with
@@ -774,7 +774,7 @@ Hint Resolve bindings_sort.
 
 Lemma bindings_nodup m `{!Ok m} : NoDupA eqk (bindings m).
 Proof.
- intros; apply PX.Sort_NoDupA; auto.
+ intros; apply O.Sort_NoDupA; auto.
 Qed.
 
 Lemma bindings_aux_cardinal m acc :
@@ -870,7 +870,7 @@ Lemma cons_IfEq : forall b x1 x2 d1 d2 l1 l2,
   IfEq b l1 l2 ->
     IfEq b ((x1,d1)::l1) ((x2,d2)::l2).
 Proof.
- unfold IfEq; destruct b; simpl; intros; case X.compare_spec; simpl;
+ unfold IfEq; destruct b; simpl; intros; case K.compare_spec; simpl;
   try rewrite H0; auto; order.
 Qed.
 
@@ -886,7 +886,7 @@ Lemma equal_more_IfEq :
     IfEq (equal_more cmp x1 d1 cont (More x2 d2 r2 e2)) ((x1,d1)::l)
        (flatten_e (More x2 d2 r2 e2)).
 Proof.
- unfold IfEq; simpl; intros; destruct X.compare; simpl; auto.
+ unfold IfEq; simpl; intros; destruct K.compare; simpl; auto.
  rewrite <-andb_lazy_alt; f_equal; auto.
 Qed.
 
@@ -947,7 +947,7 @@ Variable f : elt -> elt'.
 Lemma map_spec m x :
  find x (map f m) = option_map f (find x m).
 Proof.
-induction m; simpl; trivial. case X.compare_spec; auto.
+induction m; simpl; trivial. case K.compare_spec; auto.
 Qed.
 
 Lemma map_in m x : x ∈ (map f m) <-> x ∈ m.
@@ -970,11 +970,11 @@ Variable f : key -> elt -> elt'.
 
 Lemma mapi_spec m x :
   exists y:key,
-    X.eq y x /\ find x (mapi f m) = option_map (f y) (find x m).
+    K.eq y x /\ find x (mapi f m) = option_map (f y) (find x m).
 Proof.
   induction m; simpl.
   - now exists x.
-  - case X.compare_spec; simpl; auto. intros. now exists t0.
+  - case K.compare_spec; simpl; auto. intros. now exists t0.
 Qed.
 
 Lemma mapi_in m x : x ∈ (mapi f m) <-> x ∈ m.

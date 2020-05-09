@@ -17,31 +17,28 @@ Unset Strict Implicit.
 (** When compared with Ocaml Map, this signature has been split in
     several parts :
 
-   - The first parts [WSfun] and [WS] propose signatures for weak
-     maps, which are maps with no ordering on the key type nor the
-     data type.  [WSfun] and [WS] are almost identical, apart from the
-     fact that [WSfun] is expressed in a functorial way whereas [WS]
-     is self-contained. For obtaining an instance of such signatures,
+   - The first part [WS] propose signatures for weak  maps,
+     which are maps with no ordering on the key type nor the
+     data type. For obtaining an instance of this interface,
      a decidable equality on keys in enough (see for example
-     [FMapWeakList]). These signatures contain the usual operators
+     [WeakList]). Thes signature contain the usual operators
      (add, find, ...). The only function that asks for more is
      [equal], whose first argument should be a comparison on data.
 
-   - Then comes [Sfun] and [S], that extend [WSfun] and [WS] to the
-     case where the key type is ordered. The main novelty is that
-     [bindings] is required to produce sorted lists.
+   - Then comes [S], that extend [WS] to the case where the key type
+     is ordered. The main novelty is that [bindings] is required
+     to produce sorted lists.
 
-   - Finally, [Sord] extends [S] with a complete comparison function. For
-     that, the data type should have a decidable total ordering as well.
+   - Finally, [Sord] extends [S] with a complete comparison function.
+     For that, the data type should have a decidable total ordering
+     as well.
 
-   If unsure, what you're looking for is probably [S]: apart from [Sord],
-   all other signatures are subsets of [S].
+   If unsure, what you're looking for is probably [S].
 
    Some additional differences with Ocaml:
 
     - no [iter] function, useless since Coq is purely functional
     - [option] types are used instead of [Not_found] exceptions
-
 *)
 
 
@@ -50,17 +47,17 @@ Definition Cmp {elt:Type}(cmp:elt->elt->bool) e1 e2 := cmp e1 e2 = true.
 (** ** Weak signature for maps
 
     No requirements for an ordering on keys nor elements, only decidability
-    of equality on keys. First, a functorial signature: *)
+    of equality on keys. *)
 
-Module Type WSfun (E : DecidableType).
+Module Type WS (K : DecidableType).
 
-  Definition key := E.t.
+  Definition key := K.t.
   Hint Transparent key.
 
-  Definition eq_key {elt} (p p':key*elt) := E.eq (fst p) (fst p').
+  Definition eq_key {elt} (p p':key*elt) := K.eq (fst p) (fst p').
 
   Definition eq_key_elt {elt} (p p':key*elt) :=
-      E.eq (fst p) (fst p') /\ (snd p) = (snd p').
+      K.eq (fst p) (fst p') /\ (snd p) = (snd p').
 
   Parameter t : Type -> Type.
   (** the abstract type of maps *)
@@ -139,7 +136,7 @@ Module Type WSfun (E : DecidableType).
     Definition In (k:key)(m: t elt) : Prop := exists e:elt, MapsTo k e m.
 
     Global Declare Instance MapsTo_compat :
-      Proper (E.eq==>Logic.eq==>Logic.eq==>iff) MapsTo.
+      Proper (K.eq==>Logic.eq==>Logic.eq==>iff) MapsTo.
 
     Variable m m' : t elt.
     Variable x y : key.
@@ -150,9 +147,9 @@ Module Type WSfun (E : DecidableType).
     Parameter empty_spec : find x (@empty elt) = None.
     Parameter is_empty_spec : is_empty m = true <-> forall x, find x m = None.
     Parameter add_spec1 : find x (add x e m) = Some e.
-    Parameter add_spec2 : ~E.eq x y -> find y (add x e m) = find y m.
+    Parameter add_spec2 : ~K.eq x y -> find y (add x e m) = find y m.
     Parameter remove_spec1 : find x (remove x m) = None.
-    Parameter remove_spec2 : ~E.eq x y -> find y (remove x m) = find y m.
+    Parameter remove_spec2 : ~K.eq x y -> find y (remove x m) = find y m.
 
     (** Specification of [bindings] *)
     Parameter bindings_spec1 :
@@ -173,7 +170,7 @@ Module Type WSfun (E : DecidableType).
 
     (** Caveat: there are at least three distinct equality predicates on maps.
       - The simpliest (and maybe most natural) way is to consider keys up to
-        their equivalence [E.eq], but elements up to Leibniz equality, in
+        their equivalence [K.eq], but elements up to Leibniz equality, in
         the spirit of [eq_key_elt] above. This leads to predicate [Equal].
       - Unfortunately, this [Equal] predicate can't be used to describe
         the [equal] function, since this function (for compatibility with
@@ -203,12 +200,12 @@ Module Type WSfun (E : DecidableType).
       find x (map f m) = option_map f (find x m).
 
     Parameter mapi_spec : forall (f:key->elt->elt') m x,
-      exists y:key, E.eq y x /\ find x (mapi f m) = option_map (f y) (find x m).
+      exists y:key, K.eq y x /\ find x (mapi f m) = option_map (f y) (find x m).
 
     Parameter merge_spec1 :
       forall (f:key->option elt->option elt'->option elt'') m m' x,
       In x m \/ In x m' ->
-      exists y:key, E.eq y x /\
+      exists y:key, K.eq y x /\
                     find x (merge f m m') = f y (find x m) (find x m').
 
     Parameter merge_spec2 :
@@ -216,25 +213,15 @@ Module Type WSfun (E : DecidableType).
       In x (merge f m m') -> In x m \/ In x m'.
 
   End SpecMaps.
-End WSfun.
-
-(** ** Static signature for Weak Maps
-
-    Similar to [WSfun] but expressed in a self-contained way. *)
-
-Module Type WS.
-  Declare Module E : DecidableType.
-  Include WSfun E.
 End WS.
 
 
+(** ** Maps on ordered keys. *)
 
-(** ** Maps on ordered keys, functorial signature *)
+Module Type S (K : OrderedType).
+  Include WS K.
 
-Module Type Sfun (E : OrderedType).
-  Include WSfun E.
-
-  Definition lt_key {elt} (p p':key*elt) := E.lt (fst p) (fst p').
+  Definition lt_key {elt} (p p':key*elt) := K.lt (fst p) (fst p').
 
   (** Additional specification of [bindings] *)
 
@@ -244,32 +231,22 @@ Module Type Sfun (E : OrderedType).
    specification of [bindings] has an indirect impact on [fold],
    which can now be proved to receive bindings in increasing order. *)
 
-End Sfun.
-
-
-(** ** Maps on ordered keys, self-contained signature *)
-
-Module Type S.
-  Declare Module E : OrderedType.
-  Include Sfun E.
 End S.
 
 
+(** ** Maps with orderings both on keys and datas *)
 
-(** ** Maps with ordering both on keys and datas *)
+Module Type Sord (K : OrderedType) (D : OrderedType).
 
-Module Type Sord.
-
-  Declare Module Data : OrderedType.
-  Declare Module MapS : S.
+  Declare Module MapS : S K.
   Import MapS.
 
-  Definition t := MapS.t Data.t.
+  Definition t := MapS.t D.t.
 
   Include HasEq <+ HasLt <+ IsEq <+ IsStrOrder.
 
   Definition cmp e e' :=
-    match Data.compare e e' with Eq => true | _ => false end.
+    match D.compare e e' with Eq => true | _ => false end.
 
   Parameter eq_spec : forall m m', eq m m' <-> Equivb cmp m m'.
 

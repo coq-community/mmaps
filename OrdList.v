@@ -789,7 +789,7 @@ Qed.
 End Elt3.
 End Raw.
 
-Module Make (X: OrderedType) <: S with Module E := X.
+Module Make (X: OrderedType) <: S X.
 Module Raw := Raw X.
 Module E := X.
 
@@ -909,12 +909,8 @@ End Elt.
 
 End Make.
 
-Module Make_ord (X: OrderedType)(D : OrderedType) <:
-Sord with Module Data := D
-        with Module MapS.E := X.
-
-Module Data := D.
-Module MapS := Make(X).
+Module Make_ord (X: OrderedType)(D : OrderedType) <: Sord X D.
+Module MapS := Make X.
 Import MapS.
 
 Module MD := OrderedTypeFacts(D).

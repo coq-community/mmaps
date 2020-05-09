@@ -37,7 +37,7 @@ Notation "s #2" := (snd s) (at level 9, format "s '#2'") : pair_scope.
    Functor of pure functions + separate proofs of invariant
    preservation *)
 
-Module Raw (Import I:Int)(X: OrderedType).
+Module Raw (Import I:Int)(K: OrderedType).
 
 (** ** Generic trees instantiated with integer height *)
 
@@ -45,7 +45,7 @@ Module Raw (Import I:Int)(X: OrderedType).
     parameter is a [Int.t]. Functions like mem or fold are also
     provided by this generic functor. *)
 
-Include MMaps.GenTree.Ops X I.
+Include MMaps.GenTree.Ops K I.
 
 Local Open Scope pair_scope.
 Local Open Scope lazy_bool_scope.
@@ -122,7 +122,7 @@ Fixpoint add x d m :=
   match m with
     | Leaf _ => Node 1 (Leaf _) x d (Leaf _)
     | Node h l y d' r =>
-      match X.compare x y with
+      match K.compare x y with
         | Eq => Node h l y d r
         | Lt => bal (add x d l) y d' r
         | Gt => bal l y d' (add x d r)
@@ -165,7 +165,7 @@ Definition merge0 s1 s2 :=
 Fixpoint remove x m := match m with
   | Leaf _ => Leaf _
   | Node h l y d r =>
-      match X.compare x y with
+      match K.compare x y with
          | Eq => merge0 l r
          | Lt => bal (remove x l) y d r
          | Gt => bal l y d (remove x r)
@@ -205,7 +205,7 @@ Notation "〚 l , b , r 〛" := (mktriple l b r) (at level 9).
 Fixpoint split x m : triple := match m with
   | Leaf _ => 〚 Leaf _, None, Leaf _ 〛
   | Node h l y d r =>
-     match X.compare x y with
+     match K.compare x y with
       | Lt => let (ll,o,rl) := split x l in 〚 ll, o, join rl y d r 〛
       | Eq => 〚 l, Some d, r 〛
       | Gt => let (rl,o,rr) := split x r in 〚 join l y d rl, o, rr 〛
@@ -299,11 +299,11 @@ End Merge.
 
 (** * Correctness proofs *)
 
-Include MMaps.GenTree.Props X I.
+Include MMaps.GenTree.Props K I.
 
 Local Infix "∈" := In (at level 70).
-Local Infix "==" := X.eq (at level 70).
-Local Infix "<" := X.lt (at level 70).
+Local Infix "==" := K.eq (at level 70).
+Local Infix "<" := K.lt (at level 70).
 Local Infix "<<" := Below (at level 70).
 Local Infix ">>" := Above (at level 70).
 Local Infix "<<<" := Apart (at level 70).
@@ -322,8 +322,8 @@ Functional Scheme gmerge_ind := Induction for gmerge Sort Prop.
 
 Local Hint Constructors tree MapsTo In Bst Above Below.
 Local Hint Unfold lt_tree gt_tree Apart Ok Bst_Ok.
-Local Hint Immediate MX.eq_sym.
-Local Hint Resolve MX.eq_refl MX.eq_trans MX.lt_trans.
+Local Hint Immediate F.eq_sym.
+Local Hint Resolve F.eq_refl F.eq_trans F.lt_trans.
 Local Hint Resolve
  AboveLt Above_not_In Above_trans
  BelowGt Below_not_In Below_trans.
@@ -406,7 +406,7 @@ Lemma bal_find l x e r y `{!Ok l, !Ok r} :
 Proof.
  functional induction (bal l x e r); intros; cleanf; trivial;
  invok; inv Above; inv Below;
- simpl; repeat case X.compare_spec; intuition; order.
+ simpl; repeat case K.compare_spec; intuition; order.
 Qed.
 
 (** * Insertion *)
@@ -437,28 +437,28 @@ Qed.
 Lemma add_spec1 m x e `{!Ok m} : find x (add x e m) = Some e.
 Proof.
  functional induction (add x e m); simpl; intros; cleanf; trivial.
- - now rewrite MX.compare_refl.
+ - now rewrite F.compare_refl.
  - invok. rewrite bal_find; autok.
-   simpl. case X.compare_spec; try order; auto.
+   simpl. case K.compare_spec; try order; auto.
  - invok. rewrite bal_find; autok.
-   simpl. case X.compare_spec; try order; auto.
+   simpl. case K.compare_spec; try order; auto.
 Qed.
 
 Lemma add_spec2 m x y e `{!Ok m} : ~ x == y ->
  find y (add x e m) = find y m.
 Proof.
  functional induction (add x e m); simpl; intros; cleanf; trivial.
- - case X.compare_spec; trivial; order.
- - case X.compare_spec; trivial; order.
+ - case K.compare_spec; trivial; order.
+ - case K.compare_spec; trivial; order.
  - invok. rewrite bal_find by autok. simpl. now rewrite IHt.
  - invok. rewrite bal_find by autok. simpl. now rewrite IHt.
 Qed.
 
 Lemma add_find m x y e `{!Ok m} :
  find y (add x e m) =
-  match X.compare y x with Eq => Some e | _ => find y m end.
+  match K.compare y x with Eq => Some e | _ => find y m end.
 Proof.
- case X.compare_spec; intros E.
+ case K.compare_spec; intros E.
  - apply find_spec; autok. rewrite E. apply find_spec; autok.
    now apply add_spec1.
  - apply add_spec2; trivial; order.
@@ -541,7 +541,7 @@ Qed.
 Lemma remove_min_find m m' p `{!Ok m} : RemoveMin m (m',p) ->
  forall y,
  find y m =
-   match X.compare y p#1 with
+   match K.compare y p#1 with
     | Eq => Some p#2
     | Lt => None
     | Gt => find y m'
@@ -558,7 +558,7 @@ Proof.
  assert (In p#1 l) by (apply (remove_min_in R); now left).
  simpl in *.
  rewrite (IH _ _ R), bal_find by trivial. clear IH. simpl.
- do 2 case X.compare_spec; trivial; try order.
+ do 2 case K.compare_spec; trivial; try order.
 Qed.
 
 (** * Merging two trees *)
@@ -637,14 +637,14 @@ Lemma remove_spec2 m x y `{!Ok m} : ~ x == y ->
  find y (remove x m) = find y m.
 Proof.
  functional induction (remove x m); simpl; intros; cleanf; invok; autok.
- - case X.compare_spec; intros; try order;
+ - case K.compare_spec; intros; try order;
    rewrite find_mapsto_equiv; auto.
    + intros. rewrite merge0_mapsto; intuition; order.
    + apply merge0_ok; auto. red; intros; transitivity y0; order.
    + intros. rewrite merge0_mapsto; intuition; order.
    + apply merge0_ok; auto. now apply between with y0.
- - rewrite bal_find by autok. simpl. case X.compare_spec; auto.
- - rewrite bal_find by autok. simpl. case X.compare_spec; auto.
+ - rewrite bal_find by autok. simpl. case K.compare_spec; auto.
+ - rewrite bal_find by autok. simpl. case K.compare_spec; auto.
 Qed.
 
 (** * join *)
@@ -680,21 +680,21 @@ Proof.
  join_tac l x d r; trivial.
  - simpl in *. invok.
    rewrite add_find; trivial.
-   case X.compare_spec; intros; trivial.
+   case K.compare_spec; intros; trivial.
    apply not_find_iff; auto. intro. order.
  - clear Hlr. factornode l. simpl. invok.
    rewrite add_find by auto.
-   case X.compare_spec; intros; trivial.
+   case K.compare_spec; intros; trivial.
    apply not_find_iff; auto. intro. order.
  - clear Hrl LT. factornode r. invok; invok; inv Above; inv Below.
    rewrite bal_find; autok; simpl.
    + rewrite Hlr; auto; simpl.
-     repeat (case X.compare_spec; trivial; try order).
+     repeat (case K.compare_spec; trivial; try order).
    + apply below. intro. rewrite join_in. intuition_in; order.
  - clear Hlr LT LT'. factornode l. invok; invok; inv Above; inv Below.
    rewrite bal_find; autok; simpl.
    + rewrite Hrl; auto; simpl.
-     repeat (case X.compare_spec; trivial; try order).
+     repeat (case K.compare_spec; trivial; try order).
    + apply above. intro. rewrite join_in. intuition_in; order.
 Qed.
 
@@ -763,19 +763,19 @@ Proof.
 Qed.
 
 Lemma split_find m x y `{!Ok m} :
- find y m = match X.compare y x with
+ find y m = match K.compare y x with
               | Eq => (split x m)#o
               | Lt => find y (split x m)#l
               | Gt => find y (split x m)#r
             end.
 Proof.
  functional induction (split x m); intros; cleansplit.
- - now case X.compare.
- - repeat case X.compare_spec; trivial; order.
+ - now case K.compare.
+ - repeat case K.compare_spec; trivial; order.
  - simpl in *. rewrite join_find, IHt; autok.
-   simpl. repeat case X.compare_spec; trivial; order.
+   simpl. repeat case K.compare_spec; trivial; order.
  - rewrite join_find, IHt; autok.
-   simpl; repeat case X.compare_spec; trivial; order.
+   simpl; repeat case K.compare_spec; trivial; order.
 Qed.
 
 (** * Concatenation *)
@@ -820,7 +820,7 @@ Proof.
      rewrite (remove_min_in R). now left. }
    rewrite join_find; simpl; auto.
    + rewrite (remove_min_find R y).
-     case X.compare_spec; intros; auto.
+     case K.compare_spec; intros; auto.
      destruct (find y m2'); trivial.
      simpl. symmetry. apply not_find_iff; eauto.
    + apply create_ok; eauto with *. now apply (remove_min_gt R).
@@ -834,7 +834,7 @@ Variable f : key -> elt -> option elt'.
 
 Lemma mapo_in m x :
  x ∈ (mapo f m) ->
- exists y d, X.eq y x /\ MapsTo x d m /\ f y d <> None.
+ exists y d, K.eq y x /\ MapsTo x d m /\ f y d <> None.
 Proof.
 functional induction (mapo f m); simpl; auto; intro H.
 - inv In.
@@ -875,13 +875,13 @@ Definition obind {A B} (o:option A) (f:A->option B) :=
   match o with Some a => f a | None => None end.
 
 Lemma mapo_find m x `{!Ok m} :
-  exists y, X.eq y x /\
+  exists y, K.eq y x /\
             find x (mapo f m) = obind (find x m) (f y).
 Proof.
 functional induction (mapo f m); simpl; auto; invok.
 - now exists x.
 - rewrite join_find; auto.
-  + simpl. case X.compare_spec; simpl; intros.
+  + simpl. case K.compare_spec; simpl; intros.
     * now exists x0.
     * destruct IHt as (y' & ? & ?); auto.
       exists y'; split; trivial.
@@ -891,7 +891,7 @@ functional induction (mapo f m); simpl; auto; invok.
 - rewrite concat_find; autok.
   + destruct IHt0 as (y' & ? & ->); auto.
     destruct IHt as (y'' & ? & ->); auto.
-    case X.compare_spec; simpl; intros.
+    case K.compare_spec; simpl; intros.
     * nonify (find x r). nonify (find x l). simpl. now exists x0.
     * nonify (find x r). now exists y''.
     * nonify (find x l). exists y'. split; trivial.
@@ -912,10 +912,10 @@ Hypothesis f0_f : forall x d o, f x d o = f0 x (Some d) o.
 Hypothesis mapl_ok : forall m, Ok m -> Ok (mapl m).
 Hypothesis mapr_ok : forall m', Ok m' -> Ok (mapr m').
 Hypothesis mapl_f0 : forall x m, Ok m ->
- exists y, X.eq y x /\
+ exists y, K.eq y x /\
            find x (mapl m) = obind (find x m) (fun d => f0 y (Some d) None).
 Hypothesis mapr_f0 : forall x m, Ok m ->
- exists y, X.eq y x /\
+ exists y, K.eq y x /\
            find x (mapr m) = obind (find x m) (fun d => f0 y None (Some d)).
 
 Notation gmerge := (gmerge f mapl mapr).
@@ -978,7 +978,7 @@ Ltac nonify e :=
 
 Lemma gmerge_find m m' x `{!Ok m, !Ok m'} :
  In x m \/ In x m' ->
- exists y, X.eq y x /\
+ exists y, K.eq y x /\
            find x (gmerge m m') = f0 y (find x m) (find x m').
 Proof.
   functional induction (gmerge m m'); intros H;
@@ -997,7 +997,7 @@ Proof.
     rewrite (@split_find _ m2 x1 x); autok.
     rewrite e1 in *; simpl in *. intros.
     rewrite join_find by (cleansplit; constructor; autok).
-    simpl. case X.compare_spec; intros.
+    simpl. case K.compare_spec; intros.
     + exists x1. split; auto. now rewrite <- e3, f0_f.
     + apply IHt1; auto. clear IHt1 IHt0.
       cleansplit; rewrite split_in_l; trivial.
@@ -1011,7 +1011,7 @@ Proof.
     pose proof (@split_gt_r _ m2 x1 _).
     rewrite e1 in *; simpl in *. intros.
     rewrite concat_find by (try apply between with x1; autok).
-    case X.compare_spec; intros.
+    case K.compare_spec; intros.
     + clear IHt0 IHt1.
       exists x1. split; auto. rewrite <- f0_f, e2.
       nonify (find x (gmerge r1 r2')).
@@ -1042,7 +1042,7 @@ Qed.
 
 Lemma merge_spec1 m m' x `{!Ok m, !Ok m'} :
  In x m \/ In x m' ->
- exists y, X.eq y x /\
+ exists y, K.eq y x /\
            find x (merge f m m') = f y (find x m) (find x m').
 Proof.
   unfold merge; intros.
@@ -1066,13 +1066,12 @@ End Raw.
 
 (** * Encapsulation
 
-   Now, in order to really provide a functor implementing [S], we
-   need to encapsulate everything into a type of balanced binary search trees. *)
+   Now, in order to really provide a functor implementing [S], we need
+   to encapsulate everything into a type of balanced binary search trees. *)
 
-Module IntMake (I:Int)(X: OrderedType) <: S with Module E := X.
+Module IntMake (I:Int)(K: OrderedType) <: S K.
 
- Module E := X.
- Module Import Raw := Raw I X.
+ Module Import Raw := Raw I K.
 
  Record tree (elt:Type) :=
   Mk {this :> Raw.tree elt; is_ok : Ok this}.
@@ -1081,7 +1080,7 @@ Module IntMake (I:Int)(X: OrderedType) <: S with Module E := X.
  Local Arguments Mk {elt} this {is_ok}.
 
  Definition t := tree.
- Definition key := E.t.
+ Definition key := K.t.
 
  Section Elt.
  Variable elt elt' elt'': Type.
@@ -1107,12 +1106,12 @@ Module IntMake (I:Int)(X: OrderedType) <: S with Module E := X.
  Definition MapsTo x e m : Prop := MapsTo x e m.
  Definition In x m : Prop := In0 x m.
 
- Definition eq_key : (key*elt) -> (key*elt) -> Prop := @PX.eqk elt.
- Definition eq_key_elt : (key*elt) -> (key*elt) -> Prop := @PX.eqke elt.
- Definition lt_key : (key*elt) -> (key*elt) -> Prop := @PX.ltk elt.
+ Definition eq_key : (key*elt) -> (key*elt) -> Prop := @O.eqk elt.
+ Definition eq_key_elt : (key*elt) -> (key*elt) -> Prop := @O.eqke elt.
+ Definition lt_key : (key*elt) -> (key*elt) -> Prop := @O.ltk elt.
 
  Instance MapsTo_compat :
-   Proper (E.eq==>Logic.eq==>Logic.eq==>iff) MapsTo.
+   Proper (K.eq==>Logic.eq==>Logic.eq==>iff) MapsTo.
  Proof.
    intros k k' Hk e e' <- m m' <-. unfold MapsTo; simpl. now rewrite Hk.
  Qed.
@@ -1131,12 +1130,12 @@ Module IntMake (I:Int)(X: OrderedType) <: S with Module E := X.
 
  Lemma add_spec1 m x e : find x (add x e m) = Some e.
  Proof. apply add_spec1; autok. Qed.
- Lemma add_spec2 m x y e : ~ E.eq x y -> find y (add x e m) = find y m.
+ Lemma add_spec2 m x y e : ~ K.eq x y -> find y (add x e m) = find y m.
  Proof. apply add_spec2; autok. Qed.
 
  Lemma remove_spec1 m x : find x (remove x m) = None.
  Proof. apply remove_spec1; autok. Qed.
- Lemma remove_spec2 m x y : ~E.eq x y -> find y (remove x m) = find y m.
+ Lemma remove_spec2 m x y : ~K.eq x y -> find y (remove x m) = find y m.
  Proof. apply remove_spec2; autok. Qed.
 
  Lemma bindings_spec1 m x e :
@@ -1183,13 +1182,13 @@ Module IntMake (I:Int)(X: OrderedType) <: S with Module E := X.
  Proof. apply map_spec. Qed.
 
  Lemma mapi_spec {elt elt'} (f:key->elt->elt') m x :
-   exists y:key, E.eq y x /\ find x (mapi f m) = option_map (f y) (find x m).
+   exists y:key, K.eq y x /\ find x (mapi f m) = option_map (f y) (find x m).
  Proof. apply mapi_spec. Qed.
 
  Lemma merge_spec1 {elt elt' elt''}
        (f:key->option elt->option elt'->option elt'') m m' x :
    In x m \/ In x m' ->
-   exists y:key, E.eq y x /\
+   exists y:key, K.eq y x /\
                  find x (merge f m m') = f y (find x m) (find x m').
  Proof. unfold In. rewrite !In_alt. apply merge_spec1; autok. Qed.
 
@@ -1201,13 +1200,9 @@ Module IntMake (I:Int)(X: OrderedType) <: S with Module E := X.
 End IntMake.
 
 
-Module IntMake_ord (I:Int)(X: OrderedType)(D : OrderedType) <:
-    Sord with Module Data := D
-         with Module MapS.E := X.
-
-  Module Data := D.
-  Module Import MapS := IntMake(I)(X).
-  Module LO := MMaps.OrdList.Make_ord(X)(D).
+Module IntMake_ord (I:Int)(K:OrderedType)(D:OrderedType) <: Sord K D.
+  Module Import MapS := IntMake(I)(K).
+  Module LO := MMaps.OrdList.Make_ord(K)(D).
   Module Import R := Raw.
 
   Definition t := MapS.t D.t.
@@ -1221,7 +1216,7 @@ Module IntMake_ord (I:Int)(X: OrderedType)(D : OrderedType) <:
    match e2 with
     | R.End _ => Gt
     | R.More x2 d2 r2 e2 =>
-       match X.compare x1 x2 with
+       match K.compare x1 x2 with
         | Eq => match D.compare d1 d2 with
                    | Eq => cont (R.cons r2 e2)
                    | Lt => Lt
@@ -1249,7 +1244,7 @@ Module IntMake_ord (I:Int)(X: OrderedType)(D : OrderedType) <:
   (** The complete comparison *)
 
   Definition compare m1 m2 :=
-    compare_cont m1.(this) compare_end (R.cons m2 .(this) (R.End _)).
+    compare_cont m1.(this) compare_end (R.cons m2.(this) (R.End _)).
 
   (** Correctness of this comparison *)
 
@@ -1261,11 +1256,11 @@ Module IntMake_ord (I:Int)(X: OrderedType)(D : OrderedType) <:
    end.
 
   Lemma cons_Cmp c x1 x2 d1 d2 l1 l2 :
-   X.eq x1 x2 -> D.eq d1 d2 ->
+   K.eq x1 x2 -> D.eq d1 d2 ->
    Cmp c l1 l2 -> Cmp c ((x1,d1)::l1) ((x2,d2)::l2).
   Proof.
-    destruct c; simpl; unfold flip; simpl; intros; case X.compare_spec;
-      auto; try MX.order.
+    destruct c; simpl; unfold flip; simpl; intros; case K.compare_spec;
+      auto; try F.order.
     intros. right. split; auto. now symmetry.
   Qed.
   Hint Resolve cons_Cmp.
@@ -1281,9 +1276,9 @@ Module IntMake_ord (I:Int)(X: OrderedType)(D : OrderedType) <:
      Cmp (compare_more x1 d1 cont (R.More x2 d2 r2 e2)) ((x1,d1)::l)
        (R.flatten_e (R.More x2 d2 r2 e2)).
   Proof.
-   simpl; case X.compare_spec; simpl;
+   simpl; case K.compare_spec; simpl;
    try case D.compare_spec; simpl; unfold flip; simpl; auto;
-   case X.compare_spec; try R.MX.order; auto.
+   case K.compare_spec; try R.F.order; auto.
   Qed.
 
   Lemma compare_cont_Cmp : forall s1 cont e2 l,
@@ -1367,10 +1362,7 @@ End IntMake_ord.
 
 (* For concrete use inside Coq, we propose an instantiation of [Int] by [Z]. *)
 
-Module Make (X: OrderedType) <: S with Module E := X
- :=IntMake(Z_as_Int)(X).
+Module Make (K:OrderedType) <: S K := IntMake(Z_as_Int)(K).
 
-Module Make_ord (X: OrderedType)(D: OrderedType)
- <: Sord with Module Data := D
-            with Module MapS.E := X
- :=IntMake_ord(Z_as_Int)(X)(D).
+Module Make_ord (K:OrderedType)(D:OrderedType) <: Sord K D
+ := IntMake_ord(Z_as_Int)(K)(D).

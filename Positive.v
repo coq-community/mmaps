@@ -37,7 +37,7 @@ Definition rev x := x@1.
 
 (** The module of maps over positive keys *)
 
-Module PositiveMap <: S with Module E:=PositiveOrderedTypeBits.
+Module PositiveMap <: S PositiveOrderedTypeBits.
 
   Module E:=PositiveOrderedTypeBits.
   Module ME:=KeyOrderedType E.

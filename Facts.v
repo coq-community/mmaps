@@ -39,31 +39,35 @@ Proof.
  destruct o; simpl. now split. split; now destruct 1.
 Qed.
 
-(** * Properties about weak maps *)
+(** * Properties that are common to weak maps and ordered maps.
 
-Module WProperties_fun (E:DecidableType)(Import M:WSfun E).
+    Thanks to subtyping, this functor can also be applied to
+    [(K:OrderedType)(M:S K)].
+*)
+
+Module Properties (K:DecidableType)(Import M:WS K).
 
 Definition Empty {elt}(m : t elt) := forall x e, ~MapsTo x e m.
 
-(** A few things about E.eq *)
+(** A few things about K.eq *)
 
-Lemma eq_refl x : E.eq x x. Proof. apply E.eq_equiv. Qed.
-Lemma eq_sym x y : E.eq x y -> E.eq y x. Proof. apply E.eq_equiv. Qed.
-Lemma eq_trans x y z : E.eq x y -> E.eq y z -> E.eq x z.
-Proof. apply E.eq_equiv. Qed.
+Lemma eq_refl x : K.eq x x. Proof. apply K.eq_equiv. Qed.
+Lemma eq_sym x y : K.eq x y -> K.eq y x. Proof. apply K.eq_equiv. Qed.
+Lemma eq_trans x y z : K.eq x y -> K.eq y z -> K.eq x z.
+Proof. apply K.eq_equiv. Qed.
 Hint Immediate eq_refl eq_sym : map.
-Hint Resolve eq_trans eq_equivalence E.eq_equiv : map.
+Hint Resolve eq_trans eq_equivalence K.eq_equiv : map.
 
-Definition eqb x y := if E.eq_dec x y then true else false.
+Definition eqb x y := if K.eq_dec x y then true else false.
 
-Lemma eqb_eq x y : eqb x y = true <-> E.eq x y.
+Lemma eqb_eq x y : eqb x y = true <-> K.eq x y.
 Proof.
- unfold eqb; case E.eq_dec; now intuition.
+ unfold eqb; case K.eq_dec; now intuition.
 Qed.
 
 Lemma eqb_sym x y : eqb x y = eqb y x.
 Proof.
- apply eq_bool_alt. rewrite !eqb_eq. split; apply E.eq_equiv.
+ apply eq_bool_alt. rewrite !eqb_eq. split; apply K.eq_equiv.
 Qed.
 
 (** Initial results about MapsTo and In *)
@@ -114,27 +118,27 @@ Qed.
 Arguments Equal {elt} m m'.
 
 Instance MapsTo_m {elt} :
-  Proper (E.eq==>Logic.eq==>Equal==>iff) (@MapsTo elt).
+  Proper (K.eq==>Logic.eq==>Equal==>iff) (@MapsTo elt).
 Proof.
 intros k k' Hk e e' <- m m' Hm. rewrite <- Hk.
 now rewrite <- !find_spec, Hm.
 Qed.
 
 Instance In_m {elt} :
-  Proper (E.eq==>Equal==>iff) (@In elt).
+  Proper (K.eq==>Equal==>iff) (@In elt).
 Proof.
 intros k k' Hk m m' Hm. unfold In.
 split; intros (e,H); exists e; revert H;
  now rewrite Hk, <- !find_spec, Hm.
 Qed.
 
-Instance find_m {elt} : Proper (E.eq==>Equal==>Logic.eq) (@find elt).
+Instance find_m {elt} : Proper (K.eq==>Equal==>Logic.eq) (@find elt).
 Proof.
 intros k k' Hk m m' <-.
 rewrite eq_option_alt. intros. now rewrite !find_spec, Hk.
 Qed.
 
-Instance mem_m {elt} : Proper (E.eq==>Equal==>Logic.eq) (@mem elt).
+Instance mem_m {elt} : Proper (K.eq==>Equal==>Logic.eq) (@mem elt).
 Proof.
 intros k k' Hk m m' Hm. now rewrite eq_bool_alt, !mem_spec, Hk, Hm.
 Qed.
@@ -150,18 +154,18 @@ intros m m' Hm. rewrite eq_bool_alt, !is_empty_spec.
  now setoid_rewrite Hm.
 Qed.
 
-Instance add_m {elt} : Proper (E.eq==>Logic.eq==>Equal==>Equal) (@add elt).
+Instance add_m {elt} : Proper (K.eq==>Logic.eq==>Equal==>Equal) (@add elt).
 Proof.
 intros k k' Hk e e' <- m m' Hm y.
-destruct (E.eq_dec k y) as [H|H].
+destruct (K.eq_dec k y) as [H|H].
 - rewrite <-H, add_spec1. now rewrite Hk, add_spec1.
 - rewrite !add_spec2; trivial. now rewrite <- Hk.
 Qed.
 
-Instance remove_m {elt} : Proper (E.eq==>Equal==>Equal) (@remove elt).
+Instance remove_m {elt} : Proper (K.eq==>Equal==>Equal) (@remove elt).
 Proof.
 intros k k' Hk m m' Hm y.
-destruct (E.eq_dec k y) as [H|H].
+destruct (K.eq_dec k y) as [H|H].
 - rewrite <-H, remove_spec1. now rewrite Hk, remove_spec1.
 - rewrite !remove_spec2; trivial. now rewrite <- Hk.
 Qed.
@@ -174,7 +178,7 @@ destruct (find y m'); simpl; trivial. f_equal. now apply Hf.
 Qed.
 
 Instance mapi_m {elt elt'} :
-  Proper ((E.eq==>Logic.eq==>Logic.eq)==>Equal==>Equal) (@mapi elt elt').
+  Proper ((K.eq==>Logic.eq==>Logic.eq)==>Equal==>Equal) (@mapi elt elt').
 Proof.
 intros f f' Hf m m' Hm y.
 destruct (mapi_spec f m y) as (x,(Hx,->)).
@@ -184,7 +188,7 @@ f_equal. apply Hf; trivial. now rewrite Hx, Hx'.
 Qed.
 
 Instance merge_m {elt elt' elt''} :
- Proper ((E.eq==>Logic.eq==>Logic.eq==>Logic.eq)==>Equal==>Equal==>Equal)
+ Proper ((K.eq==>Logic.eq==>Logic.eq==>Logic.eq)==>Equal==>Equal==>Equal)
   (@merge elt elt' elt'').
 Proof.
 intros f f' Hf m1 m1' Hm1 m2 m2' Hm2 y.
@@ -221,7 +225,7 @@ Implicit Type m: t elt.
 Implicit Type x y z: key.
 Implicit Type e: elt.
 
-Lemma MapsTo_1 m x y e : E.eq x y -> MapsTo x e m -> MapsTo y e m.
+Lemma MapsTo_1 m x y e : K.eq x y -> MapsTo x e m -> MapsTo y e m.
 Proof.
  now intros ->.
 Qed.
@@ -256,30 +260,30 @@ Proof.
  rewrite is_empty_spec. intros H x e. now rewrite <- find_spec, H.
 Qed.
 
-Lemma add_1 m x y e : E.eq x y -> MapsTo y e (add x e m).
+Lemma add_1 m x y e : K.eq x y -> MapsTo y e (add x e m).
 Proof.
  intros <-. rewrite <-find_spec. apply add_spec1.
 Qed.
 
 Lemma add_2 m x y e e' :
-  ~ E.eq x y -> MapsTo y e m -> MapsTo y e (add x e' m).
+  ~ K.eq x y -> MapsTo y e m -> MapsTo y e (add x e' m).
 Proof.
  intro. now rewrite <- !find_spec, add_spec2.
 Qed.
 
 Lemma add_3 m x y e e' :
-  ~ E.eq x y -> MapsTo y e (add x e' m) -> MapsTo y e m.
+  ~ K.eq x y -> MapsTo y e (add x e' m) -> MapsTo y e m.
 Proof.
  intro. rewrite <- !find_spec, add_spec2; trivial.
 Qed.
 
-Lemma remove_1 m x y : E.eq x y -> ~ In y (remove x m).
+Lemma remove_1 m x y : K.eq x y -> ~ In y (remove x m).
 Proof.
  intros <-. apply not_in_find. apply remove_spec1.
 Qed.
 
 Lemma remove_2 m x y e :
-  ~ E.eq x y -> MapsTo y e m -> MapsTo y e (remove x m).
+  ~ K.eq x y -> MapsTo y e m -> MapsTo y e (remove x m).
 Proof.
  intro. now rewrite <- !find_spec, remove_spec2.
 Qed.
@@ -287,7 +291,7 @@ Qed.
 Lemma remove_3bis m x y e :
   find y (remove x m) = Some e -> find y m = Some e.
 Proof.
- destruct (E.eq_dec x y) as [<-|H].
+ destruct (K.eq_dec x y) as [<-|H].
  - now rewrite remove_spec1.
  - now rewrite remove_spec2.
 Qed.
@@ -337,7 +341,7 @@ Qed.
 
 Lemma mapi_1 {elt elt'}(m: t elt)(x:key)(e:elt)(f:key->elt->elt') :
   MapsTo x e m ->
-  exists y, E.eq y x /\ MapsTo x (f y e) (mapi f m).
+  exists y, K.eq y x /\ MapsTo x (f y e) (mapi f m).
 Proof.
  destruct (mapi_spec f m x) as (y,(Hy,Eq)).
  intro H. exists y; split; trivial.
@@ -384,10 +388,10 @@ Implicit Type m: t elt.
 Implicit Type x y z: key.
 Implicit Type e: elt.
 
-Lemma in_iff m x y : E.eq x y -> (In x m <-> In y m).
+Lemma in_iff m x y : K.eq x y -> (In x m <-> In y m).
 Proof. now intros ->. Qed.
 
-Lemma mapsto_iff m x y e : E.eq x y -> (MapsTo x e m <-> MapsTo y e m).
+Lemma mapsto_iff m x y e : K.eq x y -> (MapsTo x e m <-> MapsTo y e m).
 Proof. now intros ->. Qed.
 
 Lemma mem_in_iff m x : In x m <-> mem x m = true.
@@ -440,18 +444,18 @@ Proof. split; [apply is_empty_1 | apply is_empty_2 ]. Qed.
 
 Lemma add_mapsto_iff m x y e e' :
   MapsTo y e' (add x e m) <->
-     (E.eq x y /\ e=e') \/
-     (~E.eq x y /\ MapsTo y e' m).
+     (K.eq x y /\ e=e') \/
+     (~K.eq x y /\ MapsTo y e' m).
 Proof.
 split.
-- intros H. destruct (E.eq_dec x y); [left|right]; split; trivial.
+- intros H. destruct (K.eq_dec x y); [left|right]; split; trivial.
   + symmetry. apply (mapsto_fun H); auto with map.
   + now apply add_3 with x e.
 - destruct 1 as [(H,H')|(H,H')]; subst; auto with map.
 Qed.
 
 Lemma add_mapsto_new m x y e e' : ~In x m ->
-  MapsTo y e' (add x e m) <-> (E.eq x y /\ e=e') \/ MapsTo y e' m.
+  MapsTo y e' (add x e m) <-> (K.eq x y /\ e=e') \/ MapsTo y e' m.
 Proof.
  intros.
  rewrite add_mapsto_iff. intuition.
@@ -460,15 +464,15 @@ Qed.
 
 Lemma in_add m x y e : In y m -> In y (add x e m).
 Proof.
- destruct (E.eq_dec x y) as [<-|H'].
+ destruct (K.eq_dec x y) as [<-|H'].
  - now rewrite !in_find, add_spec1.
  - now rewrite !in_find, add_spec2.
 Qed.
 
-Lemma add_in_iff m x y e : In y (add x e m) <-> E.eq x y \/ In y m.
+Lemma add_in_iff m x y e : In y (add x e m) <-> K.eq x y \/ In y m.
 Proof.
 split.
-- intros H. destruct (E.eq_dec x y); [now left|right].
+- intros H. destruct (K.eq_dec x y); [now left|right].
   rewrite in_find, add_spec2 in H; trivial. now apply in_find.
 - intros [<-|H].
   + exists e. now apply add_1.
@@ -476,13 +480,13 @@ split.
 Qed.
 
 Lemma add_neq_mapsto_iff m x y e e' :
- ~ E.eq x y -> (MapsTo y e' (add x e m) <-> MapsTo y e' m).
+ ~ K.eq x y -> (MapsTo y e' (add x e m) <-> MapsTo y e' m).
 Proof.
 split; [apply add_3|apply add_2]; auto.
 Qed.
 
 Lemma add_neq_in_iff m x y e :
- ~ E.eq x y -> (In y (add x e m)  <-> In y m).
+ ~ K.eq x y -> (In y (add x e m)  <-> In y m).
 Proof.
 split; intros (e',H0); exists e'.
 - now apply add_3 with x e.
@@ -490,7 +494,7 @@ split; intros (e',H0); exists e'.
 Qed.
 
 Lemma remove_mapsto_iff m x y e :
-  MapsTo y e (remove x m) <-> ~E.eq x y /\ MapsTo y e m.
+  MapsTo y e (remove x m) <-> ~K.eq x y /\ MapsTo y e m.
 Proof.
 split; [split|destruct 1].
 - intro E. revert H. now rewrite <-E, <- find_spec, remove_spec1.
@@ -498,7 +502,7 @@ split; [split|destruct 1].
 - now apply remove_2.
 Qed.
 
-Lemma remove_in_iff m x y : In y (remove x m) <-> ~E.eq x y /\ In y m.
+Lemma remove_in_iff m x y : In y (remove x m) <-> ~K.eq x y /\ In y m.
 Proof.
 unfold In; split; [ intros (e,H) | intros (E,(e,H)) ].
 - apply remove_mapsto_iff in H. destruct H; split; trivial.
@@ -507,13 +511,13 @@ unfold In; split; [ intros (e,H) | intros (E,(e,H)) ].
 Qed.
 
 Lemma remove_neq_mapsto_iff : forall m x y e,
- ~ E.eq x y -> (MapsTo y e (remove x m)  <-> MapsTo y e m).
+ ~ K.eq x y -> (MapsTo y e (remove x m)  <-> MapsTo y e m).
 Proof.
 split; [apply remove_3|apply remove_2]; auto.
 Qed.
 
 Lemma remove_neq_in_iff : forall m x y,
- ~ E.eq x y -> (In y (remove x m) <-> In y m).
+ ~ K.eq x y -> (In y (remove x m) <-> In y m).
 Proof.
 split; intros (e',H0); exists e'.
 - now apply remove_3 with x.
@@ -561,7 +565,7 @@ Qed.
 
 Lemma mapi_inv {elt elt'} m x b (f : key -> elt -> elt') :
  MapsTo x b (mapi f m) ->
- exists a y, E.eq y x /\ b = f y a /\ MapsTo x a m.
+ exists a y, K.eq y x /\ b = f y a /\ MapsTo x a m.
 Proof.
 rewrite <- find_spec. setoid_rewrite <- find_spec.
 destruct (mapi_spec f m x) as (y,(E,->)).
@@ -571,7 +575,7 @@ destruct (find x m); simpl.
 Qed.
 
 Lemma mapi_spec' {elt elt'} (f:key->elt->elt') :
- Proper (E.eq==>Logic.eq==>Logic.eq) f ->
+ Proper (K.eq==>Logic.eq==>Logic.eq) f ->
  forall m x,
    find x (mapi f m) = option_map (f x) (find x m).
 Proof.
@@ -581,14 +585,14 @@ Proof.
 Qed.
 
 Lemma mapi_1bis {elt elt'} m x e (f:key->elt->elt') :
- Proper (E.eq==>Logic.eq==>Logic.eq) f ->
+ Proper (K.eq==>Logic.eq==>Logic.eq) f ->
  MapsTo x e m -> MapsTo x (f x e) (mapi f m).
 Proof.
 intros. destruct (mapi_1 f H0) as (y,(->,H2)). trivial.
 Qed.
 
 Lemma mapi_mapsto_iff {elt elt'} m x b (f:key->elt->elt') :
- Proper (E.eq==>Logic.eq==>Logic.eq) f ->
+ Proper (K.eq==>Logic.eq==>Logic.eq) f ->
  (MapsTo x b (mapi f m) <-> exists a, b = f x a /\ MapsTo x a m).
 Proof.
 rewrite <-find_spec. setoid_rewrite <-find_spec.
@@ -631,10 +635,10 @@ Implicit Types m : t elt.
 Implicit Types x y z : key.
 Implicit Types e : elt.
 
-Lemma mem_b m x y : E.eq x y -> mem x m = mem y m.
+Lemma mem_b m x y : K.eq x y -> mem x m = mem y m.
 Proof. now intros ->. Qed.
 
-Lemma find_o m x y : E.eq x y -> find x m = find y m.
+Lemma find_o m x y : K.eq x y -> find x m = find y m.
 Proof. now intros ->. Qed.
 
 Lemma empty_o x : find x (@empty elt) = None.
@@ -644,30 +648,30 @@ Lemma empty_a x : mem x (@empty elt) = false.
 Proof. apply not_mem_find. apply empty_spec. Qed.
 
 Lemma add_eq_o m x y e :
- E.eq x y -> find y (add x e m) = Some e.
+ K.eq x y -> find y (add x e m) = Some e.
 Proof.
  intros <-. apply add_spec1.
 Qed.
 
 Lemma add_neq_o m x y e :
- ~ E.eq x y -> find y (add x e m) = find y m.
+ ~ K.eq x y -> find y (add x e m) = find y m.
 Proof. apply add_spec2. Qed.
 Hint Resolve add_neq_o : map.
 
 Lemma add_o m x y e :
- find y (add x e m) = if E.eq_dec x y then Some e else find y m.
+ find y (add x e m) = if K.eq_dec x y then Some e else find y m.
 Proof.
-destruct (E.eq_dec x y); auto with map.
+destruct (K.eq_dec x y); auto with map.
 Qed.
 
 Lemma add_eq_b m x y e :
- E.eq x y -> mem y (add x e m) = true.
+ K.eq x y -> mem y (add x e m) = true.
 Proof.
 intros <-. apply mem_spec, add_in_iff. now left.
 Qed.
 
 Lemma add_neq_b m x y e :
- ~E.eq x y -> mem y (add x e m) = mem y m.
+ ~K.eq x y -> mem y (add x e m) = mem y m.
 Proof.
 intros. now rewrite !mem_find_b, add_neq_o.
 Qed.
@@ -676,33 +680,33 @@ Lemma add_b m x y e :
  mem y (add x e m) = eqb x y || mem y m.
 Proof.
 rewrite !mem_find_b, add_o. unfold eqb.
-now destruct (E.eq_dec x y).
+now destruct (K.eq_dec x y).
 Qed.
 
 Lemma remove_eq_o m x y :
- E.eq x y -> find y (remove x m) = None.
+ K.eq x y -> find y (remove x m) = None.
 Proof. intros ->. apply remove_spec1. Qed.
 
 Lemma remove_neq_o m x y :
- ~ E.eq x y -> find y (remove x m) = find y m.
+ ~ K.eq x y -> find y (remove x m) = find y m.
 Proof. apply remove_spec2. Qed.
 
 Hint Resolve remove_eq_o remove_neq_o : map.
 
 Lemma remove_o m x y :
- find y (remove x m) = if E.eq_dec x y then None else find y m.
+ find y (remove x m) = if K.eq_dec x y then None else find y m.
 Proof.
-destruct (E.eq_dec x y); auto with map.
+destruct (K.eq_dec x y); auto with map.
 Qed.
 
 Lemma remove_eq_b m x y :
- E.eq x y -> mem y (remove x m) = false.
+ K.eq x y -> mem y (remove x m) = false.
 Proof.
 intros <-. now rewrite mem_find_b, remove_eq_o.
 Qed.
 
 Lemma remove_neq_b m x y :
- ~ E.eq x y -> mem y (remove x m) = mem y m.
+ ~ K.eq x y -> mem y (remove x m) = mem y m.
 Proof.
 intros. now rewrite !mem_find_b, remove_neq_o.
 Qed.
@@ -711,7 +715,7 @@ Lemma remove_b m x y :
  mem y (remove x m) = negb (eqb x y) && mem y m.
 Proof.
 rewrite !mem_find_b, remove_o; unfold eqb.
-now destruct (E.eq_dec x y).
+now destruct (K.eq_dec x y).
 Qed.
 
 Lemma map_o m x (f:elt->elt') :
@@ -731,12 +735,12 @@ apply eq_bool_alt; rewrite !mem_spec. apply mapi_in_iff.
 Qed.
 
 Lemma mapi_o m x (f:key->elt->elt') :
- Proper (E.eq==>Logic.eq==>Logic.eq) f ->
+ Proper (K.eq==>Logic.eq==>Logic.eq) f ->
  find x (mapi f m) = option_map (f x) (find x m).
 Proof. intros; now apply mapi_spec'. Qed.
 
 Lemma merge_spec1' (f:key->option elt->option elt'->option elt'') :
- Proper (E.eq==>Logic.eq==>Logic.eq==>Logic.eq) f ->
+ Proper (K.eq==>Logic.eq==>Logic.eq==>Logic.eq) f ->
  forall (m:t elt)(m':t elt') x,
    In x m \/ In x m' ->
    find x (merge f m m') = f x (find x m) (find x m').
@@ -748,7 +752,7 @@ Qed.
 Lemma merge_spec1_none (f:key->option elt->option elt'->option elt'') :
  (forall x, f x None None = None) ->
  forall (m: t elt)(m': t elt') x,
- exists y, E.eq y x /\ find x (merge f m m') = f y (find x m) (find x m').
+ exists y, K.eq y x /\ find x (merge f m m') = f y (find x m) (find x m').
 Proof.
 intros Hf m m' x.
 destruct (find x m) as [e|] eqn:Hm.
@@ -766,7 +770,7 @@ destruct (find x m) as [e|] eqn:Hm.
 Qed.
 
 Lemma merge_spec1'_none (f:key->option elt->option elt'->option elt'') :
- Proper (E.eq==>Logic.eq==>Logic.eq==>Logic.eq) f ->
+ Proper (K.eq==>Logic.eq==>Logic.eq==>Logic.eq) f ->
  (forall x, f x None None = None) ->
  forall (m: t elt)(m': t elt') x,
   find x (merge f m m') = f x (find x m) (find x m').
@@ -815,20 +819,20 @@ Lemma add_id (m: t elt) x e : add x e m == m <-> find x m = Some e.
 Proof.
  split.
  - intros H. rewrite <- (H x). apply add_spec1.
- - intros H y. rewrite !add_o. now destruct E.eq_dec as [<-|E].
+ - intros H y. rewrite !add_o. now destruct K.eq_dec as [<-|E].
 Qed.
 
 Lemma add_add_1 (m: t elt) x e :
  add x e (add x e m) == add x e m.
 Proof.
- intros y. rewrite !add_o. destruct E.eq_dec; auto.
+ intros y. rewrite !add_o. destruct K.eq_dec; auto.
 Qed.
 
 Lemma add_add_2 (m: t elt) x x' e e' :
- ~E.eq x x' -> add x e (add x' e' m) == add x' e' (add x e m).
+ ~K.eq x x' -> add x e (add x' e' m) == add x' e' (add x e m).
 Proof.
  intros H y. rewrite !add_o.
- do 2 destruct E.eq_dec; auto.
+ do 2 destruct K.eq_dec; auto.
  elim H. now transitivity y.
 Qed.
 
@@ -836,32 +840,32 @@ Lemma remove_id (m: t elt) x : remove x m == m <-> ~In x m.
 Proof.
  rewrite not_in_find. split.
  - intros H. rewrite <- (H x). apply remove_spec1.
- - intros H y. rewrite !remove_o. now destruct E.eq_dec as [<-|E].
+ - intros H y. rewrite !remove_o. now destruct K.eq_dec as [<-|E].
 Qed.
 
 Lemma remove_remove_1 (m: t elt) x :
  remove x (remove x m) == remove x m.
 Proof.
- intros y. rewrite !remove_o. destruct E.eq_dec; auto.
+ intros y. rewrite !remove_o. destruct K.eq_dec; auto.
 Qed.
 
 Lemma remove_remove_2 (m: t elt) x x' :
  remove x (remove x' m) == remove x' (remove x m).
 Proof.
- intros y. rewrite !remove_o. do 2 destruct E.eq_dec; auto.
+ intros y. rewrite !remove_o. do 2 destruct K.eq_dec; auto.
 Qed.
 
 Lemma remove_add_1 (m: t elt) x e :
   remove x (add x e m) == remove x m.
 Proof.
- intro y. rewrite !remove_o, !add_o. now destruct E.eq_dec.
+ intro y. rewrite !remove_o, !add_o. now destruct K.eq_dec.
 Qed.
 
 Lemma remove_add_2 (m: t elt) x x' e :
-  ~E.eq x x' -> remove x' (add x e m) == add x e (remove x' m).
+  ~K.eq x x' -> remove x' (add x e m) == add x e (remove x' m).
 Proof.
  intros H y. rewrite !remove_o, !add_o.
- do 2 destruct E.eq_dec; auto.
+ do 2 destruct K.eq_dec; auto.
  - elim H; now transitivity y.
  - symmetry. now apply remove_eq_o.
  - symmetry. now apply remove_neq_o.
@@ -870,7 +874,7 @@ Qed.
 Lemma add_remove_1 (m: t elt) x e :
   add x e (remove x m) == add x e m.
 Proof.
- intro y. rewrite !add_o, !remove_o. now destruct E.eq_dec.
+ intro y. rewrite !add_o, !remove_o. now destruct K.eq_dec.
 Qed.
 
 (** Another characterisation of [Equal] *)
@@ -959,7 +963,7 @@ Section Elt.
   Notation eqk := (@eq_key elt).
 
   Instance eqk_equiv : Equivalence eqk.
-  Proof. unfold eq_key. destruct E.eq_equiv. constructor; eauto. Qed.
+  Proof. unfold eq_key. destruct K.eq_equiv. constructor; eauto. Qed.
 
   Instance eqke_equiv : Equivalence eqke.
   Proof.
@@ -970,7 +974,7 @@ Section Elt.
   (** Complements about InA, NoDupA and findA *)
 
   Lemma InA_eqke_eqk k k' e e' l :
-    E.eq k k' -> InA eqke (k,e) l -> InA eqk (k',e') l.
+    K.eq k k' -> InA eqke (k,e) l -> InA eqk (k',e') l.
   Proof.
   intros Hk. rewrite 2 InA_alt.
   intros ((k'',e'') & (Hk'',He'') & H); simpl in *; subst e''.
@@ -1041,7 +1045,7 @@ Section Elt.
     rewrite add_mapsto_iff, InA_cons, <- IH.
     unfold eq_key_elt at 1; simpl.
     split; destruct 1 as [H|H]; try (intuition;fail).
-    destruct (E.eq_dec k k'); [left|right]; split; auto with map.
+    destruct (K.eq_dec k k'); [left|right]; split; auto with map.
     contradict Hnotin.
     apply InA_eqke_eqk with k e; intuition.
   Qed.
@@ -1055,7 +1059,7 @@ Section Elt.
   unfold uncurry; simpl.
   inversion_clear Hnodup as [| ? ? Hnotin Hnodup'].
   specialize (IH k Hnodup'); clear Hnodup'.
-  rewrite add_o, IH, eqb_sym. unfold eqb; now destruct E.eq_dec.
+  rewrite add_o, IH, eqb_sym. unfold eqb; now destruct K.eq_dec.
   Qed.
 
   Lemma of_list_2 : forall l, NoDupA eqk l ->
@@ -1123,7 +1127,7 @@ Section Elt.
       apply InA_eqke_eqk with k e'; auto with map.
       rewrite <- of_list_1; auto.
     + intro k'. rewrite Hsame, add_o, of_list_1b. simpl.
-      rewrite eqb_sym. unfold eqb. now destruct E.eq_dec.
+      rewrite eqb_sym. unfold eqb. now destruct K.eq_dec.
       inversion_clear Hdup; auto with map.
     + apply IHl.
       * intros; eapply Hstep'; eauto.
@@ -1249,7 +1253,7 @@ Section Elt.
   Qed.
 
   Lemma fold_init (f:key->elt->A->A) :
-   Proper (E.eq==>eq==>eqA==>eqA) f ->
+   Proper (K.eq==>eq==>eqA==>eqA) f ->
    forall m i i', eqA i i' -> eqA (fold f m i) (fold f m i').
   Proof.
   intros Hf m i i' Hi. apply fold_rel with (R:=eqA); auto.
@@ -1277,7 +1281,7 @@ Section Elt.
 *)
 
   Definition Diamond (f:key->elt->A->A) :=
-    forall k k' e e' a b b', ~E.eq k k' ->
+    forall k k' e e' a b b', ~K.eq k k' ->
       eqA (f k e a) b -> eqA (f k' e' a) b' -> eqA (f k e b') (f k' e' b).
 
   Lemma fold_commutes (f:key->elt->A->A) :
@@ -1288,7 +1292,7 @@ Section Elt.
   intros Hf i m k e H.
   apply fold_rel with (R:= fun a b => eqA a (f k e b)); auto.
   - reflexivity.
-  - intros k' e' b a Hm E.
+  - intros k' e' b a Hm K.
     apply Hf with a; try easy.
     contradict H; rewrite <- H. now exists e'.
   Qed.
@@ -1296,7 +1300,7 @@ Section Elt.
   Hint Resolve NoDupA_eqk_eqke NoDupA_rev bindings_3w : map.
 
   Lemma fold_Proper (f:key->elt->A->A) :
-   Proper (E.eq==>eq==>eqA==>eqA) f ->
+   Proper (K.eq==>eq==>eqA==>eqA) f ->
    Diamond f ->
    Proper (Equal==>eqA==>eqA) (fold f).
   Proof.
@@ -1317,7 +1321,7 @@ Section Elt.
   Qed.
 
   Lemma fold_Equal (f:key->elt->A->A) :
-   Proper (E.eq==>eq==>eqA==>eqA) f ->
+   Proper (K.eq==>eq==>eqA==>eqA) f ->
    Diamond f ->
    forall m1 m2 i,
    Equal m1 m2 ->
@@ -1327,7 +1331,7 @@ Section Elt.
   Qed.
 
   Lemma fold_Add (f:key->elt->A->A) :
-   Proper (E.eq==>eq==>eqA==>eqA) f ->
+   Proper (K.eq==>eq==>eqA==>eqA) f ->
    Diamond f ->
    forall m1 m2 k e i, ~In k m1 -> Add k e m1 m2 ->
    eqA (fold f m2 i) (f k e (fold f m1 i)).
@@ -1355,7 +1359,7 @@ Section Elt.
   Qed.
 
   Lemma fold_add (f:key->elt->A->A) :
-   Proper (E.eq==>eq==>eqA==>eqA) f ->
+   Proper (K.eq==>eq==>eqA==>eqA) f ->
    Diamond f ->
    forall m k e i, ~In k m ->
    eqA (fold f (add k e m) i) (f k e (fold f m i)).
@@ -1487,7 +1491,7 @@ Section Elt.
   (** Properties of these abbreviations *)
 
   Lemma filter_iff (f : key -> elt -> bool) :
-    Proper (E.eq==>eq==>eq) f ->
+    Proper (K.eq==>eq==>eq) f ->
     forall m k e,
       MapsTo k e (filter f m) <-> MapsTo k e m /\ f k e = true.
   Proof.
@@ -1533,7 +1537,7 @@ Section Elt.
   Qed.
 
   Lemma for_all_iff f m :
-   Proper (E.eq==>eq==>eq) f ->
+   Proper (K.eq==>eq==>eq) f ->
    (for_all f m = true <-> (forall k e, MapsTo k e m -> f k e = true)).
   Proof.
   intros Hf.
@@ -1546,7 +1550,7 @@ Section Elt.
   Qed.
 
   Lemma exists_iff f m :
-   Proper (E.eq==>eq==>eq) f ->
+   Proper (K.eq==>eq==>eq) f ->
    (exists_ f m = true <->
      (exists k e, MapsTo k e m /\ f k e = true)).
   Proof.
@@ -1573,7 +1577,7 @@ Section Elt.
 
   Section Partition.
   Variable f : key -> elt -> bool.
-  Hypothesis Hf : Proper (E.eq==>eq==>eq) f.
+  Hypothesis Hf : Proper (K.eq==>eq==>eq) f.
 
   Lemma partition_iff_1 : forall m m1 k e,
    m1 = fst (partition f m) ->
@@ -1656,7 +1660,7 @@ Section Elt.
   assert (Heq : Equal m (remove x m')).
   { change (Equal m' (add x e m)) in Hadd. rewrite Hadd.
     intro k. rewrite remove_o, add_o.
-    destruct E.eq_dec as [He|Hne]; auto.
+    destruct K.eq_dec as [He|Hne]; auto.
     rewrite <- He, <- not_find_in_iff; auto. }
   assert (H : MapsTo x e m').
   { change (Equal m' (add x e m)) in Hadd; rewrite Hadd.
@@ -1669,7 +1673,7 @@ Section Elt.
       change (Equal m1 (add x e (remove x m1))).
       intro k.
       rewrite add_o, remove_o.
-      destruct E.eq_dec as [He|Hne]; auto.
+      destruct K.eq_dec as [He|Hne]; auto.
       rewrite <- He; apply find_1; auto.
     + (* disjoint *)
       intros k (H1,H2). elim (Hdisj k). split; auto.
@@ -1687,7 +1691,7 @@ Section Elt.
       change (Equal m2 (add x e (remove x m2))).
       intro k.
       rewrite add_o, remove_o.
-      destruct E.eq_dec as [He|Hne]; auto.
+      destruct K.eq_dec as [He|Hne]; auto.
       rewrite <- He; apply find_1; auto.
     + (* disjoint *)
       intros k (H1,H2). elim (Hdisj k). split; auto.
@@ -1702,7 +1706,7 @@ Section Elt.
 
   Lemma Partition_fold :
    forall (A:Type)(eqA:A->A->Prop)(st:Equivalence eqA)(f:key->elt->A->A),
-   Proper (E.eq==>eq==>eqA==>eqA) f ->
+   Proper (K.eq==>eq==>eqA==>eqA) f ->
    Diamond eqA f ->
    forall m m1 m2 i,
    Partition m m1 m2 ->
@@ -1764,7 +1768,7 @@ Section Elt.
    Equal m1 (fst (partition f m)) /\ Equal m2 (snd (partition f m)).
   Proof.
   intros m m1 m2 Hm f.
-  assert (Hf : Proper (E.eq==>eq==>eq) f).
+  assert (Hf : Proper (K.eq==>eq==>eq) f).
    intros k k' Hk e e' _; unfold f; rewrite Hk; auto.
   set (m1':= fst (partition f m)).
   set (m2':= snd (partition f m)).
@@ -1901,7 +1905,7 @@ Section Elt.
 
 (*
  Instance filter_m0 {elt} (f:key->elt->bool) :
-   Proper (E.eq==>Logic.eq==>Logic.eq) f ->
+   Proper (K.eq==>Logic.eq==>Logic.eq) f ->
    Proper (Equal==>Equal) (filter f).
  Proof.
   intros Hf m m' Hm. apply Equal_mapsto_iff. intros.
@@ -1910,7 +1914,7 @@ Section Elt.
 *)
 
  Instance filter_m {elt} :
-   Proper ((E.eq==>Logic.eq==>Logic.eq)==>Equal==>Equal) (@filter elt).
+   Proper ((K.eq==>Logic.eq==>Logic.eq)==>Equal==>Equal) (@filter elt).
  Proof.
   intros f f' Hf m m' Hm. unfold filter.
   rewrite 2 fold_spec_right.
@@ -1961,7 +1965,7 @@ Section Elt.
  Qed.
 
  Instance for_all_m {elt} :
-   Proper ((E.eq==>Logic.eq==>Logic.eq)==>Equal==>Logic.eq) (@for_all elt).
+   Proper ((K.eq==>Logic.eq==>Logic.eq)==>Equal==>Logic.eq) (@for_all elt).
  Proof.
  intros f f' Hf m m' Hm. rewrite 2 for_all_filter.
  (* Strange: we cannot rewrite Hm here... *)
@@ -1970,7 +1974,7 @@ Section Elt.
  Qed.
 
  Instance exists_m {elt} :
-   Proper ((E.eq==>Logic.eq==>Logic.eq)==>Equal==>Logic.eq) (@exists_ elt).
+   Proper ((K.eq==>Logic.eq==>Logic.eq)==>Equal==>Logic.eq) (@exists_ elt).
  Proof.
  intros f f' Hf m m' Hm. rewrite 2 exists_filter.
  f_equal. now apply is_empty_m, filter_m.
@@ -2008,26 +2012,21 @@ Section Elt.
   clear. intros x x' Hx e e' He. now rewrite Hx.
  Qed.
 
-End WProperties_fun.
-
-(** * Same Properties for self-contained weak maps and for full maps *)
-
-Module WProperties (M:WS) := WProperties_fun M.E M.
-Module Properties := WProperties.
+End Properties.
 
 (** * Properties specific to maps with ordered keys *)
 
-Module OrdProperties (M:S).
- Module Import ME := OrderedTypeFacts M.E.
- Module Import O:=KeyOrderedType M.E.
- Module Import P:=Properties M.
+Module OrdProperties (K:OrderedType)(M:S K).
+ Module Import F := OrderedTypeFacts K.
+ Module Import O := KeyOrderedType K.
+ Module Import P := Properties K M.
  Import M.
 
  Section Elt.
   Variable elt:Type.
 
-  Definition Above x (m:t elt) := forall y, In y m -> E.lt y x.
-  Definition Below x (m:t elt) := forall y, In y m -> E.lt x y.
+  Definition Above x (m:t elt) := forall y, In y m -> K.lt y x.
+  Definition Below x (m:t elt) := forall y, In y m -> K.lt x y.
 
   Section Bindings.
 
@@ -2041,7 +2040,7 @@ Module OrdProperties (M:S).
   Ltac keauto := klean; intuition; eauto.
 
   Definition gtb (p p':key*elt) :=
-    match E.compare (fst p) (fst p') with Gt => true | _ => false end.
+    match K.compare (fst p) (fst p') with Gt => true | _ => false end.
   Definition leb p := fun p' => negb (gtb p p').
 
   Definition bindings_lt p m := List.filter (gtb p) (bindings m).
@@ -2050,13 +2049,13 @@ Module OrdProperties (M:S).
   Lemma gtb_1 : forall p p', gtb p p' = true <-> ltk p' p.
   Proof.
    intros (x,e) (y,e'); unfold gtb; klean.
-   case E.compare_spec; intuition; try discriminate; ME.order.
+   case K.compare_spec; intuition; try discriminate; F.order.
   Qed.
 
   Lemma leb_1 : forall p p', leb p p' = true <-> ~ltk p' p.
   Proof.
    intros (x,e) (y,e'); unfold leb, gtb; klean.
-   case E.compare_spec; intuition; try discriminate; ME.order.
+   case K.compare_spec; intuition; try discriminate; F.order.
   Qed.
 
   Instance gtb_compat : forall p, Proper (eqke==>eq) (gtb p).
@@ -2082,7 +2081,7 @@ Module OrdProperties (M:S).
   apply filter_split with (eqA:=eqk) (ltA:=ltk); eauto with *.
   intros; destruct x; destruct y; destruct p.
   rewrite gtb_1 in H; klean.
-  apply not_true_iff_false in H0. rewrite gtb_1 in H0. klean. ME.order.
+  apply not_true_iff_false in H0. rewrite gtb_1 in H0. klean. F.order.
   Qed.
 
   Lemma bindings_Add : forall m m' x e, ~In x m -> Add x e m m' ->
@@ -2101,33 +2100,33 @@ Module OrdProperties (M:S).
           rewrite leb_1 in H2.
           destruct y; klean.
           rewrite <- bindings_mapsto_iff in H1.
-          assert (~E.eq x t0).
+          assert (~K.eq x t0).
           { contradict H.
             exists e0; apply MapsTo_1 with t0; auto.
-            ME.order. }
-          ME.order. }
+            F.order. }
+          F.order. }
         { apply (@filter_sort _ eqke); auto with *; keauto. }
     + intros.
       rewrite filter_InA in H1; auto with *; destruct H1.
       rewrite gtb_1 in H3.
       destruct y; destruct x0; klean.
       inversion_clear H2.
-      * red in H4; klean; destruct H4; simpl in *. ME.order.
+      * red in H4; klean; destruct H4; simpl in *. F.order.
       * rewrite filter_InA in H4; auto with *; destruct H4.
-        rewrite leb_1 in H4. klean; ME.order.
+        rewrite leb_1 in H4. klean; F.order.
   - intros (k,e').
     rewrite InA_app_iff, InA_cons, 2 filter_InA,
       <-2 bindings_mapsto_iff, leb_1, gtb_1,
       find_mapsto_iff, (H0 k), <- find_mapsto_iff,
       add_mapsto_iff by (auto with * ).
-    change (eqke (k,e') (x,e)) with (E.eq k x /\ e' = e).
+    change (eqke (k,e') (x,e)) with (K.eq k x /\ e' = e).
     klean.
     split.
     + intros [(->,->)|(Hk,Hm)].
       * right; now left.
       * destruct (lt_dec k x); intuition.
     + intros [(Hm,LT)|[(->,->)|(Hm,EQ)]].
-      * right; split; trivial; ME.order.
+      * right; split; trivial; F.order.
       * now left.
       * destruct (eq_dec x k) as [Hk|Hk].
         elim H. exists e'. now rewrite Hk.
@@ -2153,13 +2152,13 @@ Module OrdProperties (M:S).
   rewrite InA_app_iff, InA_cons, InA_nil, <- 2 bindings_mapsto_iff,
    find_mapsto_iff, (H0 t0), <- find_mapsto_iff,
    add_mapsto_iff by (auto with *).
-  change (eqke (t0,e0) (x,e)) with (E.eq t0 x /\ e0 = e).
+  change (eqke (t0,e0) (x,e)) with (K.eq t0 x /\ e0 = e).
   intuition.
-  destruct (E.eq_dec x t0) as [Heq|Hneq]; auto.
+  destruct (K.eq_dec x t0) as [Heq|Hneq]; auto.
   exfalso.
   assert (In t0 m) by (exists e0; auto).
   generalize (H t0 H1).
-  ME.order.
+  F.order.
   Qed.
 
   Lemma bindings_Add_Below : forall m m' x e,
@@ -2182,13 +2181,13 @@ Module OrdProperties (M:S).
   rewrite InA_cons, <- 2 bindings_mapsto_iff,
     find_mapsto_iff, (H0 t0), <- find_mapsto_iff,
     add_mapsto_iff by (auto with * ).
-  change (eqke (t0,e0) (x,e)) with (E.eq t0 x /\ e0 = e).
+  change (eqke (t0,e0) (x,e)) with (K.eq t0 x /\ e0 = e).
   intuition.
-  destruct (E.eq_dec x t0) as [Heq|Hneq]; auto.
+  destruct (K.eq_dec x t0) as [Heq|Hneq]; auto.
   exfalso.
   assert (In t0 m) by (exists e0; auto).
   generalize (H t0 H1).
-  ME.order.
+  F.order.
   Qed.
 
   Lemma bindings_Equal_eqlistA : forall (m m': t elt),
@@ -2239,15 +2238,15 @@ Module OrdProperties (M:S).
   inversion_clear H1; [ | inversion_clear H2; eauto ].
   red in H3; simpl in H3; destruct H3.
   destruct p as (p1,p2).
-  destruct (E.eq_dec p1 x) as [Heq|Hneq].
+  destruct (K.eq_dec p1 x) as [Heq|Hneq].
   rewrite <- Heq; auto.
    inversion_clear H2.
    inversion_clear H5.
-   red in H2; simpl in H2; ME.order.
+   red in H2; simpl in H2; F.order.
   transitivity p1; auto.
    inversion_clear H2.
    inversion_clear H5.
-   red in H2; simpl in H2; ME.order.
+   red in H2; simpl in H2; F.order.
   eapply IHl; eauto with *.
   econstructor; eauto.
   red; eauto with *.
@@ -2295,7 +2294,7 @@ Module OrdProperties (M:S).
   try discriminate.
   destruct p; injection H; intros; subst.
   inversion_clear H1.
-  red in H2; destruct H2; simpl in *; ME.order.
+  red in H2; destruct H2; simpl in *; F.order.
   inversion_clear H4.
   rewrite (@InfA_alt _ eqke) in H3; eauto with *.
   apply (H3 (y,x0)); auto.
@@ -2386,7 +2385,7 @@ Module OrdProperties (M:S).
 
   Lemma fold_Equal : forall m1 m2 (A:Type)(eqA:A->A->Prop)(st:Equivalence  eqA)
    (f:key->elt->A->A)(i:A),
-   Proper (E.eq==>eq==>eqA==>eqA) f ->
+   Proper (K.eq==>eq==>eqA==>eqA) f ->
    Equal m1 m2 ->
    eqA (fold f m1 i) (fold f m2 i).
   Proof.
@@ -2398,7 +2397,7 @@ Module OrdProperties (M:S).
   Qed.
 
   Lemma fold_Add_Above : forall m1 m2 x e (A:Type)(eqA:A->A->Prop)(st:Equivalence eqA)
-   (f:key->elt->A->A)(i:A) (P:Proper (E.eq==>eq==>eqA==>eqA) f),
+   (f:key->elt->A->A)(i:A) (P:Proper (K.eq==>eq==>eqA==>eqA) f),
    Above x m1 -> Add x e m1 m2 ->
    eqA (fold f m2 i) (f x e (fold f m1 i)).
   Proof.
@@ -2413,7 +2412,7 @@ Module OrdProperties (M:S).
   Qed.
 
   Lemma fold_Add_Below : forall m1 m2 x e (A:Type)(eqA:A->A->Prop)(st:Equivalence eqA)
-   (f:key->elt->A->A)(i:A) (P:Proper (E.eq==>eq==>eqA==>eqA) f),
+   (f:key->elt->A->A)(i:A) (P:Proper (K.eq==>eq==>eqA==>eqA) f),
    Below x m1 -> Add x e m1 m2 ->
    eqA (fold f m2 i) (fold f m1 (f x e i)).
   Proof.
