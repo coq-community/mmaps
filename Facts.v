@@ -8,14 +8,14 @@
 
 (** * Finite maps library *)
 
-(** This functor derives additional facts from [MMapInterface.S]. These
-  facts are mainly the specifications of [MMapInterface.S] written using
+(** This functor derives additional facts from [MMaps.Interface.S]. These
+  facts are mainly the specifications of [MMaps.Interface.S] written using
   different styles: equivalence and boolean equalities.
 *)
 
-Require Import Bool Equalities Orders OrdersFacts OrdersLists.
-Require Import Morphisms Permutation SetoidPermutation.
-Require Export MMapInterface.
+From Coq Require Import Bool Equalities Orders OrdersFacts OrdersLists.
+From Coq Require Import Morphisms Permutation SetoidPermutation.
+From MMaps Require Export Interface.
 Set Implicit Arguments.
 Unset Strict Implicit.
 

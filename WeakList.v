@@ -9,9 +9,11 @@
 (** * Finite map library *)
 
 (** This file proposes an implementation of the non-dependant interface
- [MMapInterface.WS] using lists of pairs, unordered but without redundancy. *)
+ [MMaps.Interface.WS] using lists of pairs, unordered but without
+ redundancy. *)
 
-Require Import MMapInterface EqualitiesFacts.
+From Coq Require Import EqualitiesFacts.
+From MMaps Require Import Interface.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

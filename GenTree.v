@@ -1,4 +1,4 @@
-(** * MSetGenTree : maps via generic trees
+(** * MSets.GenTree : maps via generic trees
 
     This module factorizes common parts in implementations
     of finite maps as AVL trees and as Red-Black trees. The nodes
@@ -18,8 +18,10 @@
      - map mapi
 *)
 
-Require Import Bool PeanoNat BinInt FunInd MMapInterface MMapList.
-Require Import Orders OrdersFacts OrdersLists.
+From Coq Require Import Bool PeanoNat BinInt FunInd.
+From Coq Require Import Orders OrdersFacts OrdersLists.
+From MMaps Require Import Interface OrdList.
+
 Local Open Scope list_scope.
 Local Open Scope lazy_bool_scope.
 
@@ -311,7 +313,7 @@ End Invariants.
 
 Module MX := OrderedTypeFacts X.
 Module PX := KeyOrderedType X.
-Module L := MMapList.Raw X.
+Module L := MMaps.OrdList.Raw X.
 
 Local Infix "∈" := In (at level 70).
 Local Infix "==" := X.eq (at level 70).

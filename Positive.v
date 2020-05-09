@@ -6,20 +6,21 @@
 (*         *       GNU Lesser General Public License Version 2.1       *)
 (***********************************************************************)
 
-(** * MMapPositive : an implementation of MMapInterface for [positive] keys. *)
+(** * MMaps.Positive : an implementation of finite maps for [positive] keys. *)
 
-Require Import Bool PeanoNat BinPos Orders OrdersEx OrdersLists MMapInterface.
+From Coq Require Import Bool PeanoNat BinPos Orders OrdersEx OrdersLists.
+From MMaps Require Import Interface.
 
 Set Implicit Arguments.
 Local Open Scope lazy_bool_scope.
 Local Open Scope positive_scope.
 Local Unset Elimination Schemes.
 
-(** This file is an adaptation to the [MMap] framework of a work by
+(** This file is an adaptation to the [MMaps] framework of a work by
   Xavier Leroy and Sandrine Blazy (used for building certified compilers).
   Keys are of type [positive], and maps are binary trees: the sequence
   of binary digits of a positive number corresponds to a path in such a tree.
-  This is quite similar to the [IntMap] library, except that no path
+  This is quite similar to the earlier [IntMap] library, except that no path
   compression is implemented, and that the current file is simple enough to be
   self-contained. *)
 

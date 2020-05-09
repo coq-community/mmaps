@@ -7,10 +7,5 @@
 (***********************************************************************)
 
 
-Require Export Orders OrdersEx OrdersAlt.
-Require Export Equalities.
-Require Export MMapInterface.
-Require Export MMapFacts.
-Require Export MMapWeakList.
-Require Export MMapList.
-Require Export MMapPositive.
+From Coq Require Export Orders OrdersEx OrdersAlt Equalities.
+From MMaps Require Export Interface Facts WeakList OrdList Positive AVL.

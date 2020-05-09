@@ -9,10 +9,11 @@
 (** * Finite map library *)
 
 (** This file proposes an implementation of the non-dependant interface
- [MMapInterface.S] using lists of pairs ordered (increasing) with respect to
+ [MMaps.Interface.S] using lists of pairs ordered (increasing) with respect to
  left projection. *)
 
-Require Import MMapInterface OrdersFacts OrdersLists.
+From Coq Require Import OrdersFacts OrdersLists.
+From MMaps Require Import Interface.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -361,7 +362,7 @@ Proof.
  split. now apply equal_2. now apply equal_1.
 Qed.
 
-(** This lemma isn't part of the spec of [Equivb], but is used in [MMapAVL] *)
+(** This lemma isn't part of the spec of [Equivb], but is used in [MMaps.AVL] *)
 
 Lemma equal_cons : forall cmp l1 l2 x y, Sort (x::l1) -> Sort (y::l2) ->
   eqk x y -> cmp (snd x) (snd y) = true ->

@@ -8,7 +8,7 @@
 
 (* Finite map library.  *)
 
-(** * MMapAVL *)
+(** * MMaps.AVL *)
 
 (** This module implements maps using AVL trees.
     It follows the implementation from Ocaml's standard library.
@@ -16,9 +16,9 @@
     See the comments at the beginning of MSetAVL for more details.
 *)
 
-Require Import Bool PeanoNat BinInt FunInd Int.
-Require Import MMapInterface MMapList MMapGenTree.
-Require Import Orders OrdersFacts OrdersLists.
+From Coq Require Import Bool PeanoNat BinInt FunInd Int.
+From Coq Require Import Orders OrdersFacts OrdersLists.
+From MMaps Require Import Interface OrdList GenTree.
 
 Local Set Implicit Arguments.
 Local Unset Strict Implicit.
@@ -45,7 +45,7 @@ Module Raw (Import I:Int)(X: OrderedType).
     parameter is a [Int.t]. Functions like mem or fold are also
     provided by this generic functor. *)
 
-Include MMapGenTree.Ops X I.
+Include MMaps.GenTree.Ops X I.
 
 Local Open Scope pair_scope.
 Local Open Scope lazy_bool_scope.
@@ -299,7 +299,7 @@ End Merge.
 
 (** * Correctness proofs *)
 
-Include MMapGenTree.Props X I.
+Include MMaps.GenTree.Props X I.
 
 Local Infix "∈" := In (at level 70).
 Local Infix "==" := X.eq (at level 70).
@@ -1207,7 +1207,7 @@ Module IntMake_ord (I:Int)(X: OrderedType)(D : OrderedType) <:
 
   Module Data := D.
   Module Import MapS := IntMake(I)(X).
-  Module LO := MMapList.Make_ord(X)(D).
+  Module LO := MMaps.OrdList.Make_ord(X)(D).
   Module Import R := Raw.
 
   Definition t := MapS.t D.t.

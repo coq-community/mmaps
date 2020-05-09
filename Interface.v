@@ -10,7 +10,7 @@
 
 (** This file proposes interfaces for finite maps *)
 
-Require Export Bool Equalities Orders SetoidList.
+From Coq Require Export Bool Equalities Orders SetoidList.
 Set Implicit Arguments.
 Unset Strict Implicit.
 
@@ -278,15 +278,3 @@ Module Type Sord.
   Parameter compare_spec : forall m1 m2, CompSpec eq lt m1 m2 (compare m1 m2).
 
 End Sord.
-
-
-(* TODO: provides filter + partition *)
-
-(* TODO: provide split
-   Parameter split : key -> t elt -> t elt * option elt * t elt.
-
-   Parameter split_spec k m :
-     split k m = (filter (fun x -> E.compare x k) m, find k m, filter ...)
-
-   min_binding, max_binding, choose ?
-*)
