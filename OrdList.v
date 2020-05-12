@@ -296,8 +296,9 @@ Fixpoint equal (cmp:elt->elt->bool)(m m' : t elt) : bool :=
    | _, _ => false
   end.
 
+Definition Eqdom (m m':t elt) := forall y, In y m <-> In y m'.
 Definition Equivb (cmp:elt->elt->bool) m m' :=
-  (forall k, In k m <-> In k m') /\
+  Eqdom m m' /\
   (forall k e e', MapsTo k e m -> MapsTo k e' m' -> cmp e e' = true).
 
 Lemma equal_1 : forall m (Hm:Sort m) m' (Hm': Sort m') cmp,
@@ -305,10 +306,10 @@ Lemma equal_1 : forall m (Hm:Sort m) m' (Hm': Sort m') cmp,
 Proof.
  induction m as [|(k,e) m IH]; destruct m' as [|(k',e') m']; simpl.
  - trivial.
- - intros _ cmp (H,_).
-   exfalso. apply (@In_nil elt k'). rewrite H, In_cons. now left.
- - intros _ cmp (H,_).
-   exfalso. apply (@In_nil elt k). rewrite <- H, In_cons. now left.
+ - intros _ cmp (H,_). exfalso. specialize (H k').
+   rewrite In_nil, In_cons in H. rewrite H. now left.
+ - intros _ cmp (H,_). exfalso. specialize (H k).
+   rewrite In_nil, In_cons in H. rewrite <- H. now left.
  - intros Hm' cmp E.
    inversion_clear Hm; inversion_clear Hm'.
    case X.compare_spec; intros E'.
@@ -339,14 +340,14 @@ Proof.
  revert m' Hm'.
  induction m as [|(k,e) m IH]; destruct m' as [|(k',e') m']; simpl;
   try discriminate.
- - split. reflexivity. inversion 1.
+ - split. red. reflexivity. inversion 1.
  - intros Hm'. case X.compare_spec; try discriminate.
    rewrite andb_true_iff. intros E (C,EQ).
    inversion_clear Hm; inversion_clear Hm'.
    apply IH in EQ; trivial.
    destruct EQ as (E1,E2).
    split.
-   + intros x. rewrite 2 In_cons; simpl. rewrite <- E1.
+   + intros x. rewrite 2 In_cons; simpl. rewrite <- (E1 x).
      intuition; now left; MX.order.
    + intros x ex ex'. unfold MapsTo in *. rewrite 2 InA_cons, 2 eqke_def.
      intuition; subst.
@@ -832,9 +833,9 @@ Section Elt.
  Definition In x m : Prop := Raw.PX.In x m.(this).
 
  Definition Equal m m' := forall y, find y m = find y m'.
- Definition Equiv (eq_elt:elt->elt->Prop) m m' :=
-         (forall k, In k m <-> In k m') /\
-         (forall k e e', MapsTo k e m -> MapsTo k e' m' -> eq_elt e e').
+ Definition Eqdom m m' := forall y, In y m <-> In y m'.
+ Definition Equiv (R:elt->elt->Prop) m m' :=
+  Eqdom m m' /\ (forall k e e', MapsTo k e m -> MapsTo k e' m' -> R e e').
  Definition Equivb cmp m m' : Prop := @Raw.Equivb elt cmp m.(this) m'.(this).
 
  Instance MapsTo_compat :

@@ -17,30 +17,62 @@ Unset Strict Implicit.
 (** When compared with Ocaml Map, this signature has been split in
     several parts :
 
-   - The first part [WS] propose signatures for weak  maps,
-     which are maps with no ordering on the key type nor the
-     data type. For obtaining an instance of this interface,
-     a decidable equality on keys in enough (see for example
-     [WeakList]). Thes signature contain the usual operators
-     (add, find, ...). The only function that asks for more is
-     [equal], whose first argument should be a comparison on data.
+ - The first part [WS] propose signatures for weak  maps,
+   which are maps with no ordering on the key type nor the
+   data type. For obtaining an instance of this interface,
+   a decidable equality on keys in enough (see for example
+   [WeakList]). Thes signature contain the usual operators
+   (add, find, ...). The only function that asks for more is
+   [equal], whose first argument should be a comparison on data.
 
-   - Then comes [S], that extend [WS] to the case where the key type
-     is ordered. The main novelty is that [bindings] is required
-     to produce sorted lists.
+ - Then comes [S], that extend [WS] to the case where the key type
+   is ordered. The main novelty is that [bindings] is required
+   to produce sorted lists.
 
-   - Finally, [Sord] extends [S] with a complete comparison function.
-     For that, the data type should have a decidable total ordering
-     as well.
+ - Finally, [Sord] extends [S] with a complete comparison function.
+   For that, the data type should have a decidable total ordering
+   as well.
 
-   If unsure, what you're looking for is probably [S].
+ If unsure, what you're looking for is probably [S].
 
-   Some additional differences with Ocaml:
+ Some additional differences with Ocaml:
 
-    - no [iter] function, useless since Coq is purely functional
-    - [option] types are used instead of [Not_found] exceptions
+ - no [iter] function, useless since Coq is purely functional
+ - [option] types are used instead of [Not_found] exceptions
+
+ Equality of maps
+
+ Only one [equal] function on maps is provided, but several
+ equivalence predicates on maps are considered, for different purposes.
+
+ Predicate | On keys | On datas     | Decided by
+ ----------------------------------------------------------------
+ Equal     | K.eq    | Logic.eq     | equal eqb, if eqb decides (@Logic.eq elt)
+ Equivb    | K.eq    | a test cmp   | equal cmp
+ Equiv     | K.eq    | a relation R | equal cmp, if cmp decides R
+ Eqdom     | K.eq    | True         | equal (fun _ _ => true)
+
+ If [R] is an equivalence on datas, and [cmp] implements it, then we have
+ [Eqdom m m' -> Equiv R m m' <-> Equivb cmp m m' -> Equal m m' -> m = m'].
+
+ - In general, Leibniz equality on maps is not adequate here,
+   since it is frequent that several maps may encode the same
+   bindings, even when [K.eq] is Leibniz (think of tree re-balancing).
+
+ - [Equal] is then the most precise predicate, and probably the most
+   natural, corresponding to an observational equivalence : [Equal]
+   maps will give equal results by [find] (or [MapsTo]).
+
+ - [Equivb] and [Equiv] are somewhat ad-hoc, but necessary to fully
+   specify the [equal] function. [Equivb] is parametrized by a boolean
+   test [cmp] on datas, and its logical counterpart [Equiv] is parametrized
+   by some relation on datas (possibly not an equivalence nor decidable).
+
+ - [Eqdom] is only comparing the map domains. Said otherwise, it only
+   considers the keys (via [K.eq]) but ignore datas altogether. Some
+   properties are already shared amongst [Eqdom] maps, for instance
+   they have the same cardinal.
 *)
-
 
 Definition Cmp {elt:Type}(cmp:elt->elt->bool) e1 e2 := cmp e1 e2 = true.
 
@@ -166,25 +198,10 @@ Module Type WS (K : DecidableType).
       forall {A} (i : A) (f : key -> elt -> A -> A),
       fold f m i = fold_left (fun a p => f (fst p) (snd p) a) (bindings m) i.
 
-    (** Equality of maps *)
-
-    (** Caveat: there are at least three distinct equality predicates on maps.
-      - The simpliest (and maybe most natural) way is to consider keys up to
-        their equivalence [K.eq], but elements up to Leibniz equality, in
-        the spirit of [eq_key_elt] above. This leads to predicate [Equal].
-      - Unfortunately, this [Equal] predicate can't be used to describe
-        the [equal] function, since this function (for compatibility with
-        ocaml) expects a boolean comparison [cmp] that may identify more
-        elements than Leibniz. So logical specification of [equal] is done
-        via another predicate [Equivb]
-      - This predicate [Equivb] is quite ad-hoc with its boolean [cmp],
-        it can be generalized in a [Equiv] expecting a more general
-        (possibly non-decidable) equality predicate on elements *)
-
     Definition Equal (m m':t elt) := forall y, find y m = find y m'.
-    Definition Equiv (eq_elt:elt->elt->Prop) m m' :=
-      (forall k, In k m <-> In k m') /\
-      (forall k e e', MapsTo k e m -> MapsTo k e' m' -> eq_elt e e').
+    Definition Eqdom (m m':t elt) := forall y, In y m <-> In y m'.
+    Definition Equiv (R:elt->elt->Prop) m m' :=
+      Eqdom m m' /\ (forall k e e', MapsTo k e m -> MapsTo k e' m' -> R e e').
     Definition Equivb (cmp: elt->elt->bool) := Equiv (Cmp cmp).
 
     (** Specification of [equal] *)

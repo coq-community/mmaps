@@ -611,9 +611,10 @@ Section Elt.
  Definition In x m : Prop := Raw.P.In x m.(this).
 
  Definition Equal m m' := forall y, find y m = find y m'.
- Definition Equiv (eq_elt:elt->elt->Prop) m m' :=
-         (forall k, In k m <-> In k m') /\
-         (forall k e e', MapsTo k e m -> MapsTo k e' m' -> eq_elt e e').
+ Definition Eqdom m m' := forall y, In y m <-> In y m'.
+ Definition Equiv (R:elt->elt->Prop) m m' :=
+         Eqdom m m' /\
+         (forall k e e', MapsTo k e m -> MapsTo k e' m' -> R e e').
  Definition Equivb cmp m m' : Prop := Raw.Equivb cmp m.(this) m'.(this).
 
  Instance MapsTo_compat :

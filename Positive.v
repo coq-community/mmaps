@@ -523,11 +523,11 @@ Module PositiveMap <: S PositiveOrderedTypeBits.
            &&& equal cmp l1 l2 &&& equal cmp r1 r2
      end.
 
-  Definition Equal (A:Type)(m m':t A) :=
-    forall y, find y m = find y m'.
-  Definition Equiv (A:Type)(eq_elt:A->A->Prop) m m' :=
-    (forall k, In k m <-> In k m') /\
-    (forall k e e', MapsTo k e m -> MapsTo k e' m' -> eq_elt e e').
+  Definition Equal A (m m':t A) := forall y, find y m = find y m'.
+  Definition Eqdom A (m m':t A) := forall k, In k m <-> In k m'.
+  Definition Equiv A (R:A->A->Prop) m m' :=
+    Eqdom m m' /\
+    (forall k e e', MapsTo k e m -> MapsTo k e' m' -> R e e').
   Definition Equivb (A:Type)(cmp: A->A->bool) := Equiv (Cmp cmp).
 
   Lemma equal_1 : forall (A:Type)(m m':t A)(cmp:A->A->bool),
@@ -535,7 +535,7 @@ Module PositiveMap <: S PositiveOrderedTypeBits.
   Proof.
   induction m.
   - (* m = Leaf *)
-    destruct 1 as (E,_); simpl.
+    destruct 1 as (E,_); simpl. red in E.
     apply is_empty_spec; intros k.
     destruct (find k m') eqn:F; trivial.
     assert (H : In k m') by now exists a.
@@ -544,7 +544,7 @@ Module PositiveMap <: S PositiveOrderedTypeBits.
   - (* m = Node *)
     destruct m'.
     + (* m' = Leaf *)
-      destruct 1 as (E,_); simpl.
+      destruct 1 as (E,_); simpl. red in E.
       destruct o.
       * assert (H : In xH (@Leaf A)).
         { rewrite <- E. now exists a. }
@@ -611,8 +611,8 @@ Module PositiveMap <: S PositiveOrderedTypeBits.
   destruct (andb_prop _ _ H); clear H.
   destruct (andb_prop _ _ H0); clear H0.
   destruct (IHm1 _ _ H2); clear H2 IHm1.
-  destruct (IHm2 _ _ H1); clear H1 IHm2.
-  split; intros.
+  destruct (IHm2 _ _ H1); clear H1 IHm2. unfold Eqdom in *.
+  split; intros. red.
   destruct k; unfold In, MapsTo in *; simpl; auto.
   split; eauto.
   destruct k; unfold In, MapsTo in *; simpl in *.
@@ -621,8 +621,8 @@ Module PositiveMap <: S PositiveOrderedTypeBits.
   congruence.
   destruct (andb_prop _ _ H); clear H.
   destruct (IHm1 _ _ H0); clear H0 IHm1.
-  destruct (IHm2 _ _ H1); clear H1 IHm2.
-  split; intros.
+  destruct (IHm2 _ _ H1); clear H1 IHm2. unfold Eqdom in *.
+  split; intros. red.
   destruct k; unfold In, MapsTo in *; simpl; auto.
   split; eauto.
   destruct k; unfold In, MapsTo in *; simpl in *.

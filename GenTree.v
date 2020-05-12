@@ -915,14 +915,15 @@ Proof.
  apply equal_end_IfEq; auto.
 Qed.
 
+Definition Eqdom m m' := forall k, In k m <-> In k m'.
 Definition Equivb m m' :=
-  (forall k, In k m <-> In k m') /\
+  Eqdom m m' /\
   (forall k e e', MapsTo k e m -> MapsTo k e' m' -> cmp e e' = true).
 
 Lemma Equivb_bindings m m' :
  Equivb m m' <-> L.Equivb cmp (bindings m) (bindings m').
 Proof.
-unfold Equivb, L.Equivb; split; split; intros.
+unfold Equivb, L.Equivb; split; split; try red; intros.
 do 2 rewrite bindings_in; firstorder.
 destruct H.
 apply (H2 k); rewrite <- bindings_mapsto; auto.

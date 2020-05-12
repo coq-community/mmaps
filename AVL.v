@@ -1156,19 +1156,17 @@ Module IntMake (I:Int)(K: OrderedType) <: S K.
  Proof. apply bindings_cardinal. Qed.
 
  Definition Equal m m' := forall y, find y m = find y m'.
- Definition Equiv (eq_elt:elt->elt->Prop) m m' :=
-   (forall k, In k m <-> In k m') /\
-   (forall k e e', MapsTo k e m -> MapsTo k e' m' -> eq_elt e e').
+ Definition Eqdom (m m':t elt) := forall y, In y m <-> In y m'.
+ Definition Equiv (R:elt->elt->Prop) m m' :=
+  Eqdom m m' /\ (forall k e e', MapsTo k e m -> MapsTo k e' m' -> R e e').
  Definition Equivb cmp := Equiv (Cmp cmp).
 
  Lemma Equivb_Equivb cmp m m' :
   Equivb cmp m m' <-> Raw.Equivb cmp m m'.
  Proof.
  unfold Equivb, Equiv, Raw.Equivb, In. intuition.
- generalize (H0 k); do 2 rewrite In_alt; intuition.
- generalize (H0 k); do 2 rewrite In_alt; intuition.
- generalize (H0 k); do 2 rewrite <- In_alt; intuition.
- generalize (H0 k); do 2 rewrite <- In_alt; intuition.
+ intros k. rewrite <- !In_alt. apply H0.
+ intros k. unfold In; rewrite !In_alt. apply H0.
  Qed.
 
  Lemma equal_spec m m' cmp :
