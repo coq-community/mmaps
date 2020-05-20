@@ -275,6 +275,9 @@ Inductive In (x : key) : t elt -> Prop :=
 
 Definition In0 k m := exists e:elt, MapsTo k e m.
 
+Definition Equal (m m' : t elt) := forall k, find k m = find k m'.
+Definition Eqdom (m m' : t elt) := forall k, In k m <-> In k m'.
+
 (** ** Binary search trees *)
 
 (** [Above x m] : [x] is strictly greater than any key in [m].
@@ -290,13 +293,10 @@ Inductive Below (x:key) : t elt -> Prop :=
  | BeNode l r h y e : Below x l -> K.lt x y -> Below x r ->
    Below x (Node h l y e r).
 
+(** [Apart] : all keys in [m1] are lower than all keys in [m2] *)
+
 Definition Apart (m1 m2 : t elt) : Prop :=
   forall x1 x2, In x1 m1 -> In x2 m2 -> K.lt x1 x2.
-
-(** Alternative statements, equivalent with [LtTree] and [GtTree] *)
-
-Definition lt_tree x m := forall y, In y m -> K.lt y x.
-Definition gt_tree x m := forall y, In y m -> K.lt x y.
 
 (** [Bst t] : [t] is a binary search tree *)
 
@@ -334,7 +334,7 @@ Functional Scheme find_ind := Induction for find Sort Prop.
 (** * Automation and dedicated tactics. *)
 
 Local Hint Constructors tree MapsTo In Bst Above Below.
-Local Hint Unfold lt_tree gt_tree Apart Ok.
+Local Hint Unfold Apart Ok.
 Local Hint Immediate F.eq_sym.
 Local Hint Resolve F.eq_refl F.eq_trans F.lt_trans.
 
@@ -388,7 +388,15 @@ Ltac inv_all f :=
 
 Ltac intuition_in := repeat (intuition; inv In; inv MapsTo).
 
-(** * Basic results about [MapsTo], [In], [lt_tree], [gt_tree], [height] *)
+Arguments Equal {elt} m m'.
+Arguments Eqdom {elt} m m'.
+
+Global Instance Equal_equiv {elt} : Equivalence (@Equal elt).
+Proof. split; congruence. Qed.
+Global Instance Eqdom_equiv {elt} : Equivalence (@Eqdom elt).
+Proof. firstorder. Qed.
+
+(** * Basic results about [MapsTo], [In], [Above], [Below], [height] *)
 
 (** Facts about [MapsTo] and [In]. *)
 
@@ -445,7 +453,7 @@ Qed.
 
 (** Results about [Above] and [Below] *)
 
-Lemma above {elt} (m:t elt) x :
+Lemma above_alt {elt} (m:t elt) x :
   x >> m <-> forall y, y ∈ m -> y < x.
 Proof.
  split.
@@ -453,12 +461,16 @@ Proof.
  - induction m; constructor; auto.
 Qed.
 
-Lemma above_alt {elt} (m:t elt) x : x >> m <-> lt_tree x m.
+Global Instance Above_m {elt} :
+  Proper (K.eq ==> Eqdom ==> iff) (@Above elt).
 Proof.
- apply above.
+ intros x x' Hx m m' Hm. rewrite !above_alt.
+ split; intros H y.
+ - rewrite <- Hx, <- (Hm y). auto.
+ - rewrite Hx, (Hm y). auto.
 Qed.
 
-Lemma below {elt} (m:t elt) x :
+Lemma below_alt {elt} (m:t elt) x :
   x << m <-> forall y, y ∈ m -> x < y.
 Proof.
  split.
@@ -466,19 +478,23 @@ Proof.
  - induction m; constructor; auto.
 Qed.
 
-Lemma below_alt {elt} (m:t elt) x : x << m <-> gt_tree x m.
+Global Instance Below_m {elt} :
+  Proper (K.eq ==> Eqdom ==> iff) (@Below elt).
 Proof.
- apply below.
+ intros x x' Hx m m' Hm. rewrite !below_alt.
+ split; intros H y.
+ - rewrite <- Hx, <- (Hm y). auto.
+ - rewrite Hx, (Hm y). auto.
 Qed.
 
 Lemma AboveLt {elt} (m:t elt) x y : x >> m -> y ∈ m -> y < x.
 Proof.
- rewrite above; intuition.
+ rewrite above_alt; intuition.
 Qed.
 
 Lemma BelowGt {elt} (m:t elt) x y : x << m -> y ∈ m -> x < y.
 Proof.
- rewrite below; intuition.
+ rewrite below_alt; intuition.
 Qed.
 
 Lemma Above_not_In {elt} (m:t elt) x : x >> m -> ~ x ∈ m.
@@ -529,22 +545,22 @@ Qed.
 
 Instance Bst_Ok {elt} (m : t elt) (B : Bst m) : Ok m := B.
 
-Fixpoint ltb_tree {elt} x (m : t elt) :=
+Fixpoint above {elt} x (m : t elt) :=
  match m with
   | Leaf _ => true
   | Node _ l y _ r =>
      match K.compare x y with
-      | Gt => ltb_tree x l && ltb_tree x r
+      | Gt => above x l && above x r
       | _ => false
      end
  end.
 
-Fixpoint gtb_tree {elt} x (m : t elt) :=
+Fixpoint below {elt} x (m : t elt) :=
  match m with
   | Leaf _ => true
   | Node _ l y _ r =>
      match K.compare x y with
-      | Lt => gtb_tree x l && gtb_tree x r
+      | Lt => below x l && below x r
       | _ => false
      end
  end.
@@ -552,39 +568,39 @@ Fixpoint gtb_tree {elt} x (m : t elt) :=
 Fixpoint isok {elt} (m : t elt) :=
  match m with
   | Leaf _ => true
-  | Node _  l x _ r => isok l && isok r && ltb_tree x l && gtb_tree x r
+  | Node _  l x _ r => isok l && isok r && above x l && below x r
  end.
 
-Lemma ltb_tree_iff {elt} x (m:t elt) :
-  lt_tree x m <-> ltb_tree x m = true.
+Lemma above_iff {elt} x (m:t elt) :
+  x >> m <-> above x m = true.
 Proof.
  induction m as [|c l IHl y v r IHr]; simpl.
- - unfold lt_tree; intuition_in.
+ - intuition.
  - case K.compare_spec.
-   + split; intros; try easy. assert (y<x) by auto. order.
-   + split; intros; try easy. assert (y<x) by auto. order.
-   + rewrite !andb_true_iff, <-IHl, <-IHr.
-     unfold lt_tree; intuition_in; order.
+   + split; intros; try easy. inv Above. order.
+   + split; intros; try easy. inv Above. order.
+   + rewrite andb_true_iff, <- IHl, <- IHr. clear IHl IHr.
+     intuition; inv Above; auto.
 Qed.
 
-Lemma gtb_tree_iff {elt} x (m:t elt) :
-  gt_tree x m <-> gtb_tree x m = true.
+Lemma below_iff {elt} x (m:t elt) :
+  x << m <-> below x m = true.
 Proof.
  induction m as [|c l IHl y v r IHr]; simpl.
- - unfold gt_tree; intuition_in.
+ - intuition.
  - case K.compare_spec.
-   + split; intros; try easy. assert (x<y) by auto. F.order.
-   + rewrite !andb_true_iff, <-IHl, <-IHr.
-     unfold gt_tree; intuition_in; F.order.
-   + split; intros; try easy. assert (x<y) by auto. F.order.
+   + split; intros; try easy. inv Below. order.
+   + rewrite !andb_true_iff, <-IHl, <-IHr. clear IHl IHr.
+     intuition; inv Below; auto.
+   + split; intros; try easy. inv Below. order.
 Qed.
 
 Lemma isok_iff {elt} (m:t elt) : Ok m <-> isok m = true.
 Proof.
  induction m as [|c l IHl y v r IHr]; simpl.
  - intuition_in.
- - rewrite !andb_true_iff, <- IHl, <-IHr, <- ltb_tree_iff, <- gtb_tree_iff.
-   rewrite <- above_alt, <- below_alt. intuition; inv (@Ok elt); auto.
+ - rewrite !andb_true_iff, <- IHl, <-IHr, <- below_iff, <- above_iff.
+   intuition; inv (@Ok elt); auto.
 Qed.
 
 Lemma isok_spec {elt} (m:t elt) : reflect (Ok m) (isok m).
@@ -594,7 +610,6 @@ Qed.
 
 Instance isok_Ok {elt} (m:t elt) : isok m = true -> Ok m | 10.
 Proof. apply isok_iff. Qed.
-
 
 Section Elt.
 Variable elt:Type.
@@ -915,8 +930,7 @@ Proof.
  apply equal_end_IfEq; auto.
 Qed.
 
-Definition Eqdom m m' := forall k, In k m <-> In k m'.
-Definition Equivb m m' :=
+Definition Equivb (m m' : t elt) :=
   Eqdom m m' /\
   (forall k e e', MapsTo k e m -> MapsTo k e' m' -> cmp e e' = true).
 
@@ -960,8 +974,8 @@ Global Instance map_ok m `{!Ok m} : Ok (map f m).
 Proof.
 induction m; simpl; auto.
 intros; inv Ok; constructor; change Bst with Ok in *; auto with *.
-- apply above. intro. rewrite map_in. intros. order.
-- apply below. intro. rewrite map_in. intros. order.
+- apply above_alt. intro. rewrite map_in. intros. order.
+- apply below_alt. intro. rewrite map_in. intros. order.
 Qed.
 
 End Map.
@@ -987,8 +1001,8 @@ Global Instance mapi_ok m `{!Ok m} : Ok (mapi f m).
 Proof.
 induction m; simpl; auto.
 intros; inv Ok; constructor; change Bst with Ok; auto with *.
-- apply above. intro. rewrite mapi_in. intros. order.
-- apply below. intro. rewrite mapi_in. intros. order.
+- apply above_alt. intro. rewrite mapi_in. intros. order.
+- apply below_alt. intro. rewrite mapi_in. intros. order.
 Qed.
 
 End Mapi.

@@ -321,7 +321,7 @@ Functional Scheme gmerge_ind := Induction for gmerge Sort Prop.
 (** * Automation and dedicated tactics. *)
 
 Local Hint Constructors tree MapsTo In Bst Above Below.
-Local Hint Unfold lt_tree gt_tree Apart Ok Bst_Ok.
+Local Hint Unfold Apart Ok Bst_Ok.
 Local Hint Immediate F.eq_sym.
 Local Hint Resolve F.eq_refl F.eq_trans F.lt_trans.
 Local Hint Resolve
@@ -420,12 +420,12 @@ Qed.
 
 Lemma add_lt m x e y : y >> m -> x < y -> y >> add x e m.
 Proof.
- intros. apply above. intros z. rewrite add_in. destruct 1; order.
+ intros. apply above_alt. intros z. rewrite add_in. destruct 1; order.
 Qed.
 
 Lemma add_gt m x e y : y << m -> y < x -> y << add x e m.
 Proof.
- intros. apply below. intros z. rewrite add_in. destruct 1; order.
+ intros. apply below_alt. intros z. rewrite add_in. destruct 1; order.
 Qed.
 Hint Resolve add_lt add_gt.
 
@@ -511,7 +511,7 @@ Qed.
 Lemma remove_min_lt m m' p : RemoveMin m (m',p) ->
  forall y, y >> m -> y >> m'.
 Proof.
- intros R y L. apply above. intros z Hz.
+ intros R y L. apply above_alt. intros z Hz.
  apply (AboveLt L).
  apply (remove_min_in R). now right.
 Qed.
@@ -526,7 +526,7 @@ Proof.
  destruct R as [(_,(->,->))|[m0 (R,->)]]; auto.
  assert (p#1 << m0) by now apply IH.
  assert (In p#1 l) by (apply (remove_min_in R); now left).
- apply below. intros z. rewrite bal_in.
+ apply below_alt. intros z. rewrite bal_in.
  intuition_in; order.
 Qed.
 
@@ -595,7 +595,7 @@ Proof.
  functional induction (merge0 m1 m2); intros B12; trivial.
  factornode m1. factor_remove_min l R.
  apply bal_ok; eauto with *.
- - apply above. intros z Hz. apply B12; trivial.
+ - apply above_alt. intros z Hz. apply B12; trivial.
    rewrite (remove_min_in R). now left.
  - now apply (remove_min_gt R).
 Qed.
@@ -611,13 +611,13 @@ Qed.
 
 Lemma remove_lt m x y `{!Ok m} : y >> m -> y >> remove x m.
 Proof.
-  intros. apply above. intro. rewrite remove_in by trivial.
+  intros. apply above_alt. intro. rewrite remove_in by trivial.
    destruct 1; order.
 Qed.
 
 Lemma remove_gt m x y `{!Ok m} : y << m -> y << remove x m.
 Proof.
-  intros. apply below. intro. rewrite remove_in by trivial.
+  intros. apply below_alt. intro. rewrite remove_in by trivial.
    destruct 1; order.
 Qed.
 Hint Resolve remove_gt remove_lt.
@@ -667,9 +667,9 @@ Proof.
   invok; invok; inv Above; inv Below; autok.
   - simpl. autok.
   - apply bal_ok; auto.
-    apply below. intro. rewrite join_in. intuition_in; order.
+    apply below_alt. intro. rewrite join_in. intuition_in; order.
   - apply bal_ok; auto.
-    apply above. intro. rewrite join_in. intuition_in; order.
+    apply above_alt. intro. rewrite join_in. intuition_in; order.
 Qed.
 
 Lemma join_find l x d r y :
@@ -690,12 +690,12 @@ Proof.
    rewrite bal_find; autok; simpl.
    + rewrite Hlr; auto; simpl.
      repeat (case K.compare_spec; trivial; try order).
-   + apply below. intro. rewrite join_in. intuition_in; order.
+   + apply below_alt. intro. rewrite join_in. intuition_in; order.
  - clear Hlr LT LT'. factornode l. invok; invok; inv Above; inv Below.
    rewrite bal_find; autok; simpl.
    + rewrite Hrl; auto; simpl.
      repeat (case K.compare_spec; trivial; try order).
-   + apply above. intro. rewrite join_in. intuition_in; order.
+   + apply above_alt. intro. rewrite join_in. intuition_in; order.
 Qed.
 
 (** * split *)
@@ -733,22 +733,22 @@ Qed.
 
 Lemma split_lt_l m x `{!Ok m} : x >> (split x m)#l.
 Proof.
-  apply above. intro. rewrite split_in_l; intuition; order.
+  apply above_alt. intro. rewrite split_in_l; intuition; order.
 Qed.
 
 Lemma split_lt_r m x y : y >> m -> y >> (split x m)#r.
 Proof.
-  intro. apply above. intros z Hz. apply split_in_r0 in Hz. order.
+  intro. apply above_alt. intros z Hz. apply split_in_r0 in Hz. order.
 Qed.
 
 Lemma split_gt_r m x `{!Ok m} : x << (split x m)#r.
 Proof.
-  apply below. intro. rewrite split_in_r; intuition; order.
+  apply below_alt. intro. rewrite split_in_r; intuition; order.
 Qed.
 
 Lemma split_gt_l m x y : y << m -> y << (split x m)#l.
 Proof.
-  intro. apply below. intros z Hz. apply split_in_l0 in Hz. order.
+  intro. apply below_alt. intros z Hz. apply split_in_l0 in Hz. order.
 Qed.
 Hint Resolve split_lt_l split_lt_r split_gt_l split_gt_r.
 
@@ -798,7 +798,7 @@ Proof.
   factor_remove_min m2 R.
   apply join_ok, create_ok; auto.
   - now apply remove_min_ok in R.
-  - apply above. intros y Hy. apply LT; trivial.
+  - apply above_alt. intros y Hy. apply LT; trivial.
     rewrite (remove_min_in R); now left.
   - now apply (remove_min_gt R).
 Qed.
@@ -816,7 +816,7 @@ Proof.
  - destruct (find y m2); auto.
  - factor_remove_min m2 R.
    assert (xd#1 >> m1).
-   { apply above. intros z Hz. apply B; trivial.
+   { apply above_alt. intros z Hz. apply B; trivial.
      rewrite (remove_min_in R). now left. }
    rewrite join_find; simpl; auto.
    + rewrite (remove_min_find R y).
@@ -849,13 +849,13 @@ Qed.
 
 Lemma mapo_lt m x : x >> m -> x >> mapo f m.
 Proof.
-  intros H. apply above. intros y Hy.
+  intros H. apply above_alt. intros y Hy.
   destruct (mapo_in Hy) as (y' & e & ? & ? & ?). order.
 Qed.
 
 Lemma mapo_gt m x : x << m -> x << mapo f m.
 Proof.
-  intros H. apply below. intros y Hy.
+  intros H. apply below_alt. intros y Hy.
   destruct (mapo_in Hy) as (y' & e & ? & ? & ?). order.
 Qed.
 Hint Resolve mapo_lt mapo_gt.
@@ -944,14 +944,14 @@ Qed.
 Lemma gmerge_lt m m' x `{!Ok m, !Ok m'} :
   x >> m -> x >> m' -> x >> gmerge m m'.
 Proof.
-  intros. apply above. intros y Hy.
+  intros. apply above_alt. intros y Hy.
   apply gmerge_in in Hy; intuition_in; order.
 Qed.
 
 Lemma gmerge_gt m m' x `{!Ok m, !Ok m'} :
   x << m -> x << m' -> x << gmerge m m'.
 Proof.
-  intros. apply below. intros y Hy.
+  intros. apply below_alt. intros y Hy.
   apply gmerge_in in Hy; intuition_in; order.
 Qed.
 Hint Resolve gmerge_lt gmerge_gt.
