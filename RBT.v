@@ -1184,20 +1184,6 @@ Qed.
 
 End Elt.
 
-Definition Keqb x y :=
-  match K.compare x y with
-  | Eq => true
-  | _ => false
-  end.
-
-Lemma Keqb_spec x y : reflect (K.eq x y) (Keqb x y).
-Proof.
- unfold Keqb. destruct (K.compare x y) eqn:E; constructor.
- - revert E. now case K.compare_spec.
- - revert E. case K.compare_spec; easy || order.
- - revert E. case K.compare_spec; easy || order.
-Qed.
-
 Definition oelse {A} (o o' : option A) :=
  match o with
  | None => o'
@@ -1207,39 +1193,51 @@ Definition oelse {A} (o o' : option A) :=
 Definition obind {A B} (o:option A) (f:A->option B) :=
   match o with Some a => f a | None => None end.
 
-Lemma findA_app {A B} (h:A->bool) (l l' : list (A*B)) :
-  findA h (l++l') = oelse (findA h l) (findA h l').
+(** [findL] : List assoc based on [K.compare] *)
+
+Fixpoint findL {elt} x (l : klist elt) :=
+ match l with
+ | [] => None
+ | (y,v) :: l =>
+   match K.compare x y with
+   | Eq => Some v
+   | _ => findL x l
+   end
+ end.
+
+Lemma findL_app {elt} x (l l' : klist elt) :
+  findL x (l++l') = oelse (findL x l) (findL x l').
 Proof.
- induction l as [|(a,b) l IH]; simpl; auto.
- rewrite IH. destruct (h a); auto.
+ induction l as [|(y,v) l IH]; simpl; auto.
+ rewrite IH. destmatch; auto.
 Qed.
 
-Lemma findA_inA {elt} x e (l : klist elt) :
- findA (Keqb x) l = Some e -> InA O.eqke (x,e) l.
+Lemma findL_inA {elt} x e (l : klist elt) :
+ findL x l = Some e -> InA O.eqke (x,e) l.
 Proof.
  induction l as [|(k,v) l IH]; simpl; try easy.
- case Keqb_spec; intro E; auto. intros [= ->]; auto.
+ destmatch; intro E; auto. intros [= ->]; auto.
 Qed.
 
-Lemma findA_inA_iff {elt} x e (l : klist elt) : sort O.ltk l ->
- (findA (Keqb x) l = Some e <-> InA O.eqke (x,e) l).
+Lemma findL_inA_iff {elt} x e (l : klist elt) : sort O.ltk l ->
+ (findL x l = Some e <-> InA O.eqke (x,e) l).
 Proof.
- intros Sl. split; [apply findA_inA| ]. revert Sl.
+ intros Sl. split; [apply findL_inA| ]. revert Sl.
  induction l as [|(k,v) l IH]; simpl; try easy.
  inversion_clear 1. rewrite InA_cons. intros [(E,E')|IN].
  - compute in E, E'. subst.
-   case Keqb_spec; intros; auto || order.
- - case Keqb_spec; intros; auto.
+   destmatch; intros; auto || order.
+ - destmatch; intros; auto.
    assert (LT : O.ltk (k,v) (x,e))
      by (eapply SortA_InfA_InA with (eqA:=O.eqke); ok).
    compute in LT. order.
 Qed.
 
-Lemma findA_find {elt} x (m : t elt) `{!Ok m} :
- findA (Keqb x) (bindings m) = find x m.
+Lemma findL_find {elt} x (m : t elt) `{!Ok m} :
+ findL x (bindings m) = find x m.
 Proof.
  apply eq_option_alt. intro e.
- rewrite findA_inA_iff by now apply bindings_sort.
+ rewrite findL_inA_iff by now apply bindings_sort.
  rewrite find_spec by auto.
  apply bindings_mapsto.
 Qed.
@@ -1248,7 +1246,7 @@ Section Mapo.
 Variable elt elt' : Type.
 Variable f : key -> elt -> option elt'.
 
-Lemma mapoL_sorted (l : klist elt) acc :
+Lemma mapoL_sorted l acc :
  sort O.ltk (rev l) -> sort O.ltk acc -> ApartL l acc ->
  sort O.ltk (mapoL f l acc).
 Proof.
@@ -1274,8 +1272,8 @@ Lemma mapoL_find l acc x :
  sort O.ltk (rev l) ->
  exists y : K.t,
     y == x /\
-    findA (Keqb x) (mapoL f l acc) =
-     oelse (obind (findA (Keqb x) (rev l)) (f y)) (findA (Keqb x) acc).
+    findL x (mapoL f l acc) =
+     oelse (obind (findL x (rev l)) (f y)) (findL x acc).
 Proof.
  revert acc.
  induction l as [|(k,e) l IH]; simpl; intros acc Sl.
@@ -1283,22 +1281,19 @@ Proof.
  - rewrite sort_app_key in Sl. destruct Sl as (Sl & _ & AP).
    rewrite ApartL_rev in AP.
    destruct (IH (ocons k (f k e) acc) Sl) as (y & Hy & E). clear IH.
-   setoid_rewrite findA_app. setoid_rewrite E. clear E.
-   destruct (findA (Keqb x) (rev l)) eqn:El; simpl in *; auto.
+   setoid_rewrite findL_app. setoid_rewrite E. clear E.
+   destruct (findL x (rev l)) eqn:El; simpl in *; auto.
    + exists y; split; auto.
-     destruct (f y e0); simpl; auto.
-     destruct (f k e); simpl; auto.
-     case Keqb_spec; auto. intros.
-     apply findA_inA in El. rewrite InA_rev in El.
-     apply InA_alt in El.
+     unfold oelse, ocons; destmatch; auto. simpl.
+     destmatch; auto; intros.
+     apply findL_inA in El. rewrite InA_rev in El. apply InA_alt in El.
      destruct El as ((x',e') & (Hx',_) & IN).
      compute in Hx'.
      enough (x' < k) by order.
      apply (AP (x',e') (k,e)); simpl; auto.
    + clear l Sl AP El.
-     destruct (f k e) eqn:Fk; simpl.
-     * case Keqb_spec; [exists k | exists y]; simpl; now rewrite ?Fk.
-     * case Keqb_spec; [exists k | exists y]; simpl; now rewrite ?Fk.
+     destruct (f k e) eqn:Fk; simpl; destmatch; intros; firstorder;
+      exists k; simpl; now rewrite Fk.
 Qed.
 
 Lemma mapoL_mapsto l acc x v' :
@@ -1318,7 +1313,7 @@ Proof.
    + firstorder. injection H0 as <- <-. congruence.
 Qed.
 
-Lemma mapo_mapsto m x (v':elt') :
+Lemma mapo_mapsto m x v' :
   MapsTo x v' (mapo f m) ->
    exists y v, K.eq y x /\ MapsTo x v m /\ f y v = Some v'.
 Proof.
@@ -1330,15 +1325,6 @@ Proof.
  rewrite InA_alt. exists (y, v). split; auto.
 Qed.
 
-Lemma mapo_in m x :
- x ∈ (mapo f m) ->
-  exists y d, K.eq y x /\ MapsTo x d m /\ f y d <> None.
-Proof.
- rewrite <- In_alt. intros (v',H).
- apply mapo_mapsto in H. destruct H as (y & v & E & M & Hf).
- exists y, v; repeat split; congruence.
-Qed.
-
 Lemma mapo_find m x `{!Ok m} :
   exists y, K.eq y x /\
             find x (mapo f m) = obind (find x m) (f y).
@@ -1347,7 +1333,7 @@ Proof.
  destruct (@mapoL_find (rev_bindings m) nil x) as (y & Hy & EQ).
  - rewrite rev_bindings_rev, rev_involutive; now apply bindings_sort.
  - exists y; split; auto.
-   unfold mapo in *. rewrite <- !findA_find; auto.
+   unfold mapo in *. rewrite <- !findL_find; auto.
    rewrite treeify_bindings, EQ. simpl. clear EQ.
    rewrite rev_bindings_rev, rev_involutive. now destruct obind.
 Qed.
@@ -1357,6 +1343,17 @@ End Mapo.
 Section Merge.
 Variable elt elt' elt'' : Type.
 Implicit Type f : key -> option elt -> option elt' -> option elt''.
+
+Lemma mergeL_eqn f l l' acc k k' v v' :
+ mergeL f ((k,v)::l) ((k',v')::l') acc =
+ match K.compare k k' with
+ | Eq => mergeL f l l' (ocons k (f k (Some v) (Some v')) acc)
+ | Lt => mergeL f ((k,v)::l) l' (ocons k' (f k' None (Some v')) acc)
+ | Gt => mergeL f l ((k',v')::l') (ocons k (f k (Some v) None) acc)
+ end.
+Proof.
+ reflexivity.
+Qed.
 
 Lemma mergeL_sorted f l l' acc :
  sort O.ltk (rev l) -> sort O.ltk (rev l') -> sort O.ltk acc ->
@@ -1368,47 +1365,21 @@ Proof.
  - simpl. intros. apply mapoL_sorted; auto.
  - induction l' as [|(x',e') l' IHl'].
    + intros. apply mapoL_sorted; auto.
-   + intros acc Sl Sl' Sacc AP AP'.
-     simpl; destmatch.
-     * intros E.
-       simpl in Sl, Sl'.
-       apply sort_app_key in Sl. destruct Sl as (Sl & _ & APl).
-       apply sort_app_key in Sl'. destruct Sl' as (Sl' & _ & APl').
-       rewrite ApartL_rev in APl. rewrite ApartL_rev in APl'.
-       rewrite ApartL_consl in AP. destruct AP as (AP1,AP).
-       rewrite ApartL_consl in AP'. destruct AP' as (AP1',AP').
-       apply IHl; clear IHl IHl'; auto; destruct f; simpl; auto.
-       { apply sort_cons_key. eauto using ApartL_eqk_l. }
-       { rewrite ApartL_consr. eauto using ApartL_eqk_r. }
-       { rewrite ApartL_consr. eauto using ApartL_eqk_r. }
-     * intros LT.
-       change (Sorted O.ltk (mergeL f ((x,e)::l) l'
-                             (ocons x' (f x' None (Some e')) acc))).
-       simpl in Sl'.
-       apply sort_app_key in Sl'. destruct Sl' as (Sl' & _ & APl').
-       rewrite ApartL_rev in APl'.
-       rewrite ApartL_consl in AP'. destruct AP' as (AP1',AP').
-       apply IHl'; clear IHl IHl'; auto; destruct f; simpl; auto.
-       { apply sort_cons_key. eauto using ApartL_eqk_l. }
-       { rewrite ApartL_consr. split; auto.
-         rewrite ApartL_consl. split.
-         - intros (?,?) (?,?). compute. intuition congruence.
-         - simpl in Sl. rewrite sort_app_key, ApartL_rev in Sl.
-           destruct Sl as (_ & _ & ?). eauto using ApartL_ltk_r. }
-       { rewrite ApartL_consr. eauto using ApartL_eqk_r. }
-     * intros LT.
-       simpl in Sl.
-       apply sort_app_key in Sl. destruct Sl as (Sl & _ & APl).
-       rewrite ApartL_rev in APl.
-       rewrite ApartL_consl in AP. destruct AP as (AP1,AP).
-       apply IHl; clear IHl IHl'; auto; destruct f; simpl; auto.
-       { apply sort_cons_key. eauto using ApartL_eqk_l. }
-       { rewrite ApartL_consr. eauto using ApartL_eqk_r. }
-       { rewrite ApartL_consr. split; auto.
-         rewrite ApartL_consl. split.
-         - intros (?,?) (?,?). compute. intuition congruence.
-         - simpl in Sl'. rewrite sort_app_key, ApartL_rev in Sl'.
-           destruct Sl' as (_ & _ & ?). eauto using ApartL_ltk_r. }
+   + intros acc Sl Sl' Sacc AP AP'. simpl in Sl, Sl'.
+     assert (Sl0 := Sl). assert (Sl0' := Sl').
+     assert (AP0 := AP). assert (AP0' := AP').
+     apply sort_app_key in Sl. destruct Sl as (Sl & _ & APl).
+     apply sort_app_key in Sl'. destruct Sl' as (Sl' & _ & APl').
+     rewrite ApartL_rev in APl. rewrite ApartL_rev in APl'.
+     rewrite ApartL_consl in AP. destruct AP as (AP1,AP).
+     rewrite ApartL_consl in AP'. destruct AP' as (AP1',AP').
+     rewrite mergeL_eqn; destmatch; [intro EQ|intro LT|intro LT];
+      apply IHl || apply IHl'; clear IHl IHl'; auto;
+      destruct f; simpl; auto; try apply sort_cons_key;
+       try apply ApartL_consr; try apply ApartL_consl; split; auto;
+       eauto using ApartL_eqk_l, ApartL_eqk_r;
+       rewrite ApartL_consl; split; eauto using ApartL_ltk_r;
+       intros (?,?) (?,?); compute; intuition congruence.
 Qed.
 
 Global Instance merge_ok f m m' `{!Ok m, !Ok m'} : Ok (merge f m m').
@@ -1431,41 +1402,23 @@ Proof.
    destruct H as [(y & v' & E & IN & _)|H].
    + left; exists v'. rewrite InA_alt. exists (y,v'); split; auto.
    + firstorder.
- - induction l' as [|(y',e') l' IHl'].
-   + intros acc (v,H). apply mapoL_mapsto in H; simpl in *.
+ - induction l' as [|(y',e') l' IHl']; intros acc.
+   + intros (v,H). apply mapoL_mapsto in H; simpl in *.
      destruct H as [(y' & v' & E & [[= <- <-]|IN] & _)|H].
      * left. exists e; eauto.
      * left. exists v'. rewrite InA_cons. right. rewrite InA_alt.
        exists (y',v'); auto.
      * firstorder.
-   + intros acc. simpl; destmatch.
-     * intros E H. apply IHl in H; clear IHl IHl'.
-       setoid_rewrite InA_cons.
-       firstorder.
-       destruct f; simpl in *; [ | firstorder].
-       rewrite InA_cons in H; destruct H as [H|H]; [ | firstorder ].
-       compute in H. destruct H as (H,_).
-       left. exists e. now left.
-     * intros LT H.
-       change (exists v,
-               InA O.eqke (x,v) (mergeL f ((y,e)::l) l'
-                                  (ocons y' (f y' None (Some e')) acc)))
-       in H.
-       apply IHl' in H; clear IHl IHl'.
-       setoid_rewrite InA_cons at 2.
-       firstorder.
-       destruct f; simpl in *; [ | firstorder].
-       rewrite InA_cons in H; destruct H as [H|H]; [ | firstorder ].
-       compute in H. destruct H as (H,_).
-       right; left. exists e'. now left.
-     * intros LT H.
-       apply IHl in H; clear IHl IHl'.
-       setoid_rewrite InA_cons at 1.
-       firstorder.
-       destruct f; simpl in *; [ | firstorder].
-       rewrite InA_cons in H; destruct H as [H|H]; [ | firstorder ].
-       compute in H. destruct H as (H,_).
-       left. exists e. now left.
+   + rewrite mergeL_eqn.
+     destmatch; [intros EQ H| intros LT H|intros LT H];
+      apply IHl in H || apply IHl' in H; clear IHl IHl'; firstorder;
+       setoid_rewrite InA_cons; firstorder;
+       destruct f; simpl in *; firstorder;
+       rewrite InA_cons in H; destruct H as [(H,_)|H]; firstorder;
+       compute in H.
+     * left; exists e. now left.
+     * right;left; exists e'. now left.
+     * left; exists e. now left.
 Qed.
 
 Lemma merge_spec2 f m m' x :
@@ -1481,14 +1434,135 @@ Proof.
  - now rewrite InA_nil in H.
 Qed.
 
+Ltac breako :=
+ destmatch; auto; try order;
+ unfold oelse, ocons; destmatch; simpl; auto;
+  destmatch; auto; order.
+
+Lemma merge_find_eq f l l' acc x y y' z e e' :
+  (forall k : key, f k None None = None) ->
+  ApartL l [(y, e)] ->
+  ApartL l' [(y', e')] ->
+  y == y' -> z == x ->
+  exists y0 : K.t,
+    y0 == x /\
+    oelse (f z (findL x l) (findL x l'))
+      (findL x (ocons y (f y (Some e) (Some e')) acc)) =
+    oelse
+      (f y0 (findL x (l ++ [(y, e)])) (findL x (l' ++ [(y', e')])))
+      (findL x acc).
+Proof.
+ intros Hf AP AP' Ey Ez. simpl.
+ setoid_rewrite findL_app; simpl.
+ destruct findL eqn:INl.
+ - exists z; split; auto.
+   assert (x < y).
+   { apply findL_inA in INl. apply InA_alt in INl.
+     destruct INl as ((x',e0') & (Hx',_) & INl).
+     compute in Hx'. rewrite Hx'.
+     apply (AP (x',e0') (y,e)); simpl; auto. }
+   destruct (findL x l'); simpl; breako.
+ - clear INl. simpl.
+   destruct (findL x l') eqn:INl'; simpl.
+   + exists z; split; auto.
+     enough (x < y') by breako.
+     { apply findL_inA in INl'. apply InA_alt in INl'.
+       destruct INl' as ((x',e0') & (Hx',_) & INl').
+       compute in Hx'. rewrite Hx'.
+       apply (AP' (x',e0') (y',e')); simpl; auto. }
+   + clear INl'. rewrite Hf. simpl.
+     destruct (f y _ _) eqn:Fy; simpl;
+       destmatch; try order;
+        try setoid_rewrite Hf; firstorder;
+         exists y; now rewrite Fy.
+Qed.
+
+Lemma merge_find_lt f l l' acc x y y' z e e' :
+  (forall k : key, f k None None = None) ->
+  ApartL l [(y, e)] ->
+  ApartL l' [(y', e')] ->
+  y < y' -> z == x ->
+  exists y0 : K.t,
+    y0 == x /\
+    oelse (f z (findL x (l++[(y,e)])) (findL x l'))
+      (findL x (ocons y' (f y' None (Some e')) acc)) =
+    oelse
+      (f y0 (findL x (l++[(y, e)])) (findL x (l'++[(y', e')])))
+      (findL x acc).
+Proof.
+ intros Hf AP AP' Ey Ez. simpl.
+ destruct findL eqn:INl.
+ - exists z; split; auto.
+   assert (x < y').
+   { apply findL_inA in INl. apply InA_alt in INl.
+     destruct INl as ((x',e0') & (Hx',_) & INl).
+     compute in Hx'. rewrite Hx'.
+     rewrite in_app_iff in INl. destruct INl.
+     - rewrite <- Ey. apply (AP (x',e0') (y,e)); simpl; auto.
+     - simpl in H. destruct H as [[= <- _]|[  ]]; auto. }
+   setoid_rewrite findL_app.
+   destruct (findL x l'); simpl; breako.
+ - clear INl.
+   setoid_rewrite findL_app.
+   destruct (findL x l') eqn:INl'; simpl.
+   + exists z; split; auto.
+     enough (x < y') by breako.
+     { apply findL_inA in INl'. apply InA_alt in INl'.
+       destruct INl' as ((x',e0') & (Hx',_) & INl').
+       compute in Hx'. rewrite Hx'.
+       apply (AP' (x',e0') (y',e')); simpl; auto. }
+   + clear INl'. rewrite Hf. simpl.
+     destruct (f y' _ _) eqn:Fy'; simpl;
+      destmatch; try setoid_rewrite Hf; firstorder;
+        exists y'; now rewrite Fy'.
+Qed.
+
+Lemma merge_find_gt f l l' acc x y y' z e e' :
+  (forall k : key, f k None None = None) ->
+  ApartL l [(y, e)] ->
+  ApartL l' [(y', e')] ->
+  y' < y -> z == x ->
+  exists y0 : K.t,
+    y0 == x /\
+    oelse (f z (findL x l) (findL x (l' ++ [(y',e')])))
+      (findL x (ocons y (f y (Some e) None) acc)) =
+    oelse
+      (f y0 (findL x (l ++ [(y, e)])) (findL x (l' ++ [(y', e')])))
+      (findL x acc).
+Proof.
+ intros Hf AP AP' Ey Ez.
+ simpl. setoid_rewrite (findL_app x l).
+ destruct findL eqn:INl.
+ - exists z; split; auto.
+   assert (x < y).
+   { apply findL_inA in INl. apply InA_alt in INl.
+     destruct INl as ((x',e0') & (Hx',_) & INl).
+     compute in Hx'. rewrite Hx'.
+     apply (AP (x',e0') (y,e)); simpl; auto. }
+   destruct (findL x (l' ++ _)); simpl; breako.
+ - clear INl.
+   destruct (findL x (l' ++ _)) eqn:INl'; simpl.
+   + exists z; split; auto.
+     enough (x < y) by breako.
+     { apply findL_inA in INl'. apply InA_alt in INl'.
+       destruct INl' as ((x',e0') & (Hx',_) & INl').
+       compute in Hx'. rewrite Hx'.
+       rewrite in_app_iff in INl'. simpl in *. destruct INl'.
+       - rewrite <- Ey. apply (AP' (x',e0') (y',e')); simpl; auto.
+       - destruct H as [[= <- _]|[  ]]; auto. }
+   + clear INl'. rewrite Hf. simpl.
+     destruct (f y _ _) eqn:Fy; simpl;
+      destmatch; try setoid_rewrite Hf; firstorder;
+        exists y; now rewrite Fy.
+Qed.
+
 Lemma mergeL_find f l l' acc x :
  (forall k, f k None None = None) ->
  sort O.ltk (rev l) ->
  sort O.ltk (rev l') ->
  exists y, K.eq y x /\
-  findA (Keqb x) (mergeL f l l' acc) =
-    oelse (f y (findA (Keqb x) (rev l)) (findA (Keqb x) (rev l')))
-          (findA (Keqb x) acc).
+  findL x (mergeL f l l' acc) =
+  oelse (f y (findL x (rev l)) (findL x (rev l'))) (findL x acc).
 Proof.
  intros Hf.
  revert l' acc.
@@ -1497,149 +1571,26 @@ Proof.
    destruct (@mapoL_find _ _ (fun k v' => f k None (Some v')) l' acc x Sl')
      as (y & Hy & EQ).
    exists y; split; auto; rewrite EQ; clear EQ.
-   destruct findA; simpl; rewrite ?Hf; auto.
+   destruct findL; simpl; rewrite ?Hf; auto.
  - induction l' as [|(y',e') l' IHl'].
    + intros acc Sl _. clear IHl.
      destruct (@mapoL_find _ _ (fun k v => f k (Some v) None) _ acc x Sl)
        as (z & Hz & EQ).
      exists z; split; auto. cbn - [mapoL]. rewrite EQ; clear EQ.
-     simpl. destruct findA; simpl; rewrite ?Hf; auto.
+     simpl. destruct findL; simpl; rewrite ?Hf; auto.
    + intros acc Sl Sl'.
-     simpl mergeL. destmatch; intro E.
-     * simpl in Sl, Sl'. rewrite sort_app_key in Sl, Sl'.
-       destruct Sl as (Sl & _ & AP). destruct Sl' as (Sl' & _ & AP').
-       destruct (IHl l' (ocons y (f y (Some e) (Some e')) acc))
-        as (z & Hz & EQ); auto.
-       setoid_rewrite EQ. clear IHl IHl' EQ.
-       simpl. setoid_rewrite findA_app; simpl.
-       destruct findA eqn:INl.
-       ** exists z; split; auto.
-          assert (x < y).
-          { apply findA_inA in INl. apply InA_alt in INl.
-            destruct INl as ((x',e0') & (Hx',_) & INl).
-            compute in Hx'. rewrite Hx'.
-            apply (AP (x',e0') (y,e)); simpl; auto. }
-          destruct (findA _ (rev l')) eqn:INl'; simpl.
-          *** destruct (f z _ _); simpl; auto.
-              destruct (f y _ _); simpl; auto.
-              case Keqb_spec; auto || order.
-          *** case Keqb_spec; auto; try order. intros.
-              destruct (f z _ _); simpl; auto.
-              destruct (f y _ _); simpl; auto.
-              case Keqb_spec; auto || order.
-       ** clear INl.
-          destruct (findA _ (rev l')) eqn:INl'; simpl.
-          *** exists z; split; auto.
-              assert (x < y').
-              { apply findA_inA in INl'. apply InA_alt in INl'.
-                destruct INl' as ((x',e0') & (Hx',_) & INl').
-                compute in Hx'. rewrite Hx'.
-                apply (AP' (x',e0') (y',e')); simpl; auto. }
-              case Keqb_spec; auto; try order. intros.
-              destruct (f z _ _); simpl; auto.
-              destruct (f y _ _); simpl; auto.
-              case Keqb_spec; auto || order.
-          *** clear INl'. rewrite Hf. simpl.
-              destruct (f y _ _) eqn:Fy; simpl;
-               case Keqb_spec; intros;
-                case Keqb_spec; intros; try order;
-                 try setoid_rewrite Hf; firstorder;
-                 exists y; now rewrite Fy.
-     * change
-         (exists y0, y0 == x /\
-           findA (Keqb x)
-                 (mergeL f ((y,e)::l) l'
-                   (ocons y' (f y' None (Some e')) acc)) =
-           oelse
-             (f y0 (findA (Keqb x) (rev ((y, e) :: l)))
-                (findA (Keqb x) (rev ((y', e') :: l'))))
-             (findA (Keqb x) acc)).
-       simpl in Sl'. rewrite sort_app_key in Sl'.
-       destruct Sl' as (Sl' & _ & AP').
-       destruct (IHl' (ocons y' (f y' None (Some e')) acc))
-        as (z & Hz & EQ); auto.
-       setoid_rewrite EQ. clear IHl IHl' EQ.
-       remember ((y,e)::l) as l0.
-       simpl. setoid_rewrite findA_app.
-       destruct findA eqn:INl.
-       ** exists z; split; auto.
-          assert (x < y').
-          { apply findA_inA in INl. apply InA_alt in INl.
-            destruct INl as ((x',e0') & (Hx',_) & INl).
-            compute in Hx'. rewrite Hx'.
-            rewrite Heql0 in *. simpl in *.
-            rewrite sort_app_key in Sl.
-            destruct Sl as (Sl & _ & AP).
-            rewrite in_app_iff in INl. destruct INl.
-            - rewrite <- E. apply (AP (x',e0') (y,e)); simpl; auto.
-            - simpl in H. destruct H as [[= <- _]|[  ]]; auto. }
-          destruct (findA _ (rev l')) eqn:INl'; simpl.
-          *** destruct (f z _ _); simpl; auto.
-              destruct (f y' _ _); simpl; auto.
-              case Keqb_spec; auto || order.
-          *** case Keqb_spec; auto; try order. intros.
-              destruct (f z _ _); simpl; auto.
-              destruct (f y' _ _); simpl; auto.
-              case Keqb_spec; auto || order.
-       ** clear INl.
-          destruct (findA _ (rev l')) eqn:INl'; simpl.
-          *** exists z; split; auto.
-              assert (x < y').
-              { apply findA_inA in INl'. apply InA_alt in INl'.
-                destruct INl' as ((x',e0') & (Hx',_) & INl').
-                compute in Hx'. rewrite Hx'.
-                apply (AP' (x',e0') (y',e')); simpl; auto. }
-              destruct (f z _ _); simpl; auto.
-              destruct (f y' _ _); simpl; auto.
-              case Keqb_spec; auto || order.
-          *** clear INl'. rewrite Hf. simpl.
-              destruct (f y' _ _) eqn:Fy'; simpl;
-               case Keqb_spec; intros;
-                 try setoid_rewrite Hf; firstorder;
-                 exists y'; now rewrite Fy'.
-     * simpl in Sl. rewrite sort_app_key in Sl.
-       destruct Sl as (Sl & _ & AP).
-       destruct (IHl ((y',e')::l') (ocons y (f y (Some e) None) acc))
-        as (z & Hz & EQ); auto.
-       setoid_rewrite EQ. clear IHl IHl' EQ.
-       remember ((y',e')::l') as l0'.
-       simpl. setoid_rewrite findA_app.
-       destruct findA eqn:INl.
-       ** exists z; split; auto.
-          assert (x < y).
-          { apply findA_inA in INl. apply InA_alt in INl.
-            destruct INl as ((x',e0') & (Hx',_) & INl).
-            compute in Hx'. rewrite Hx'.
-            apply (AP (x',e0') (y,e)); simpl; auto. }
-          destruct (findA _ (rev l0')) eqn:INl'; simpl.
-          *** destruct (f z _ _); simpl; auto.
-              destruct (f y _ _); simpl; auto.
-              case Keqb_spec; auto || order.
-          *** destruct (f z _ _); simpl; auto.
-              destruct (f y _ _); simpl; auto.
-              case Keqb_spec; auto || order.
-       ** clear INl.
-          destruct (findA _ (rev l0')) eqn:INl'; simpl.
-          *** exists z; split; auto.
-              assert (x < y).
-              { apply findA_inA in INl'. apply InA_alt in INl'.
-                destruct INl' as ((x',e0') & (Hx',_) & INl').
-                compute in Hx'. rewrite Hx'.
-                rewrite Heql0' in *. simpl in *.
-                rewrite sort_app_key in Sl'.
-                destruct Sl' as (Sl' & _ & AP').
-                rewrite in_app_iff in INl'. destruct INl'.
-                - rewrite <- E. apply (AP' (x',e0') (y',e')); simpl; auto.
-                - simpl in H. destruct H as [[= <- _]|[  ]]; auto. }
-              case Keqb_spec; auto; try order. intros.
-              destruct (f z _ _); simpl; auto.
-              destruct (f y _ _); simpl; auto.
-              case Keqb_spec; auto || order.
-          *** clear INl'. rewrite Hf. simpl.
-              destruct (f y _ _) eqn:Fy; simpl;
-               case Keqb_spec; intros;
-                 try setoid_rewrite Hf; firstorder;
-                 exists y; now rewrite Fy.
+     simpl in Sl, Sl'.
+     assert (Sl0 := Sl). assert (Sl0' := Sl').
+     rewrite sort_app_key in Sl, Sl'.
+     destruct Sl as (Sl & _ & AP). destruct Sl' as (Sl' & _ & AP').
+     rewrite mergeL_eqn. destmatch; [intro EQ | intro LT | intro LT];
+      set (acc' := ocons _ _ _).
+     * destruct (IHl l' acc') as (z & Hz & E); auto.
+       rewrite E. apply merge_find_eq; auto.
+     * destruct (IHl' acc') as (z & Hz & E); auto.
+       setoid_rewrite E. apply merge_find_lt; auto.
+     * destruct (IHl ((y',e')::l') acc') as (z & Hz & E); auto.
+       setoid_rewrite E. apply merge_find_gt; auto.
 Qed.
 
 Lemma merge_spec1n f m m' x `{!Ok m, !Ok m'} :
@@ -1654,7 +1605,7 @@ Proof.
  - rewrite rev_bindings_rev, rev_involutive; now apply bindings_sort.
  - rewrite rev_bindings_rev, rev_involutive; now apply bindings_sort.
  - exists y; split; auto.
-   unfold merge in *. rewrite <- !findA_find; auto.
+   unfold merge in *. rewrite <- !findL_find; auto.
    rewrite treeify_bindings, EQ. simpl. clear EQ.
    rewrite rev_bindings_rev, rev_involutive.
    rewrite rev_bindings_rev, rev_involutive.
