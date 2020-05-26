@@ -342,9 +342,9 @@ Tactic Notation "factornode" ident(s) :=
  try clear s;
  match goal with
    | |- context [Node ?h ?l ?x ?e ?r] =>
-       set (s:=Node h l x e r) in *; clearbody s; clear l x e r h
+       set (s:=Node h l x e r) in *; clearbody s; clear l x e r; try clear h
    | _ : context [Node ?h ?l ?x ?e ?r] |- _ =>
-       set (s:=Node h l x e r) in *; clearbody s; clear l x e r h
+       set (s:=Node h l x e r) in *; clearbody s; clear l x e r; try clear h
  end.
 
 (** A tactic for cleaning hypothesis after use of functional induction. *)
@@ -451,6 +451,13 @@ Proof.
  intuition_in.
 Qed.
 
+Lemma MapsTo_node_iff {elt} l x (e:elt) r h y v :
+  MapsTo y v (Node h l x e r) <->
+   MapsTo y v l \/ (y == x /\ e = v) \/ MapsTo y v r.
+Proof.
+ intuition_in. subst; auto.
+Qed.
+
 (** Results about [Above] and [Below] *)
 
 Lemma above_alt {elt} (m:t elt) x :
@@ -540,6 +547,21 @@ Lemma between {elt} (m m':t elt) x :
 Proof.
  intros H H' y y' Hy Hy'. order.
 Qed.
+
+Lemma apart_node_l {elt} h l x v r (m:t elt) :
+  (Node h l x v r) <<< m <-> l <<< m /\ x << m /\ r <<< m.
+Proof.
+ unfold "<<<". setoid_rewrite In_node_iff. rewrite below_alt.
+ firstorder. setoid_replace x1 with x; firstorder.
+Qed.
+
+Lemma apart_node_r {elt} h l x v r (m:t elt) :
+  m <<< (Node h l x v r) <-> m <<< l /\ x >> m /\ m <<< r.
+Proof.
+ unfold "<<<". setoid_rewrite In_node_iff. rewrite above_alt.
+ firstorder. setoid_replace x2 with x; firstorder.
+Qed.
+
 
 (** Bst is decidable *)
 
@@ -815,13 +837,52 @@ Proof.
  rewrite 2 IHs1, IHs2, !app_nil_r, !app_ass; auto.
 Qed.
 
-Lemma bindings_node :
- forall (t1 t2:t elt) x e z acc,
- bindings t1 ++ (x,e) :: bindings t2 ++ acc =
- bindings (Node z t1 x e t2) ++ acc.
+Lemma bindings_node_acc (t1 t2:t elt) x e z acc :
+ bindings (Node z t1 x e t2) ++ acc =
+ bindings t1 ++ (x,e) :: bindings t2 ++ acc.
 Proof.
  unfold bindings; simpl; intros.
  rewrite !bindings_app, !app_nil_r, !app_ass; auto.
+Qed.
+
+Lemma bindings_node (t1 t2:t elt) x e z :
+ bindings (Node z t1 x e t2) =
+ bindings t1 ++ (x,e) :: bindings t2.
+Proof.
+ rewrite <- (app_nil_r (bindings _)), bindings_node_acc.
+ now rewrite app_nil_r.
+Qed.
+
+Lemma rev_bindings_aux_rev m acc :
+ rev_bindings_aux acc m = rev (bindings m) ++ acc.
+Proof.
+ revert acc. induction m; simpl; intros; auto.
+ rewrite IHm2, IHm1, bindings_node, !rev_app_distr. simpl.
+ now rewrite <- !app_assoc.
+Qed.
+
+Lemma rev_bindings_rev m : rev_bindings m = rev (bindings m).
+Proof.
+ unfold rev_bindings. rewrite rev_bindings_aux_rev. apply app_nil_r.
+Qed.
+
+Lemma in_bindings k v (m:t elt) : List.In (k,v) (bindings m) -> In k m.
+Proof.
+ intros IN. apply In_alt; exists v.
+ apply bindings_mapsto, In_InA; eauto with *.
+Qed.
+
+Lemma in_bindings_uniq k k' v v' (m:t elt) `{!Ok m}:
+ List.In (k,v) (bindings m) ->
+ List.In (k',v') (bindings m) ->
+ K.eq k k' -> k = k' /\ v = v'.
+Proof.
+ induction m as [|c l IHl x e r IHr].
+ - now cbn.
+ - rewrite !bindings_node, !in_app_iff. simpl.
+   inv Ok; change Bst with Ok in *.
+   intros [INl|[[= <- <-]|INl]] [INr|[[= <- <-]|INr]] E; eauto;
+   try apply in_bindings in INl; try apply in_bindings in INr; order.
 Qed.
 
 (** * Fold *)
@@ -864,7 +925,7 @@ Lemma flatten_e_bindings :
  bindings l ++ flatten_e (More x d r e) =
  bindings (Node z l x d r) ++ flatten_e e.
 Proof.
- intros; apply bindings_node.
+ intros. now rewrite bindings_node, <- app_assoc.
 Qed.
 
 Lemma cons_1 : forall (s:t elt) e,
@@ -910,7 +971,7 @@ Lemma equal_cont_IfEq : forall m1 cont e2 l,
   IfEq (equal_cont cmp m1 cont e2) (bindings m1 ++ l) (flatten_e e2).
 Proof.
  induction m1 as [|h1 l1 Hl1 x1 d1 r1 Hr1]; intros; auto.
- rewrite <- bindings_node; simpl.
+ rewrite bindings_node_acc; simpl.
  apply Hl1; auto.
  clear e2; intros [|x2 d2 r2 e2].
  simpl; red; auto.

@@ -6,4 +6,5 @@ OrdList.v
 Positive.v
 GenTree.v
 AVL.v
+RBT.v
 MMaps.v

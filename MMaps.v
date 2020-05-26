@@ -8,4 +8,5 @@
 
 
 From Coq Require Export Orders OrdersEx OrdersAlt Equalities.
-From MMaps Require Export Interface Facts WeakList OrdList Positive AVL.
+From MMaps Require Export Interface Facts WeakList OrdList Positive.
+From MMaps Require Export AVL RBT.

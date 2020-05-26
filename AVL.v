@@ -14,6 +14,17 @@
     It follows the implementation from Ocaml's standard library.
 
     See the comments at the beginning of MSetAVL for more details.
+
+    Note that we only prove here that the operations below preserve
+    the binary search tree invariant ([Bst], a.k.a [Ok] predicate here),
+    but *not* the AVL balancing invariant. Indeed, the former is enough
+    to implement the desired interface [S], and ensure observational
+    correctness. And proceeding this way is much lighter.
+
+    Of course, the AVL invariants are also meant to be preserved here
+    (otherwise we could end with wrong complexities). It shouldn't be
+    too hard to adapt the proofs of [MSetFullAVL] to this file, but
+    this remains to be done.
 *)
 
 From Coq Require Import Bool PeanoNat BinInt FunInd Int.
@@ -83,7 +94,7 @@ Definition create l x e r :=
 
 Definition assert_false := create.
 
-Fixpoint bal l x d r :=
+Definition bal l x d r :=
   let hl := height l in
   let hr := height r in
   if (hr+2) <? hl then
@@ -144,14 +155,16 @@ Fixpoint remove_min l x d r : t*(key*elt) :=
        (bal l' x d r, m)
   end.
 
-(** * Merging two trees
+(** * Appending two disjoint maps of similar heights
 
-  [merge0 t1 t2] builds the union of [t1] and [t2] assuming all elements
-  of [t1] to be smaller than all elements of [t2], and
+  [append t1 t2] builds the union of [t1] and [t2] assuming all keys
+  of [t1] to be smaller than all keys of [t2], and
   [|height t1 - height t2| <= 2].
+
+  This was named [merge] in the initial Set implementation.
 *)
 
-Definition merge0 s1 s2 :=
+Definition append s1 s2 :=
   match s1,s2 with
     | Leaf _, _ => s2
     | _, Leaf _ => s1
@@ -166,7 +179,7 @@ Fixpoint remove x m := match m with
   | Leaf _ => Leaf _
   | Node h l y d r =>
       match K.compare x y with
-         | Eq => merge0 l r
+         | Eq => append l r
          | Lt => bal (remove x l) y d r
          | Gt => bal l y d (remove x r)
       end
@@ -214,7 +227,7 @@ Fixpoint split x m : triple := match m with
 
 (** * Concatenation
 
-   Same as [merge] but does not assume anything about heights.
+   Same as [append] but does not assume anything about heights.
 *)
 
 Definition concat m1 m2 :=
@@ -238,7 +251,7 @@ Fixpoint mapo (elt elt' : Type)(f : key -> elt -> option elt')(m : t elt)
   : t elt' :=
   match m with
    | Leaf _ => Leaf _
-   | Node h l x d r =>
+   | Node _ l x d r =>
       match f x d with
        | Some d' => join (mapo f l) x d' (mapo f r)
        | None => concat (mapo f l) (mapo f r)
@@ -311,7 +324,7 @@ Local Infix "<<<" := Apart (at level 70).
 Functional Scheme bal_ind := Induction for bal Sort Prop.
 Functional Scheme add_ind := Induction for add Sort Prop.
 Functional Scheme remove_min_ind := Induction for remove_min Sort Prop.
-Functional Scheme merge0_ind := Induction for merge0 Sort Prop.
+Functional Scheme append_ind := Induction for append Sort Prop.
 Functional Scheme remove_ind := Induction for remove Sort Prop.
 Functional Scheme concat_ind := Induction for concat Sort Prop.
 Functional Scheme split_ind := Induction for split Sort Prop.
@@ -569,30 +582,30 @@ Ltac factor_remove_min m R := match goal with
    set (m:=Node h l x e r) in *; clearbody m; clear H l x e r
 end.
 
-Lemma merge0_in m1 m2 y :
-  y ∈ (merge0 m1 m2) <-> y ∈ m1 \/ y ∈ m2.
+Lemma append_in m1 m2 y :
+  y ∈ (append m1 m2) <-> y ∈ m1 \/ y ∈ m2.
 Proof.
- functional induction (merge0 m1 m2); intros; try factornode m1.
+ functional induction (append m1 m2); intros; try factornode m1.
  - intuition_in.
  - intuition_in.
  - factor_remove_min l R. rewrite bal_in, (remove_min_in R).
    simpl; intuition.
 Qed.
 
-Lemma merge0_mapsto m1 m2 y e :
- MapsTo y e (merge0 m1 m2) <-> MapsTo y e m1 \/ MapsTo y e m2.
+Lemma append_mapsto m1 m2 y e :
+ MapsTo y e (append m1 m2) <-> MapsTo y e m1 \/ MapsTo y e m2.
 Proof.
- functional induction (merge0 m1 m2); intros; try factornode m1.
+ functional induction (append m1 m2); intros; try factornode m1.
  - intuition_in.
  - intuition_in.
  - factor_remove_min l R. rewrite bal_mapsto, (remove_min_mapsto R).
    simpl. unfold create; intuition_in. subst. now constructor.
 Qed.
 
-Global Instance merge0_ok m1 m2 `{!Ok m1, !Ok m2} : m1 <<< m2 ->
- Ok (merge0 m1 m2).
+Global Instance append_ok m1 m2 `{!Ok m1, !Ok m2} : m1 <<< m2 ->
+ Ok (append m1 m2).
 Proof.
- functional induction (merge0 m1 m2); intros B12; trivial.
+ functional induction (append m1 m2); intros B12; trivial.
  factornode m1. factor_remove_min l R.
  apply bal_ok; eauto with *.
  - apply above_alt. intros z Hz. apply B12; trivial.
@@ -606,7 +619,7 @@ Lemma remove_in m x y `{!Ok m} :
  y ∈ remove x m <-> ~ y == x /\ y ∈ m.
 Proof.
  functional induction (remove x m); simpl; intros; cleanf; invok;
-  rewrite ?merge0_in, ?bal_in, ?IHt; intuition_in; order.
+  rewrite ?append_in, ?bal_in, ?IHt; intuition_in; order.
 Qed.
 
 Lemma remove_lt m x y `{!Ok m} : y >> m -> y >> remove x m.
@@ -625,7 +638,7 @@ Hint Resolve remove_gt remove_lt.
 Global Instance remove_ok m x `{!Ok m} : Ok (remove x m).
 Proof.
  functional induction (remove x m); simpl; intros; cleanf; invok; autok.
- apply merge0_ok; eauto.
+ apply append_ok; eauto.
 Qed.
 
 Lemma remove_spec1 m x `{!Ok m} : find x (remove x m) = None.
@@ -639,10 +652,10 @@ Proof.
  functional induction (remove x m); simpl; intros; cleanf; invok; autok.
  - case K.compare_spec; intros; try order;
    rewrite find_mapsto_equiv; auto.
-   + intros. rewrite merge0_mapsto; intuition; order.
-   + apply merge0_ok; auto. red; intros; transitivity y0; order.
-   + intros. rewrite merge0_mapsto; intuition; order.
-   + apply merge0_ok; auto. now apply between with y0.
+   + intros. rewrite append_mapsto; intuition; order.
+   + apply append_ok; auto. red; intros; transitivity y0; order.
+   + intros. rewrite append_mapsto; intuition; order.
+   + apply append_ok; auto. now apply between with y0.
  - rewrite bal_find by autok. simpl. case K.compare_spec; auto.
  - rewrite bal_find by autok. simpl. case K.compare_spec; auto.
 Qed.
@@ -1067,7 +1080,7 @@ End Raw.
 (** * Encapsulation
 
    Now, in order to really provide a functor implementing [S], we need
-   to encapsulate everything into a type of balanced binary search trees. *)
+   to encapsulate everything into a type of binary search trees. *)
 
 Module IntMake (I:Int)(K: OrderedType) <: S K.
 
@@ -1285,7 +1298,7 @@ Module IntMake_ord (I:Int)(K:OrderedType)(D:OrderedType) <: Sord K D.
   Proof.
     induction s1 as [|h1 l1 Hl1 x1 d1 r1 Hr1] using R.tree_ind;
     intros; auto.
-    rewrite <- R.bindings_node; simpl.
+    rewrite R.bindings_node_acc; simpl.
     apply Hl1; auto. clear e2. intros [|x2 d2 r2 e2].
     simpl; unfold flip; simpl; auto.
     apply compare_more_Cmp.
