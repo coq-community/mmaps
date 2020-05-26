@@ -793,7 +793,12 @@ Lemma mapi_o m x (f:key->elt->elt') :
  find x (mapi f m) = option_map (f x) (find x m).
 Proof. intros; now apply mapi_spec'. Qed.
 
-Lemma merge_spec1' (f:key->option elt->option elt'->option elt'') :
+(** Specification of [merge] when more is known on [f]. *)
+
+(** If [f] is a morphism w.r.t [K.eq], then we can get rid of the
+    [exists y] in [merge_spec1]. *)
+
+Lemma merge_spec1m (f:key->option elt->option elt'->option elt'') :
  Proper (K.eq==>Logic.eq==>Logic.eq==>Logic.eq) f ->
  forall (m:t elt)(m':t elt') x,
    In x m \/ In x m' ->
@@ -803,7 +808,10 @@ Proof.
  now destruct (merge_spec1 f H) as (y,(->,->)).
 Qed.
 
-Lemma merge_spec1_none (f:key->option elt->option elt'->option elt'') :
+(** If [f _ None None = None], then we can get rid of the
+    [In ... \/ In ...] condition in [merge_spec1]. *)
+
+Lemma merge_spec1n (f:key->option elt->option elt'->option elt'') :
  (forall x, f x None None = None) ->
  forall (m: t elt)(m': t elt') x,
  exists y, K.eq y x /\ find x (merge f m m') = f y (find x m) (find x m').
@@ -823,14 +831,16 @@ destruct (find x m) as [e|] eqn:Hm.
     intuition.
 Qed.
 
-Lemma merge_spec1'_none (f:key->option elt->option elt'->option elt'') :
+(** And if [f] is both a morphism and satisfies [f _ None None = None] : *)
+
+Lemma merge_spec1mn (f:key->option elt->option elt'->option elt'') :
  Proper (K.eq==>Logic.eq==>Logic.eq==>Logic.eq) f ->
  (forall x, f x None None = None) ->
  forall (m: t elt)(m': t elt') x,
   find x (merge f m m') = f x (find x m) (find x m').
 Proof.
  intros Hf Hf' m m' x.
- now destruct (merge_spec1_none Hf' m m' x) as (y,(->,->)).
+ now destruct (merge_spec1n Hf' m m' x) as (y,(->,->)).
 Qed.
 
 Lemma bindings_o : forall m x,
