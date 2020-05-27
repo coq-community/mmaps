@@ -18,6 +18,7 @@
     file, but this remains to be done.
 *)
 
+From Coq Require Rtauto.
 From Coq Require Import Bool BinPos Pnat Setoid SetoidList PeanoNat.
 From Coq Require Import Orders OrdersFacts OrdersLists.
 From MMaps Require Import Interface OrdList GenTree.
@@ -337,13 +338,24 @@ Local Hint Resolve
  AboveLt Above_not_In Above_trans
  BelowGt Below_not_In Below_trans.
 
+Ltac rtauto := Rtauto.rtauto.
+Ltac autorew := autorewrite with rb.
+Tactic Notation "autorew" "in" ident(H) := autorewrite with rb in H.
+Ltac treeorder :=
+ rewrite ?below_alt, ?above_alt; try intro; autorew; intuition_in; order.
+
 Ltac chok := change Bst with Ok in *.
 Ltac autok := chok; auto with typeclass_instances.
-Ltac ok :=
+Ltac invok :=
  match goal with
-   | H : Ok (Node _ _ _ _ _) |- _ => inversion_clear H; chok; ok
-   | H : Above _ (Node _ _ _ _ _) |- _ => inversion_clear H; ok
-   | H : Below _ (Node _ _ _ _ _) |- _ => inversion_clear H; ok
+   | H : Ok (Node _ _ _ _ _) |- _ => inversion_clear H; chok; invok
+   | H : Above _ (Node _ _ _ _ _) |- _ => inversion_clear H; invok
+   | H : Below _ (Node _ _ _ _ _) |- _ => inversion_clear H; invok
+   | _ => idtac
+ end.
+Ltac ok :=
+ invok;
+ match goal with
    | |- Ok (Node _ _ _ _ _) => constructor; autok; ok
    | |- Above _ (Node _ _ _ _ _) => constructor; ok
    | |- Below _ (Node _ _ _ _ _) => constructor; ok
@@ -394,22 +406,22 @@ Proof.
  destruct m; simpl; ok.
 Qed.
 
-Lemma makeBlack_in m x : In x (makeBlack m) <-> In x m.
-Proof.
- destruct m; simpl; intuition_in.
-Qed.
-
-Lemma makeRed_in m x : In x (makeRed m) <-> In x m.
-Proof.
- destruct m; simpl; intuition_in.
-Qed.
-
 Lemma makeBlack_mapsto m x v : MapsTo x v (makeBlack m) <-> MapsTo x v m.
 Proof.
  destruct m; simpl; intuition_in.
 Qed.
 
 Lemma makeRed_mapsto m x v : MapsTo x v (makeRed m) <-> MapsTo x v m.
+Proof.
+ destruct m; simpl; intuition_in.
+Qed.
+
+Lemma makeBlack_in m x : In x (makeBlack m) <-> In x m.
+Proof.
+ destruct m; simpl; intuition_in.
+Qed.
+
+Lemma makeRed_in m x : In x (makeRed m) <-> In x m.
 Proof.
  destruct m; simpl; intuition_in.
 Qed.
@@ -555,10 +567,16 @@ Proof.
  destruct (lbal_match l x v r); ok.
 Qed.
 
-Lemma lbal_in l x v r y :
- In y (lbal l x v r) <-> K.eq y x \/ In y l \/ In y r.
+Global Instance rbal_ok l x v r `(!Ok l, !Ok r, x >> l, x << r) :
+ Ok (rbal l x v r).
 Proof.
- case lbal_match; intuition_in.
+ destruct (rbal_match l x v r); ok.
+Qed.
+
+Global Instance rbal'_ok l x v r `(!Ok l, !Ok r, x >> l, x << r) :
+ Ok (rbal' l x v r).
+Proof.
+ destruct (rbal'_match l x v r); ok.
 Qed.
 
 (** Note : Rd is arbitrary here and in all similar results below *)
@@ -569,48 +587,10 @@ Proof.
  case lbal_match; intuition_in.
 Qed.
 
-Lemma lbal_find l x v r `{!Ok l, !Ok r} :
- x >> l -> x << r ->
- lbal l x v r === Rd l x v r.
-Proof.
- intros. intro. apply find_mapsto_equiv; auto using lbal_mapsto; autok.
-Qed.
-
-Global Instance rbal_ok l x v r `(!Ok l, !Ok r, x >> l, x << r) :
- Ok (rbal l x v r).
-Proof.
- destruct (rbal_match l x v r); ok.
-Qed.
-
-Lemma rbal_in l x v r y :
- In y (rbal l x v r) <-> K.eq y x \/ In y l \/ In y r.
-Proof.
- case rbal_match; intuition_in.
-Qed.
-
 Lemma rbal_mapsto l x vx r y vy :
  MapsTo y vy (rbal l x vx r) <-> MapsTo y vy (Rd l x vx r).
 Proof.
  case rbal_match; intuition_in.
-Qed.
-
-Lemma rbal_find l x v r `{!Ok l, !Ok r} :
- x >> l -> x << r ->
- rbal l x v r === Rd l x v r.
-Proof.
- intros. intro. apply find_mapsto_equiv; auto using rbal_mapsto; autok.
-Qed.
-
-Global Instance rbal'_ok l x v r `(!Ok l, !Ok r, x >> l, x << r) :
- Ok (rbal' l x v r).
-Proof.
- destruct (rbal'_match l x v r); ok.
-Qed.
-
-Lemma rbal'_in l x r v y :
- In y (rbal' l x v r) <-> K.eq y x \/ In y l \/ In y r.
-Proof.
- case rbal'_match; intuition_in.
 Qed.
 
 Lemma rbal'_mapsto l x vx r y vy :
@@ -619,20 +599,50 @@ Proof.
  case rbal'_match; intuition_in.
 Qed.
 
+Lemma lbal_in l x v r y :
+ In y (lbal l x v r) <-> K.eq y x \/ In y l \/ In y r.
+Proof.
+ rewrite In_alt'; setoid_rewrite lbal_mapsto; rewrite <-In_alt'.
+ intuition_in.
+Qed.
+
+Lemma rbal_in l x v r y :
+ In y (rbal l x v r) <-> K.eq y x \/ In y l \/ In y r.
+Proof.
+ rewrite In_alt'; setoid_rewrite rbal_mapsto; rewrite <-In_alt'.
+ intuition_in.
+Qed.
+
+Lemma rbal'_in l x r v y :
+ In y (rbal' l x v r) <-> K.eq y x \/ In y l \/ In y r.
+Proof.
+ rewrite In_alt'; setoid_rewrite rbal'_mapsto; rewrite <-In_alt'.
+ intuition_in.
+Qed.
+
+Lemma lbal_find l x v r `{!Ok l, !Ok r} :
+ x >> l -> x << r ->
+ lbal l x v r === Rd l x v r.
+Proof.
+ intros Hl Hr y. apply find_mapsto_equiv; auto using lbal_mapsto; autok.
+Qed.
+
+Lemma rbal_find l x v r `{!Ok l, !Ok r} :
+ x >> l -> x << r ->
+ rbal l x v r === Rd l x v r.
+Proof.
+ intros Hl Hr y. apply find_mapsto_equiv; auto using rbal_mapsto; autok.
+Qed.
+
 Lemma rbal'_find l x v r `{!Ok l, !Ok r} :
  x >> l -> x << r ->
  rbal' l x v r === Rd l x v r.
 Proof.
- intros. intro. apply find_mapsto_equiv; auto using rbal'_mapsto; autok.
+ intros Hl Hr y. apply find_mapsto_equiv; auto using rbal'_mapsto; autok.
 Qed.
 
-Hint Rewrite (@In_node_iff elt)
+Local Hint Rewrite (@In_node_iff elt)
  makeRed_in makeBlack_in lbal_in rbal_in rbal'_in : rb.
-
-Ltac autorew := autorewrite with rb.
-Tactic Notation "autorew" "in" ident(H) := autorewrite with rb in H.
-Ltac treeorder :=
- rewrite ?below_alt, ?above_alt; try intro; autorew; intuition_in; order.
 
 (** ** Insertion *)
 
@@ -642,7 +652,7 @@ Proof.
  induct m; destmatch; autorew; rewrite ?IHl, ?IHr; intuition_in.
  setoid_replace y with x; eauto.
 Qed.
-Hint Rewrite ins_in : rb.
+Local Hint Rewrite ins_in : rb.
 
 Lemma ins_above m x v y : y >> m -> x < y -> y >> ins x v m.
 Proof.
@@ -653,12 +663,12 @@ Lemma ins_below m x v y : y << m -> y < x -> y << ins x v m.
 Proof.
  intros. treeorder.
 Qed.
-Hint Resolve ins_above ins_below.
+Local Hint Resolve ins_above ins_below.
 
 Global Instance ins_ok m x v `{!Ok m} : Ok (ins x v m).
 Proof.
  induct m; auto; destmatch;
- (eapply lbal_ok || eapply rbal_ok || ok); auto.
+ (eapply lbal_ok || eapply rbal_ok || ok); auto; treeorder.
 Qed.
 
 Lemma ins_spec1 m x v `{!Ok m} : find x (ins x v m) = Some v.
@@ -697,7 +707,7 @@ Lemma add_in m x v y :
 Proof.
  unfold add. now autorew.
 Qed.
-Hint Rewrite add_in : rb.
+Local Hint Rewrite add_in : rb.
 
 Lemma add_spec1 m x v `{!Ok m} : find x (add x v m) = Some v.
 Proof.
@@ -713,18 +723,22 @@ Qed.
 
 (** ** Balancing for deletion *)
 
-Lemma lbalS_in l x v r y :
-  In y (lbalS l x v r) <-> K.eq y x \/ In y l \/ In y r.
-Proof.
- case lbalS_match.
- - intros; autorew; intuition_in.
- - clear l. intros l _. destmatch; autorew; intuition_in.
-Qed.
-
 Global Instance lbalS_ok l x v r :
   forall `(!Ok l, !Ok r, x >> l, x << r), Ok (lbalS l x v r).
 Proof.
- case lbalS_match; intros; destmatch; ok; try apply rbal'_ok; treeorder.
+ case lbalS_match; intros; destmatch; try treeorder; invok.
+ - ok.
+ - constructor; chok; try treeorder. apply rbal'_ok; treeorder.
+ - apply rbal'_ok; treeorder.
+Qed.
+
+Global Instance rbalS_ok l x v r :
+ forall `(!Ok l, !Ok r, x >> l, x << r), Ok (rbalS l x v r).
+Proof.
+ case rbalS_match; intros; destmatch; try treeorder; invok.
+ - ok.
+ - constructor; chok; try treeorder. apply lbal_ok; treeorder.
+ - apply lbal_ok; treeorder.
 Qed.
 
 Lemma lbalS_mapsto l x v r y vy :
@@ -739,26 +753,6 @@ Proof.
    apply MapsRight. now rewrite makeRed_mapsto.
 Qed.
 
-Lemma lbalS_find l x v r `{!Ok l, !Ok r} : x >> l -> x << r ->
-  lbalS l x v r === Rd l x v r.
-Proof.
- intros. intro. apply find_mapsto_equiv; auto using lbalS_mapsto; autok.
-Qed.
-
-Lemma rbalS_in l x r v y :
-  In y (rbalS l x v r) <-> K.eq y x \/ In y l \/ In y r.
-Proof.
- case rbalS_match.
- - intuition_in.
- - intros t _. destmatch; autorew; intuition_in.
-Qed.
-
-Global Instance rbalS_ok l x v r :
- forall `(!Ok l, !Ok r, x >> l, x << r), Ok (rbalS l x v r).
-Proof.
- case rbalS_match; intros; destmatch; ok; try (apply lbal_ok); treeorder.
-Qed.
-
 Lemma rbalS_mapsto l x v r y vy :
   MapsTo y vy (rbalS l x v r) <-> MapsTo y vy (Rd l x v r).
 Proof.
@@ -771,13 +765,33 @@ Proof.
    apply MapsLeft. now rewrite makeRed_mapsto.
 Qed.
 
+Lemma lbalS_in l x v r y :
+  In y (lbalS l x v r) <-> K.eq y x \/ In y l \/ In y r.
+Proof.
+ rewrite In_alt'; setoid_rewrite lbalS_mapsto; rewrite <-In_alt'.
+ intuition_in.
+Qed.
+
+Lemma rbalS_in l x r v y :
+  In y (rbalS l x v r) <-> K.eq y x \/ In y l \/ In y r.
+Proof.
+ rewrite In_alt'; setoid_rewrite rbalS_mapsto; rewrite <-In_alt'.
+ intuition_in.
+Qed.
+
+Lemma lbalS_find l x v r `{!Ok l, !Ok r} : x >> l -> x << r ->
+  lbalS l x v r === Rd l x v r.
+Proof.
+ intros Hl Hr y. apply find_mapsto_equiv; auto using lbalS_mapsto; autok.
+Qed.
+
 Lemma rbalS_find l x v r `{!Ok l, !Ok r} : x >> l -> x << r ->
   rbalS l x v r === Rd l x v r.
 Proof.
- intros. intro. apply find_mapsto_equiv; auto using rbalS_mapsto; autok.
+ intros Hl Hr y. apply find_mapsto_equiv; auto using rbalS_mapsto; autok.
 Qed.
 
-Hint Rewrite lbalS_in rbalS_in : rb.
+Local Hint Rewrite lbalS_in rbalS_in : rb.
 
 (** ** Append for deletion *)
 
@@ -797,40 +811,41 @@ Ltac append_tac l r :=
       set (l:=Bk ll lx lv lr) in *; clearbody l; clear IHlr ll lx lv lr
      |specialize (IHlr rl); clear IHrl]]].
 
-Fact append_rr_match ll lx lv lr rl rx rv rr :
- rspec
-  (fun a x v b => Rd (Rd ll lx lv a) x v (Rd b rx rv rr))
-  (fun t => Rd ll lx lv (Rd t rx rv rr))
-  (append lr rl)
-  (append (Rd ll lx lv lr) (Rd rl rx rv rr)).
+Lemma mapsto_2levels c cl ll lx lv lr x v cr rl rx rv rr y e :
+ MapsTo y e (Node c (Node cl ll lx lv lr) x v (Node cr rl rx rv rr)) <->
+  MapsTo y e (Node cl ll lx lv Leaf) \/
+  MapsTo y e (Node c lr x v rl) \/
+  MapsTo y e (Node cr Leaf rx rv rr).
 Proof.
- exact (rmatch _ _ _).
+ rewrite !MapsTo_node_iff, !MapsTo_leaf. rtauto.
 Qed.
 
-Fact append_bb_match ll lx lv lr rl rx rv rr :
- rspec
-  (fun a x v b => Rd (Bk ll lx lv a) x v (Bk b rx rv rr))
-  (fun t => lbalS ll lx lv (Bk t rx rv rr))
-  (append lr rl)
-  (append (Bk ll lx lv lr) (Bk rl rx rv rr)).
+Lemma append_mapsto l r y v :
+  MapsTo y v (append l r) <-> MapsTo y v l \/ MapsTo y v r.
 Proof.
- exact (rmatch _ _ _).
+ revert r.
+ append_tac l r; try (intuition_in; fail).
+ - (* Rd / Rd *)
+   simpl. destmatch.
+   + intuition_in.
+   + rewrite mapsto_2levels. factornode m.
+     rewrite !MapsTo_node_iff, !MapsTo_leaf. rtauto.
+   + factornode m. rewrite !MapsTo_node_iff. rtauto.
+ - (* Bk / Bk *)
+   simpl. destmatch; rewrite ?lbalS_mapsto.
+   + intuition_in.
+   + rewrite mapsto_2levels. factornode m.
+     rewrite !MapsTo_node_iff, !MapsTo_leaf. rtauto.
+   + factornode m. rewrite !MapsTo_node_iff. rtauto.
 Qed.
 
 Lemma append_in l r x :
  In x (@append elt l r) <-> In x l \/ In x r.
 Proof.
- revert r.
- append_tac l r; autorew; try (intuition_in; fail).
- - (* Red / Red *)
-   revert IHlr; case append_rr_match;
-    [intros a y v b | intros t Ht]; autorew; tauto.
- - (* Black / Black *)
-   revert IHlr; case append_bb_match;
-    [intros a y v b | intros t Ht]; autorew; tauto.
+ rewrite !In_alt'; setoid_rewrite append_mapsto. firstorder.
 Qed.
 
-Hint Rewrite append_in : rb.
+Local Hint Rewrite append_in : rb.
 
 Global Instance append_ok : forall l r `{!Ok l, !Ok r},
  l <<< r -> Ok (@append elt l r).
@@ -842,26 +857,12 @@ Proof.
    assert (U : Ok (append lr rl)) by auto.
    assert (V : lx << append lr rl) by treeorder.
    assert (W : rx >> append lr rl) by treeorder.
-   revert U V W; case append_rr_match; intros; ok.
+   simpl. destmatch; ok.
  - (* Bk / Bk *)
    assert (U : Ok (append lr rl)) by auto.
    assert (V : lx << append lr rl) by treeorder.
    assert (W : rx >> append lr rl) by treeorder.
-   revert U V W; case append_bb_match; intros; ok.
-Qed.
-
-Lemma append_mapsto l r y v :
-  MapsTo y v (append l r) <-> MapsTo y v l \/ MapsTo y v r.
-Proof.
- revert r.
- append_tac l r; try (intuition_in; fail).
- - (* Rd / Rd *)
-   simpl; intros.
-   destmatch; revert IHlr; rewrite !MapsTo_node_iff; intuition.
- - (* Bk / Bk *)
-   simpl; intros.
-   destmatch; revert IHlr;
-    rewrite ?lbalS_mapsto, !MapsTo_node_iff; intuition.
+   simpl. destmatch; try apply lbalS_ok; ok.
 Qed.
 
 (** ** Deletion *)
@@ -872,7 +873,7 @@ Proof.
 induct m; destmatch; treeorder.
 Qed.
 
-Hint Rewrite del_in : rb.
+Local Hint Rewrite del_in : rb.
 
 Global Instance del_ok m x `{!Ok m} : Ok (del x m).
 Proof.
@@ -916,7 +917,7 @@ Proof.
 unfold remove. now autorew.
 Qed.
 
-Hint Rewrite remove_in : rb.
+Local Hint Rewrite remove_in : rb.
 
 Global Instance remove_ok m x `{!Ok m} : Ok (remove x m).
 Proof.
@@ -1146,9 +1147,9 @@ Lemma bindings_above x (e:elt) (m:t elt) :
 Proof.
  rewrite above_alt. unfold ApartL. simpl. split.
  - intros H p q Hp [<-|[ ]]. simpl. apply H.
-   rewrite <- In_alt. exists (p#2). rewrite <- bindings_mapsto.
+   rewrite In_alt'. exists (p#2). rewrite <- bindings_mapsto.
    apply In_InA; ok. now destruct p.
- - intros H y. rewrite <-In_alt. intros (v,M).
+ - intros H y. rewrite In_alt'. intros (v,M).
    rewrite <- bindings_mapsto, InA_alt in M.
    destruct M as ((y',v') & (E,E') & IN). compute in E, E'.
    subst v'. rewrite E. apply (H (y',v) (x,e)); auto.
@@ -1159,9 +1160,9 @@ Lemma bindings_below x (e:elt) (m:t elt) :
 Proof.
  rewrite below_alt. unfold ApartL. simpl. split.
  - intros H p q [<-|[ ]] Hq. simpl. apply H.
-   rewrite <- In_alt. exists (q#2). rewrite <- bindings_mapsto.
+   rewrite In_alt'. exists (q#2). rewrite <- bindings_mapsto.
    apply In_InA; ok. now destruct q.
- - intros H y. rewrite <-In_alt. intros (v,M).
+ - intros H y. rewrite In_alt'. intros (v,M).
    rewrite <- bindings_mapsto, InA_alt in M.
    destruct M as ((y',v') & (E,E') & IN). compute in E, E'.
    subst v'. rewrite E. apply (H (x,e) (y',v)); auto.
@@ -1425,7 +1426,7 @@ Lemma merge_spec2 f m m' x :
   In x (merge f m m') -> In x m \/ In x m'.
 Proof.
  unfold merge.
- rewrite <- !In_alt. unfold In0. setoid_rewrite treeify_mapsto.
+ rewrite !In_alt'. setoid_rewrite treeify_mapsto.
  intros H. apply mergeL_in in H. destruct H as [(v,H)|[(v,H)|(v,H)]].
  - left. exists v. rewrite rev_bindings_rev, InA_rev in H.
    now apply bindings_mapsto.
@@ -1826,7 +1827,7 @@ Module Make_ord (K:OrderedType)(D:OrderedType) <: Sord K D.
       auto; try F.order.
     intros. right. split; auto. now symmetry.
   Qed.
-  Hint Resolve cons_Cmp.
+  Local Hint Resolve cons_Cmp.
 
   Lemma compare_end_Cmp e2 :
    Cmp (compare_end e2) nil (R.flatten_e e2).

@@ -417,11 +417,14 @@ Proof.
  induction 1; try destruct IHIn as (e,He); exists e; auto.
 Qed.
 
+Lemma In_alt' {elt} k (m:t elt) : k ∈ m <-> exists e, MapsTo k e m.
+Proof.
+ split; [ apply In_MapsTo | intros (e,M); eapply MapsTo_In; eauto].
+Qed.
+
 Lemma In_alt {elt} k (m:t elt) : In0 k m <-> k ∈ m.
 Proof.
- split.
- intros (e,H); eauto.
- unfold In0; apply In_MapsTo; auto.
+ symmetry. apply In_alt'.
 Qed.
 
 Lemma MapsTo_1 {elt} m x y (e:elt) :
@@ -445,15 +448,25 @@ Proof.
  induction m; simpl; intuition_in; eauto.
 Qed.
 
+Lemma In_leaf {elt} y : y ∈ (@Leaf elt) <-> False.
+Proof.
+ intuition_in.
+Qed.
+
 Lemma In_node_iff {elt} l x (e:elt) r h y :
   y ∈ (Node h l x e r) <-> y ∈ l \/ y == x \/ y ∈ r.
 Proof.
  intuition_in.
 Qed.
 
+Lemma MapsTo_leaf {elt} y e : MapsTo y e (@Leaf elt) <-> False.
+Proof.
+ intuition_in.
+Qed.
+
 Lemma MapsTo_node_iff {elt} l x (e:elt) r h y v :
   MapsTo y v (Node h l x e r) <->
-   MapsTo y v l \/ (y == x /\ e = v) \/ MapsTo y v r.
+   MapsTo y v l \/ (y == x /\ v = e) \/ MapsTo y v r.
 Proof.
  intuition_in. subst; auto.
 Qed.
@@ -776,7 +789,7 @@ Qed.
 Lemma bindings_in m x : L.PX.In x (bindings m) <-> x ∈ m.
 Proof.
  unfold L.PX.In.
- rewrite <- In_alt; unfold In0.
+ rewrite In_alt'.
  split; intros (y,H); exists y.
  - now rewrite <- bindings_mapsto.
  - unfold L.PX.MapsTo; now rewrite bindings_mapsto.
@@ -868,7 +881,7 @@ Qed.
 
 Lemma in_bindings k v (m:t elt) : List.In (k,v) (bindings m) -> In k m.
 Proof.
- intros IN. apply In_alt; exists v.
+ intros IN. apply In_alt'; exists v.
  apply bindings_mapsto, In_InA; eauto with *.
 Qed.
 
