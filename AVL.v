@@ -48,7 +48,7 @@ Notation "s #2" := (snd s) (at level 9, format "s '#2'") : pair_scope.
    Functor of pure functions + separate proofs of invariant
    preservation *)
 
-Module Raw (Import I:Int)(K: OrderedType).
+Module MakeRaw (Import I:Int)(K: OrderedType) <: Raw.S K.
 
 (** ** Generic trees instantiated with integer height *)
 
@@ -313,6 +313,7 @@ End Merge.
 (** * Correctness proofs *)
 
 Include MMaps.GenTree.Props K I.
+Import T.
 
 Local Infix "∈" := In (at level 70).
 Local Infix "==" := K.eq (at level 70).
@@ -340,10 +341,6 @@ Local Hint Resolve F.eq_refl F.eq_trans F.lt_trans.
 Local Hint Resolve
  AboveLt Above_not_In Above_trans
  BelowGt Below_not_In Below_trans.
-
-Ltac chok := change Bst with Ok in *.
-Ltac autok := chok; auto with typeclass_instances.
-Ltac invok := inv Ok; chok.
 
 (* Function/Functional Scheme can't deal with internal fix.
    Let's do its job by hand: *)
@@ -463,8 +460,8 @@ Proof.
  functional induction (add x e m); simpl; intros; cleanf; trivial.
  - case K.compare_spec; trivial; order.
  - case K.compare_spec; trivial; order.
- - invok. rewrite bal_find by autok. simpl. now rewrite IHt.
- - invok. rewrite bal_find by autok. simpl. now rewrite IHt.
+ - invok. rewrite bal_find by autok. simpl. now rewrite IHt0.
+ - invok. rewrite bal_find by autok. simpl. now rewrite IHt0.
 Qed.
 
 Lemma add_find m x y e `{!Ok m} :
@@ -699,12 +696,12 @@ Proof.
    rewrite add_find by auto.
    case K.compare_spec; intros; trivial.
    apply not_find_iff; auto. intro. order.
- - clear Hrl LT. factornode r. invok; invok; inv Above; inv Below.
+ - clear Hrl LT. factornode r. invok; invok; inv Above; inv Below;
    rewrite bal_find; autok; simpl.
    + rewrite Hlr; auto; simpl.
      repeat (case K.compare_spec; trivial; try order).
    + apply below_alt. intro. rewrite join_in. intuition_in; order.
- - clear Hlr LT LT'. factornode l. invok; invok; inv Above; inv Below.
+ - clear Hlr LT LT'. factornode l. invok; invok; inv Above; inv Below;
    rewrite bal_find; autok; simpl.
    + rewrite Hrl; auto; simpl.
      repeat (case K.compare_spec; trivial; try order).
@@ -785,9 +782,9 @@ Proof.
  functional induction (split x m); intros; cleansplit.
  - now case K.compare.
  - repeat case K.compare_spec; trivial; order.
- - simpl in *. rewrite join_find, IHt; autok.
+ - simpl in *. rewrite join_find, IHt0; autok.
    simpl. repeat case K.compare_spec; trivial; order.
- - rewrite join_find, IHt; autok.
+ - rewrite join_find, IHt0; autok.
    simpl; repeat case K.compare_spec; trivial; order.
 Qed.
 
@@ -853,11 +850,11 @@ functional induction (mapo f m); simpl; auto; intro H.
 - inv In.
 - rewrite join_in in H; destruct H as [H|[H|H]].
   + exists x0, d. do 2 (split; auto). congruence.
-  + destruct (IHt H) as (y & e & ? & ? & ?). exists y, e. auto.
   + destruct (IHt0 H) as (y & e & ? & ? & ?). exists y, e. auto.
+  + destruct (IHt1 H) as (y & e & ? & ? & ?). exists y, e. auto.
 - rewrite concat_in in H; destruct H as [H|H].
-  + destruct (IHt H) as (y & e & ? & ? & ?). exists y, e. auto.
   + destruct (IHt0 H) as (y & e & ? & ? & ?). exists y, e. auto.
+  + destruct (IHt1 H) as (y & e & ? & ? & ?). exists y, e. auto.
 Qed.
 
 Lemma mapo_lt m x : x >> m -> x >> mapo f m.
@@ -896,14 +893,14 @@ functional induction (mapo f m); simpl; auto; invok.
 - rewrite join_find; auto.
   + simpl. case K.compare_spec; simpl; intros.
     * now exists x0.
-    * destruct IHt as (y' & ? & ?); auto.
-      exists y'; split; trivial.
     * destruct IHt0 as (y' & ? & ?); auto.
+      exists y'; split; trivial.
+    * destruct IHt1 as (y' & ? & ?); auto.
       exists y'; split; trivial.
   + constructor; chok; auto using mapo_lt, mapo_gt with *.
 - rewrite concat_find; autok.
-  + destruct IHt0 as (y' & ? & ->); auto.
-    destruct IHt as (y'' & ? & ->); auto.
+  + destruct IHt1 as (y' & ? & ->); auto.
+    destruct IHt0 as (y'' & ? & ->); auto.
     case K.compare_spec; simpl; intros.
     * nonify (find x r). nonify (find x l). simpl. now exists x0.
     * nonify (find x r). now exists y''.
@@ -946,10 +943,10 @@ Proof.
     generalize (in_find H).
     destruct (@mapl_f0 y m2) as (y' & ? & ->); trivial.
     intros A B. rewrite B in A. now elim A.
-  - rewrite join_in in *. revert IHt1 IHt0 H. cleansplit.
+  - rewrite join_in in *. revert IHt2 IHt0 H. cleansplit.
     generalize (split_ok_l m2 x1) (split_ok_r m2 x1).
     rewrite split_in_r, split_in_l; intuition_in.
-  - rewrite concat_in in *. revert IHt1 IHt0 H; cleansplit.
+  - rewrite concat_in in *. revert IHt2 IHt0 H; cleansplit.
     generalize (split_ok_l m2 x1) (split_ok_r m2 x1).
     rewrite split_in_r, split_in_l; intuition_in.
 Qed.
@@ -974,7 +971,7 @@ Global Instance gmerge_ok m m' `{!Ok m, !Ok m'} : Ok (gmerge m m').
 Proof.
   functional induction (gmerge m m'); auto; factornode m2; invok;
   (apply join_ok, create_ok || apply concat_ok);
-  revert IHt1 IHt0; cleansplit; intuition.
+  revert IHt2 IHt0; cleansplit; intuition.
   apply between with x1; auto.
 Qed.
 
@@ -1012,10 +1009,10 @@ Proof.
     rewrite join_find by (cleansplit; constructor; autok).
     simpl. case K.compare_spec; intros.
     + exists x1. split; auto. now rewrite <- e3, f0_f.
-    + apply IHt1; auto. clear IHt1 IHt0.
+    + apply IHt2; auto. clear IHt2 IHt0.
       cleansplit; rewrite split_in_l; trivial.
       intuition_in; order.
-    + apply IHt0; auto. clear IHt1 IHt0.
+    + apply IHt0; auto. clear IHt2 IHt0.
       cleansplit; rewrite split_in_r; trivial.
       intuition_in; order.
   - generalize (split_ok_l m2 x1) (split_ok_r m2 x1).
@@ -1025,17 +1022,17 @@ Proof.
     rewrite e1 in *; simpl in *. intros.
     rewrite concat_find by (try apply between with x1; autok).
     case K.compare_spec; intros.
-    + clear IHt0 IHt1.
+    + clear IHt0 IHt2.
       exists x1. split; auto. rewrite <- f0_f, e2.
       nonify (find x (gmerge r1 r2')).
       nonify (find x (gmerge l1 l2')). trivial.
     + nonify (find x (gmerge r1 r2')).
-      simpl. apply IHt1; auto. clear IHt1 IHt0.
+      simpl. apply IHt2; auto. clear IHt2 IHt0.
       intuition_in; try order.
       right. cleansplit. now apply split_in_l.
     + nonify (find x (gmerge l1 l2')). simpl.
       rewrite oelse_none_r.
-      apply IHt0; auto. clear IHt1 IHt0.
+      apply IHt0; auto. clear IHt2 IHt0.
       intuition_in; try order.
       right. cleansplit. now apply split_in_r.
 Qed.
@@ -1054,10 +1051,11 @@ apply gmerge_ok with f;
 Qed.
 
 Lemma merge_spec1 m m' x `{!Ok m, !Ok m'} :
- In x m \/ In x m' ->
+ In0 x m \/ In0 x m' ->
  exists y, K.eq y x /\
            find x (merge f m m') = f y (find x m) (find x m').
 Proof.
+  rewrite !In_alt.
   unfold merge; intros.
   edestruct (gmerge_find (f0:=f)) as (y,(Hy,E));
     eauto using mapo_ok.
@@ -1067,147 +1065,33 @@ Proof.
 Qed.
 
 Lemma merge_spec2 m m' x `{!Ok m, !Ok m'} :
-  In x (merge f m m') -> In x m \/ In x m'.
+  In0 x (merge f m m') -> In0 x m \/ In0 x m'.
 Proof.
+rewrite !In_alt.
 unfold merge; intros.
 eapply gmerge_in with (f0:=f); try eassumption;
  auto using mapo_ok, mapo_find.
 Qed.
 
 End Merge.
-End Raw.
+
+Definition MapsTo := T.MapsTo.
+Definition In := T.In0.
+Definition Equal := @T.Equal.
+Definition Eqdom := T.Eqdom0.
+Definition Equiv := T.Equiv0.
+Definition Equivb := T.Equivb0.
+
+End MakeRaw.
 
 (** * Encapsulation
 
    Now, in order to really provide a functor implementing [S], we need
    to encapsulate everything into a type of binary search trees. *)
 
-Module IntMake (I:Int)(K: OrderedType) <: S K.
-
- Module Import Raw := Raw I K.
-
- Record tree (elt:Type) :=
-  Mk {this :> Raw.tree elt; is_ok : Ok this}.
-
- Existing Instance is_ok.
- Local Arguments Mk {elt} this {is_ok}.
-
- Definition t := tree.
- Definition key := K.t.
-
- Section Elt.
- Variable elt elt' elt'': Type.
-
- Implicit Types m : t elt.
- Implicit Types x y : key.
- Implicit Types e : elt.
-
- Definition empty : t elt := Mk (empty elt).
- Definition is_empty m : bool := is_empty m.
- Definition add x e m : t elt := Mk (add x e m).
- Definition remove x m : t elt := Mk (remove x m).
- Definition mem x m : bool := mem x m.
- Definition find x m : option elt := Raw.find x m.
- Definition map f m : t elt' := Mk (map f m).
- Definition mapi (f:key->elt->elt') m : t elt' := Mk (mapi f m).
- Definition merge f m (m':t elt') : t elt'' := Mk (merge f m m').
- Definition bindings m : list (key*elt) := bindings m.
- Definition cardinal m := cardinal m.
- Definition fold {A} (f:key->elt->A->A) m i := fold f m i.
- Definition equal cmp m m' : bool := equal cmp m m'.
-
- Definition MapsTo x e m : Prop := MapsTo x e m.
- Definition In x m : Prop := In0 x m.
-
- Definition eq_key : (key*elt) -> (key*elt) -> Prop := @O.eqk elt.
- Definition eq_key_elt : (key*elt) -> (key*elt) -> Prop := @O.eqke elt.
- Definition lt_key : (key*elt) -> (key*elt) -> Prop := @O.ltk elt.
-
- Instance MapsTo_compat :
-   Proper (K.eq==>Logic.eq==>Logic.eq==>iff) MapsTo.
- Proof.
-   intros k k' Hk e e' <- m m' <-. unfold MapsTo; simpl. now rewrite Hk.
- Qed.
-
- Lemma find_spec m x e : find x m = Some e <-> MapsTo x e m.
- Proof. apply find_spec; autok. Qed.
-
- Lemma mem_spec m x : mem x m = true <-> In x m.
- Proof. unfold In, mem; rewrite In_alt. apply mem_spec; autok. Qed.
-
- Lemma empty_spec x : find x empty = None.
- Proof. apply empty_spec. Qed.
-
- Lemma is_empty_spec m : is_empty m = true <-> forall x, find x m = None.
- Proof. apply is_empty_spec. Qed.
-
- Lemma add_spec1 m x e : find x (add x e m) = Some e.
- Proof. apply add_spec1; autok. Qed.
- Lemma add_spec2 m x y e : ~ K.eq x y -> find y (add x e m) = find y m.
- Proof. apply add_spec2; autok. Qed.
-
- Lemma remove_spec1 m x : find x (remove x m) = None.
- Proof. apply remove_spec1; autok. Qed.
- Lemma remove_spec2 m x y : ~K.eq x y -> find y (remove x m) = find y m.
- Proof. apply remove_spec2; autok. Qed.
-
- Lemma bindings_spec1 m x e :
-   InA eq_key_elt (x,e) (bindings m) <-> MapsTo x e m.
- Proof. apply bindings_mapsto. Qed.
-
- Lemma bindings_spec2 m : sort lt_key (bindings m).
- Proof. apply bindings_sort; autok. Qed.
-
- Lemma bindings_spec2w m : NoDupA eq_key (bindings m).
- Proof. apply bindings_nodup; autok. Qed.
-
- Lemma fold_spec m {A} (i : A) (f : key -> elt -> A -> A) :
-   fold f m i = fold_left (fun a p => f (fst p) (snd p) a) (bindings m) i.
- Proof. apply fold_spec; autok. Qed.
-
- Lemma cardinal_spec m : cardinal m = length (bindings m).
- Proof. apply bindings_cardinal. Qed.
-
- Definition Equal m m' := forall y, find y m = find y m'.
- Definition Eqdom (m m':t elt) := forall y, In y m <-> In y m'.
- Definition Equiv (R:elt->elt->Prop) m m' :=
-  Eqdom m m' /\ (forall k e e', MapsTo k e m -> MapsTo k e' m' -> R e e').
- Definition Equivb cmp := Equiv (Cmp cmp).
-
- Lemma Equivb_Equivb cmp m m' :
-  Equivb cmp m m' <-> Raw.Equivb cmp m m'.
- Proof.
- unfold Equivb, Equiv, Raw.Equivb, In. intuition.
- intros k. rewrite <- !In_alt. apply H0.
- intros k. unfold In; rewrite !In_alt. apply H0.
- Qed.
-
- Lemma equal_spec m m' cmp :
-   equal cmp m m' = true <-> Equivb cmp m m'.
- Proof. rewrite Equivb_Equivb. apply equal_Equivb; apply is_ok. Qed.
-
- End Elt.
-
- Lemma map_spec {elt elt'} (f:elt->elt') m x :
-   find x (map f m) = option_map f (find x m).
- Proof. apply map_spec. Qed.
-
- Lemma mapi_spec {elt elt'} (f:key->elt->elt') m x :
-   exists y:key, K.eq y x /\ find x (mapi f m) = option_map (f y) (find x m).
- Proof. apply mapi_spec. Qed.
-
- Lemma merge_spec1 {elt elt' elt''}
-       (f:key->option elt->option elt'->option elt'') m m' x :
-   In x m \/ In x m' ->
-   exists y:key, K.eq y x /\
-                 find x (merge f m m') = f y (find x m) (find x m').
- Proof. unfold In. rewrite !In_alt. apply merge_spec1; autok. Qed.
-
- Lemma merge_spec2 {elt elt' elt''}
-       (f:key -> option elt->option elt'->option elt'') m m' x :
-   In x (merge f m m') -> In x m \/ In x m'.
- Proof. unfold In. rewrite !In_alt. apply merge_spec2; autok. Qed.
-
+Module IntMake (I:Int)(K: OrderedType) <: Interface.S K.
+ Module Raw := MakeRaw I K.
+ Include Raw.Raw2Maps K Raw.
 End IntMake.
 
 
@@ -1306,7 +1190,7 @@ Module IntMake_ord (I:Int)(K:OrderedType)(D:OrderedType) <: Sord K D.
   Qed.
 
   Lemma compare_Cmp m1 m2 :
-   Cmp (compare m1 m2) (bindings m1) (bindings m2).
+   Cmp (compare m1 m2) (bindings m1.(this)) (bindings m2.(this)).
   Proof.
     destruct m1 as (s1,H1), m2 as (s2,H2).
     unfold compare; simpl.
@@ -1316,8 +1200,10 @@ Module IntMake_ord (I:Int)(K:OrderedType)(D:OrderedType) <: Sord K D.
     auto using compare_cont_Cmp, compare_end_Cmp.
   Qed.
 
-  Definition eq (m1 m2 : t) := LO.eq_list (bindings m1) (bindings m2).
-  Definition lt (m1 m2 : t) := LO.lt_list (bindings m1) (bindings m2).
+  Definition eq (m1 m2 : t) :=
+    LO.eq_list (bindings m1.(this)) (bindings m2.(this)).
+  Definition lt (m1 m2 : t) :=
+    LO.lt_list (bindings m1.(this)) (bindings m2.(this)).
 
   Lemma compare_spec m1 m2 : CompSpec eq lt m1 m2 (compare m1 m2).
   Proof.
@@ -1329,7 +1215,7 @@ Module IntMake_ord (I:Int)(K:OrderedType)(D:OrderedType) <: Sord K D.
   (* Proofs about [eq] and [lt] *)
 
   Definition sbindings (m1 : t) :=
-   LO.MapS.Mk (@R.bindings_sort _ m1 _).
+   LO.MapS.Mkt (@R.bindings_spec2 _ m1 _).
 
   Definition seq (m1 m2 : t) := LO.eq (sbindings m1) (sbindings m2).
   Definition slt (m1 m2 : t) := LO.lt (sbindings m1) (sbindings m2).
@@ -1347,8 +1233,8 @@ Module IntMake_ord (I:Int)(K:OrderedType)(D:OrderedType) <: Sord K D.
   Lemma eq_spec m m' : eq m m' <-> MapS.Equivb cmp m m'.
   Proof.
   rewrite eq_seq; unfold seq.
-  rewrite Equivb_Equivb.
-  rewrite R.Equivb_bindings. apply LO.eq_spec.
+  rewrite Equivb_Equivb, R.Equivb_alt, R.Equivb_bindings.
+  apply LO.eq_spec.
   Qed.
 
   Instance eq_equiv : Equivalence eq.

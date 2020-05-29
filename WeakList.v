@@ -8,25 +8,41 @@
 
 (** * Finite map library *)
 
-(** This file proposes an implementation of the non-dependant interface
+(** This file proposes an implementation of the interface
  [MMaps.Interface.WS] using lists of pairs, unordered but without
- redundancy. *)
+ redundancy. Most operations are linear, with the notable exception
+ of [merge] which is quadratic. *)
 
 From Coq Require Import EqualitiesFacts.
-From MMaps Require Import Interface.
+From MMaps Require Interface Raw.
+Import Interface.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
 
-Lemma Some_iff {A} (a a' : A) : Some a = Some a' <-> a = a'.
-Proof. split; congruence. Qed.
-
-Module Raw (K:DecidableType).
+Module MakeRaw (K:DecidableType) <: Raw.WS K.
 
 Module Import P := KeyDecidableType K.
 
 Definition key := K.t.
 Definition t (elt:Type) := list (K.t * elt).
+
+Definition eq_key {elt} := @P.eqk elt.
+Definition eq_key_elt {elt} := @P.eqke elt.
+Definition IsOk {elt} := NoDupA (@eqk elt).
+Class Ok {elt}(m:t elt) : Prop := ok : NoDupA eqk m.
+
+Local Hint Unfold Ok IsOk.
+Ltac chok :=
+ match goal with
+ | H : context [NoDupA (@eqk ?elt)] |- _ =>
+   change (NoDupA (@eqk elt)) with (@Ok elt) in H; chok
+ | |- context [NoDupA (@eqk ?elt)] =>
+   change (NoDupA (@eqk elt)) with (@Ok elt); chok
+ | _ => idtac
+ end.
+
+Ltac autok := chok; auto with typeclass_instances.
 
 Ltac dec := match goal with
  | |- context [ K.eq_dec ?x ?x ] =>
@@ -42,7 +58,6 @@ end.
 Section Elt.
 
 Variable elt : Type.
-Notation NoDupA := (@NoDupA _ eqk).
 
 (** * [find] *)
 
@@ -52,17 +67,17 @@ Fixpoint find (k:key) (s: t elt) : option elt :=
    | (k',x)::s' => if K.eq_dec k k' then Some x else find k s'
   end.
 
-Lemma find_spec : forall m (Hm:NoDupA m) x e,
+Lemma find_spec m x e {Hm:Ok m} :
   find x m = Some e <-> MapsTo x e m.
 Proof.
  unfold P.MapsTo.
- induction m as [ | (k,e) m IH]; simpl.
+ induction m as [ | (k,v) m IH]; simpl.
  - split; inversion 1.
- - intros Hm k' e'. rewrite InA_cons.
-   change (eqke (k',e') (k,e)) with (K.eq k' k /\ e' = e).
+ - rewrite InA_cons.
+   change (eqke (x,e) (k,v)) with (K.eq x k /\ e = v).
    inversion_clear Hm. dec.
-   + rewrite Some_iff; intuition.
-     elim H. apply InA_eqk with (k',e'); auto.
+   + setoid_replace (Some v = Some e) with (v = e) by (split; congruence).
+     intuition. elim H. apply InA_eqk with (x,e); auto.
    + rewrite IH; intuition.
 Qed.
 
@@ -74,14 +89,34 @@ Fixpoint mem (k : key) (s : t elt) : bool :=
    | (k',_) :: l => if K.eq_dec k k' then true else mem k l
   end.
 
-Lemma mem_spec : forall m (Hm:NoDupA m) x, mem x m = true <-> In x m.
+Lemma mem_spec m x {Hm:Ok m} : mem x m = true <-> In x m.
 Proof.
- induction m as [ | (k,e) m IH]; simpl; intros Hm x.
+ induction m as [ | (k,e) m IH]; simpl.
  - split. discriminate. inversion_clear 1. inversion H0.
  - inversion_clear Hm. rewrite P.In_cons; simpl.
    rewrite <- IH by trivial.
    dec; intuition.
 Qed.
+
+Fixpoint isok (m: t elt) : bool :=
+  match m with
+   | nil => true
+   | (k,_)::m' => negb (mem k m') && isok m'
+  end.
+
+Lemma isok_spec (m: t elt) : isok m = true <-> Ok m.
+Proof.
+ induction m as [|(x,e) m IH]; simpl.
+ - intuition.
+ - rewrite andb_true_iff, IH. split.
+   + intros (H,O). constructor; auto.
+     rewrite <- In_alt', <- mem_spec; auto. now destruct mem.
+   + inversion 1; subst; split; auto.
+     rewrite <- In_alt', <- mem_spec in H2; auto. now destruct mem.
+Qed.
+
+Lemma isok_Ok (m:t elt) : isok m = true -> Ok m.
+Proof. apply isok_spec. Qed.
 
 (** * [empty] *)
 
@@ -92,9 +127,9 @@ Proof.
  reflexivity.
 Qed.
 
-Lemma empty_NoDup : NoDupA empty.
+Global Instance empty_ok : Ok empty.
 Proof.
- unfold empty; auto.
+ unfold empty; autok.
 Qed.
 
 (** * [is_empty] *)
@@ -103,14 +138,14 @@ Definition is_empty (l : t elt) : bool := if l then true else false.
 
 Lemma is_empty_spec m : is_empty m = true <-> forall x, find x m = None.
 Proof.
- destruct m; simpl; intuition; try discriminate.
- specialize (H a).
+ destruct m as [|(x,e) m]; simpl; intuition; try discriminate.
+ specialize (H x).
  revert H. now dec.
 Qed.
 
 (* Not part of the exported specifications, used later for [merge]. *)
 
-Lemma find_eq : forall m (Hm:NoDupA m) x x',
+Lemma find_eq : forall m (Hm:Ok m) x x',
    K.eq x x' -> find x m = find x' m.
 Proof.
  induction m; simpl; auto; destruct a; intros.
@@ -129,14 +164,14 @@ Fixpoint add (k : key) (x : elt) (s : t elt) : t elt :=
    | (k',y) :: l => if K.eq_dec k k' then (k,x)::l else (k',y)::add k x l
   end.
 
-Lemma add_spec1 m x e : find x (add x e m) = Some e.
+Lemma add_spec1' m x e : find x (add x e m) = Some e.
 Proof.
  induction m as [ | (k,e') m IH]; simpl.
  - now dec.
  - dec; simpl; now dec.
 Qed.
 
-Lemma add_spec2 m x y e : ~K.eq x y -> find y (add x e m) = find y m.
+Lemma add_spec2' m x y e : ~K.eq x y -> find y (add x e m) = find y m.
 Proof.
  intros N.
  assert (N' : ~K.eq y x) by now contradict N.
@@ -144,6 +179,11 @@ Proof.
  - dec; trivial.
  - repeat (dec; simpl); trivial. elim N. now transitivity k.
 Qed.
+
+Lemma add_spec1 m x e `{!Ok m} : find x (add x e m) = Some e.
+Proof. apply add_spec1'. Qed.
+Lemma add_spec2 m x y e `{!Ok m} : ~K.eq x y -> find y (add x e m) = find y m.
+Proof. apply add_spec2'. Qed.
 
 Lemma add_InA : forall m x y e e',
   ~ K.eq x y -> InA eqk (y,e) (add x e' m) -> InA eqk (y,e) m.
@@ -155,11 +195,11 @@ Proof.
    + intuition. right; eapply IH; eauto.
 Qed.
 
-Lemma add_NoDup : forall m (Hm:NoDupA m) x e, NoDupA (add x e m).
+Global Instance add_ok m x e (Hm:Ok m) : Ok (add x e m).
 Proof.
- induction m as [ | (k,e') m IH]; simpl; intros Hm x e.
+ induction m as [ | (k,e') m IH]; simpl.
  - constructor; auto. now inversion 1.
- - inversion_clear Hm. dec; constructor; auto.
+ - inversion_clear Hm. dec; constructor; autok.
    + contradict H. apply InA_eqk with (x,e); auto.
    + contradict H; apply add_InA with x e; auto.
 Qed.
@@ -172,7 +212,7 @@ Fixpoint remove (k : key) (s : t elt) : t elt :=
    | (k',x) :: l => if K.eq_dec k k' then l else (k',x) :: remove k l
   end.
 
-Lemma remove_spec1 m (Hm: NoDupA m) x : find x (remove x m) = None.
+Lemma remove_spec1 m x {Hm: Ok m} : find x (remove x m) = None.
 Proof.
  induction m as [ | (k,e') m IH]; simpl; trivial.
  inversion_clear Hm.
@@ -182,7 +222,7 @@ Proof.
  elim H. apply InA_eqk with (x,e); auto.
 Qed.
 
-Lemma remove_spec2 m (Hm: NoDupA m) x y : ~K.eq x y ->
+Lemma remove_spec2 m x y {Hm: Ok m} : ~K.eq x y ->
   find y (remove x m) = find y m.
 Proof.
  induction m as [ | (k,e') m IH]; simpl; trivial; intros E.
@@ -191,7 +231,7 @@ Proof.
  elim E. now transitivity k.
 Qed.
 
-Lemma remove_InA : forall m (Hm:NoDupA m) x y e,
+Lemma remove_InA : forall m (Hm:Ok m) x y e,
   InA eqk (y,e) (remove x m) -> InA eqk (y,e) m.
 Proof.
  induction m as [ | (k,e') m IH]; simpl; trivial; intros.
@@ -200,7 +240,7 @@ Proof.
  right; eapply H; eauto.
 Qed.
 
-Lemma remove_NoDup : forall m (Hm:NoDupA m) x, NoDupA (remove x m).
+Global Instance remove_ok m x (Hm:Ok m) : Ok (remove x m).
 Proof.
  induction m.
  simpl; intuition.
@@ -208,20 +248,20 @@ Proof.
  inversion_clear Hm.
  destruct a as (x',e').
  simpl; case (K.eq_dec x x'); auto.
- constructor; auto.
+ constructor; autok.
  contradict H; apply remove_InA with x; auto.
 Qed.
 
 (** * [bindings] *)
 
-Definition bindings (m: t elt) := m.
+Definition bindings (m : t elt) := m.
 
 Lemma bindings_spec1 m x e : InA eqke (x,e) (bindings m) <-> MapsTo x e m.
 Proof.
  reflexivity.
 Qed.
 
-Lemma bindings_spec2w m (Hm:NoDupA m) : NoDupA (bindings m).
+Lemma bindings_spec2w m (Hm:Ok m) : Ok (bindings m).
 Proof.
  trivial.
 Qed.
@@ -258,11 +298,14 @@ Definition Submap (cmp:elt->elt->bool) m m' :=
   (forall k, In k m -> In k m') /\
   (forall k e e', MapsTo k e m -> MapsTo k e' m' -> cmp e e' = true).
 
-Definition Equivb (cmp:elt->elt->bool) m m' :=
-  (forall k, In k m <-> In k m') /\
-  (forall k e e', MapsTo k e m -> MapsTo k e' m' -> cmp e e' = true).
+Definition Equal m m' := forall y, find y m = find y m'.
+Definition Eqdom m m' := forall y, @In elt y m <-> @In elt y m'.
+Definition Equiv (R:elt->elt->Prop) m m' :=
+  Eqdom m m' /\
+  (forall k e e', MapsTo k e m -> MapsTo k e' m' -> R e e').
+Definition Equivb (cmp:elt->elt->bool) := Equiv (Cmp cmp).
 
-Lemma submap_1 : forall m (Hm:NoDupA m) m' (Hm': NoDupA m') cmp,
+Lemma submap_1 : forall m (Hm:Ok m) m' (Hm': Ok m') cmp,
   Submap cmp m m' -> submap cmp m m' = true.
 Proof.
  unfold Submap, submap.
@@ -284,7 +327,7 @@ Proof.
  apply H0 with k; auto.
 Qed.
 
-Lemma submap_2 : forall m (Hm:NoDupA m) m' (Hm': NoDupA m') cmp,
+Lemma submap_2 : forall m (Hm:Ok m) m' (Hm': Ok m') cmp,
   submap cmp m m' = true -> Submap cmp m m'.
 Proof.
  unfold Submap, submap.
@@ -326,10 +369,10 @@ Qed.
 
 (** Specification of [equal] *)
 
-Lemma equal_spec : forall m (Hm:NoDupA m) m' (Hm': NoDupA m') cmp,
+Lemma equal_spec m m' cmp {Hm:Ok m}{Hm': Ok m'} :
   equal cmp m m' = true <-> Equivb cmp m m'.
 Proof.
- unfold Equivb, equal.
+ unfold equal.
  split.
  - intros.
    destruct (andb_prop _ _ H); clear H.
@@ -359,31 +402,34 @@ Fixpoint mapi (f: key -> elt -> elt') (m:t elt) : t elt' :=
 
 (** Specification of [map] *)
 
-Lemma map_spec (f:elt->elt')(m:t elt)(x:key) :
+Lemma map_spec' (f:elt->elt')(m:t elt)(x:key) :
   find x (map f m) = option_map f (find x m).
 Proof.
  induction m as [ | (k,e) m IH]; simpl; trivial.
  dec; simpl; trivial.
 Qed.
 
-Lemma map_NoDup m (Hm : NoDupA (@eqk elt) m)(f:elt->elt') :
-  NoDupA (@eqk elt') (map f m).
+Lemma map_spec (f:elt->elt')(m:t elt)(x:key)`{!Ok m} :
+  find x (map f m) = option_map f (find x m).
+Proof. apply map_spec'. Qed.
+
+Lemma map_InA (f:elt->elt')(m:t elt) x e :
+ InA eqk (x,f e) (map f m) <-> InA eqk (x,e) m.
 Proof.
- induction m; simpl; auto.
- intros.
- destruct a as (x',e').
+ induction m as [|(k,v) m IH]; simpl; rewrite ?InA_nil, ?InA_cons;
+  intuition.
+Qed.
+
+Global Instance map_ok (f:elt->elt') m (Hm : Ok m) : Ok (map f m).
+Proof.
+ induction m as [|(x,e) m IH]; simpl; auto.
  inversion_clear Hm.
- constructor; auto.
- contradict H.
- clear IHm H0.
- induction m; simpl in *; auto.
- inversion H.
- destruct a; inversion H; auto.
+ constructor; autok. now rewrite map_InA.
 Qed.
 
 (** Specification of [mapi] *)
 
-Lemma mapi_spec (f:key->elt->elt')(m:t elt)(x:key) :
+Lemma mapi_spec' (f:key->elt->elt')(m:t elt)(x:key) :
   exists y, K.eq y x /\ find x (mapi f m) = option_map (f y) (find x m).
 Proof.
  induction m as [ | (k,e) m IH]; simpl; trivial.
@@ -393,19 +439,17 @@ Proof.
    + destruct IH as (y,(Hy,H)). now exists y.
 Qed.
 
-Lemma mapi_NoDup : forall m (Hm : NoDupA (@eqk elt) m)(f: key->elt->elt'),
-  NoDupA (@eqk elt') (mapi f m).
+Lemma mapi_spec (f:key->elt->elt')(m:t elt)(x:key) `{!Ok m} :
+  exists y, K.eq y x /\ find x (mapi f m) = option_map (f y) (find x m).
+Proof. apply mapi_spec'. Qed.
+
+Global Instance mapi_ok (f: key->elt->elt') m (Hm:Ok m) : Ok (mapi f m).
 Proof.
- induction m; simpl; auto.
- intros.
- destruct a as (x',e').
+ induction m as [|(x,e) m IH]; simpl; auto.
  inversion_clear Hm; auto.
- constructor; auto.
- contradict H.
- clear IHm H0.
- induction m; simpl in *; auto.
- inversion_clear H.
- destruct a; inversion_clear H; auto.
+ constructor; autok.
+ contradict H. clear IH H0.
+ induction m as [|(y,v) m IH]; simpl in *; inversion H; auto.
 Qed.
 
 End Elt2.
@@ -418,7 +462,7 @@ Proof.
  - rewrite InA_cons, In_cons. simpl. now rewrite IH.
 Qed.
 
-Lemma mapfst_NoDup {elt}(m:t elt) :
+Lemma mapfst_ok {elt}(m:t elt) :
  NoDupA K.eq (List.map fst m) <-> NoDupA eqk m.
 Proof.
  induction m as [| (k,e) m IH]; simpl.
@@ -428,7 +472,7 @@ Proof.
    + rewrite mapfst_InA. contradict H0. now apply In_alt'.
 Qed.
 
-Lemma filter_NoDup f (m:list key) :
+Lemma filter_ok f (m:list key) :
  NoDupA K.eq m -> NoDupA K.eq (List.filter f m).
 Proof.
  induction 1; simpl.
@@ -462,7 +506,7 @@ Definition restrict (m:t elt)(k:key) :=
 Definition domains (m:t elt)(m':t elt') :=
  List.map fst m ++ List.filter (restrict m) (List.map fst m').
 
-Lemma domains_InA m m' (Hm : NoDupA eqk m) x :
+Lemma domains_InA m m' (Hm : Ok m) x :
  InA K.eq x (domains m m') <-> In x m \/ In x m'.
 Proof.
  unfold domains.
@@ -475,13 +519,13 @@ Proof.
  - now right.
 Qed.
 
-Lemma domains_NoDup m m' : NoDupA eqk m -> NoDupA eqk m' ->
+Lemma domains_ok m m' : NoDupA eqk m -> NoDupA eqk m' ->
  NoDupA K.eq (domains m m').
 Proof.
  intros Hm Hm'. unfold domains.
  apply NoDupA_app; auto with *.
- - now apply mapfst_NoDup.
- - now apply filter_NoDup, mapfst_NoDup.
+ - now apply mapfst_ok.
+ - now apply filter_ok, mapfst_ok.
  - intros x.
    rewrite mapfst_InA. intros (e,H).
    apply find_spec in H; trivial.
@@ -510,8 +554,8 @@ Proof.
    try left; congruence.
 Qed.
 
-Lemma fold_keys_NoDup f l :
-  NoDupA K.eq l -> NoDupA eqk (fold_keys f l).
+Lemma fold_keys_ok f l :
+  NoDupA K.eq l -> Ok (fold_keys f l).
 Proof.
  induction 1; simpl.
  - constructor.
@@ -527,18 +571,17 @@ Variable f : key -> option elt -> option elt' -> option elt''.
 Definition merge m m' : t elt'' :=
  fold_keys (fun k => f k (find k m) (find k m')) (domains m m').
 
-Lemma merge_NoDup m (Hm:NoDupA (@eqk elt) m) m' (Hm':NoDupA (@eqk elt') m') :
-  NoDupA (@eqk elt'') (merge m m').
+Global Instance merge_ok m m' (Hm:Ok m)(Hm':Ok m') : Ok (merge m m').
 Proof.
- now apply fold_keys_NoDup, domains_NoDup.
+ now apply fold_keys_ok, domains_ok.
 Qed.
 
-Lemma merge_spec1 m (Hm:NoDupA eqk m) m' (Hm':NoDupA eqk m') x :
+Lemma merge_spec1 m m' x {Hm:Ok m}{Hm':Ok m'} :
   In x m \/ In x m' ->
   exists y:key, K.eq y x /\
                 find x (merge m m') = f y (find x m) (find x m').
 Proof.
- assert (Hmm' : NoDupA eqk (merge m m')) by now apply merge_NoDup.
+ assert (Hmm' : Ok (merge m m')) by now apply merge_ok.
  rewrite <- domains_InA; trivial.
  rewrite InA_alt. intros (y,(Hy,H)).
  exists y; split; [easy|].
@@ -557,11 +600,11 @@ Proof.
    compute in E; destruct E as (Hy',<-).
    replace y with y'; trivial.
    apply (@NoDupA_unique_repr (domains m m')); auto.
-   now apply domains_NoDup.
+   now apply domains_ok.
    now transitivity x.
 Qed.
 
-Lemma merge_spec2 m (Hm:NoDupA eqk m) m' (Hm':NoDupA eqk m') x :
+Lemma merge_spec2 m m' x {Hm:Ok m}{Hm':Ok m'} :
   In x (merge m m') -> In x m \/ In x m'.
 Proof.
  rewrite <- domains_InA; trivial.
@@ -571,118 +614,23 @@ Proof.
 Qed.
 
 End Elt3.
-End Raw.
 
-Module Make (K:DecidableType) <: WS K.
- Module Raw := Raw K.
+Definition cardinal {elt} (m:t elt) := length m.
+Lemma cardinal_spec {elt} (m:t elt) : cardinal m = length (bindings m).
+Proof. reflexivity. Qed.
 
- Definition key := K.t.
- Definition eq_key {elt} := @Raw.P.eqk elt.
- Definition eq_key_elt {elt} := @Raw.P.eqke elt.
+Definition MapsTo {elt} := @P.MapsTo elt.
+Definition In {elt} := @P.In elt.
 
- Record t_ (elt:Type) := Mk
-  {this :> Raw.t elt;
-   nodup : NoDupA Raw.P.eqk this}.
- Definition t := t_.
+Instance MapsTo_compat {elt} :
+  Proper (K.eq==>Logic.eq==>Logic.eq==>iff) (@MapsTo elt).
+Proof.
+ intros x x' Hx e e' <- m m' <-. unfold MapsTo. now rewrite Hx.
+Qed.
 
- Definition empty {elt} : t elt := Mk (Raw.empty_NoDup elt).
+End MakeRaw.
 
-Section Elt.
- Variable elt elt' elt'':Type.
- Implicit Types m : t elt.
- Implicit Types x y : key.
- Implicit Types e : elt.
-
- Definition find x m : option elt := Raw.find x m.(this).
- Definition mem x m : bool := Raw.mem x m.(this).
- Definition is_empty m : bool := Raw.is_empty m.(this).
- Definition add x e m : t elt := Mk (Raw.add_NoDup m.(nodup) x e).
- Definition remove x m : t elt := Mk (Raw.remove_NoDup m.(nodup) x).
- Definition map f m : t elt' := Mk (Raw.map_NoDup m.(nodup) f).
- Definition mapi (f:key->elt->elt') m : t elt' :=
-   Mk (Raw.mapi_NoDup m.(nodup) f).
- Definition merge f m (m':t elt') : t elt'' :=
-   Mk (Raw.merge_NoDup f m.(nodup) m'.(nodup)).
- Definition bindings m : list (key*elt) := Raw.bindings m.(this).
- Definition cardinal m := length m.(this).
- Definition fold {A}(f:key->elt->A->A) m (i:A) : A := Raw.fold f m.(this) i.
- Definition equal cmp m m' : bool := Raw.equal cmp m.(this) m'.(this).
- Definition MapsTo x e m : Prop := Raw.P.MapsTo x e m.(this).
- Definition In x m : Prop := Raw.P.In x m.(this).
-
- Definition Equal m m' := forall y, find y m = find y m'.
- Definition Eqdom m m' := forall y, In y m <-> In y m'.
- Definition Equiv (R:elt->elt->Prop) m m' :=
-         Eqdom m m' /\
-         (forall k e e', MapsTo k e m -> MapsTo k e' m' -> R e e').
- Definition Equivb cmp m m' : Prop := Raw.Equivb cmp m.(this) m'.(this).
-
- Instance MapsTo_compat :
-   Proper (K.eq==>Logic.eq==>Logic.eq==>iff) MapsTo.
- Proof.
-   intros x x' Hx e e' <- m m' <-. unfold MapsTo. now rewrite Hx.
- Qed.
-
- Lemma find_spec m : forall x e, find x m = Some e <-> MapsTo x e m.
- Proof. exact (Raw.find_spec m.(nodup)). Qed.
-
- Lemma mem_spec m : forall x, mem x m = true <-> In x m.
- Proof. exact (Raw.mem_spec m.(nodup)). Qed.
-
- Lemma empty_spec : forall x, find x empty = None.
- Proof. exact (Raw.empty_spec _). Qed.
-
- Lemma is_empty_spec m : is_empty m = true <-> (forall x, find x m = None).
- Proof. exact (Raw.is_empty_spec m.(this)). Qed.
-
- Lemma add_spec1 m : forall x e, find x (add x e m) = Some e.
- Proof. exact (Raw.add_spec1 m.(this)). Qed.
- Lemma add_spec2 m : forall x y e, ~K.eq x y -> find y (add x e m) = find y m.
- Proof. exact (Raw.add_spec2 m.(this)). Qed.
-
- Lemma remove_spec1 m : forall x, find x (remove x m) = None.
- Proof. exact (Raw.remove_spec1 m.(nodup)). Qed.
- Lemma remove_spec2 m : forall x y, ~K.eq x y -> find y (remove x m) = find y m.
- Proof. exact (Raw.remove_spec2 m.(nodup)). Qed.
-
- Lemma bindings_spec1 m : forall x e,
-   InA eq_key_elt (x,e) (bindings m) <-> MapsTo x e m.
- Proof. exact (Raw.bindings_spec1 m.(this)). Qed.
- Lemma bindings_spec2w m : NoDupA eq_key (bindings m).
- Proof. exact (Raw.bindings_spec2w m.(nodup)). Qed.
-
- Lemma cardinal_spec m : cardinal m = length (bindings m).
- Proof. reflexivity. Qed.
-
- Lemma fold_spec m : forall (A : Type) (i : A) (f : key -> elt -> A -> A),
-        fold f m i = fold_left (fun a p => f (fst p) (snd p) a) (bindings m) i.
- Proof. exact (Raw.fold_spec m.(this)). Qed.
-
- Lemma equal_spec m m' : forall cmp, equal cmp m m' = true <-> Equivb cmp m m'.
- Proof. exact (Raw.equal_spec m.(nodup) m'.(nodup)). Qed.
-
-End Elt.
-
- Lemma map_spec {elt elt'} (f:elt->elt') m :
-   forall x, find x (map f m) = option_map f (find x m).
- Proof. exact (Raw.map_spec f m.(this)). Qed.
-
- Lemma mapi_spec {elt elt'} (f:key->elt->elt') m :
-   forall x, exists y,
-     K.eq y x /\ find x (mapi f m) = option_map (f y) (find x m).
- Proof. exact (Raw.mapi_spec f m.(this)). Qed.
-
- Lemma merge_spec1 {elt elt' elt''}
-  (f:key->option elt->option elt'->option elt'') m m' :
-  forall x,
-   In x m \/ In x m' ->
-   exists y, K.eq y x /\ find x (merge f m m') = f y (find x m) (find x m').
- Proof. exact (Raw.merge_spec1 f m.(nodup) m'.(nodup)). Qed.
-
- Lemma merge_spec2 {elt elt' elt''}
-  (f:key->option elt->option elt'->option elt'') m m' :
-  forall x,
-   In x (merge f m m') -> In x m \/ In x m'.
- Proof. exact (Raw.merge_spec2 m.(nodup) m'.(nodup)). Qed.
-
+Module Make (K:DecidableType) <: Interface.WS K.
+ Module Raw := MakeRaw K.
+ Include Raw.WRaw2Maps K Raw.
 End Make.
