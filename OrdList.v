@@ -68,7 +68,7 @@ Ltac SortLt :=
       apply (Sort_Inf_In H1 H2 (InA_eqke_eqk H3)) | ]
  end.
 
-(** isok *)
+(** [isok] : deciding [Ok]. Not used here, see [Mkt_bool] in [Raw.v] *)
 
 Fixpoint isok (m:t elt) :=
   match m with
@@ -871,7 +871,7 @@ End MakeRaw.
 
 Module Make (X: OrderedType) <: S X.
  Module Raw := MakeRaw X.
- Include Raw.Raw2Maps X Raw.
+ Include Raw.Pack X Raw.
 End Make.
 
 Module Make_ord (X: OrderedType)(D : OrderedType) <: Sord X D.
@@ -880,6 +880,7 @@ Import MapS.
 
 Module MD := OrderedTypeFacts(D).
 Import MD.
+Ltac order := Raw.MX.order || MD.order.
 
 Definition t := MapS.t D.t.
 
@@ -889,11 +890,7 @@ Definition cmp e e' :=
 Fixpoint eq_list (m m' : list (X.t * D.t)) : Prop :=
   match m, m' with
    | nil, nil => True
-   | (x,e)::l, (x',e')::l' =>
-      match X.compare x x' with
-       | Eq => D.eq e e' /\ eq_list l l'
-       | _  => False
-      end
+   | (x,e)::l, (x',e')::l' => X.eq x x' /\ D.eq e e' /\ eq_list l l'
    | _, _ => False
   end.
 
@@ -905,41 +902,22 @@ Fixpoint lt_list (m m' : list (X.t * D.t)) : Prop :=
    | nil, _  => True
    | _, nil  => False
    | (x,e)::l, (x',e')::l' =>
-      match X.compare x x' with
-       | Lt => True
-       | Gt => False
-       | Eq => D.lt e e' \/ (D.eq e e' /\ lt_list l l')
-      end
+     X.lt x x' \/ (X.eq x x' /\
+                   (D.lt e e' \/ (D.eq e e' /\ lt_list l l')))
   end.
 
 Definition lt m m' := lt_list m.(this) m'.(this).
 
-Lemma eq_equal : forall m m', eq m m' <-> equal cmp m m' = true.
+Lemma eq_equal m m' : eq m m' <-> equal cmp m m' = true.
 Proof.
- intros (l,Hl); induction l.
- intros (l',Hl'); unfold eq; simpl.
- destruct l'; unfold equal; simpl; intuition.
- intros (l',Hl'); unfold eq.
- destruct l'.
- destruct a; unfold equal; simpl; intuition.
- destruct a as (x,e).
- destruct p as (x',e').
- unfold equal; simpl.
- destruct (X.compare_spec x x') as [Hlt|Heq|Hlt]; simpl; intuition.
- unfold cmp at 1.
- elim D.compare_spec; try MD.order; simpl.
- inversion_clear Hl.
- inversion_clear Hl'.
- destruct (IHl H (Mkt H3)).
- unfold equal, eq in H5; simpl in H5; auto.
- destruct (andb_prop _ _ H); clear H.
- generalize H0; unfold cmp.
- elim D.compare_spec; try MD.order; simpl; try discriminate.
- destruct (andb_prop _ _ H); clear H.
- inversion_clear Hl.
- inversion_clear Hl'.
- destruct (IHl H (Mkt H3)).
- unfold equal, eq in H6; simpl in H6; auto.
+ unfold eq, equal.
+ destruct m as (l,Hl), m' as (l',Hl'); simpl. revert l' Hl'.
+ induction l as [|(x,e) l IH]; destruct l' as [|(x',e') l'];
+  intros Hl'; simpl; try (intuition; fail).
+ inversion_clear Hl; inversion_clear Hl'; Raw.chok.
+ case X.compare_spec; simpl; try (intuition; easy || order).
+ rewrite andb_true_iff. rewrite <- IH by auto.
+ unfold cmp. case D.compare_spec; intuition; easy || order.
 Qed.
 
 Lemma eq_spec m m' : eq m m' <-> Equivb cmp m m'.
@@ -947,115 +925,84 @@ Proof.
  now rewrite eq_equal, equal_spec.
 Qed.
 
-Lemma eq_refl : forall m : t, eq m m.
+Lemma eq_refl (m:t) : eq m m.
 Proof.
- intros (m,Hm); induction m; unfold eq; simpl; auto.
- destruct a.
- destruct (X.compare_spec t0 t0) as [Hlt|Heq|Hlt]; auto.
- - split. reflexivity. inversion_clear Hm. apply (IHm H).
- - MapS.Raw.MX.order.
- - MapS.Raw.MX.order.
+ destruct m as (m,Hm). red; simpl.
+ induction m as [|(x,e) m IH]; simpl; auto.
+ inversion_clear Hm; Raw.chok. intuition.
 Qed.
 
-Lemma eq_sym : forall m1 m2 : t, eq m1 m2 -> eq m2 m1.
+Lemma eq_sym (m1 m2 : t) : eq m1 m2 -> eq m2 m1.
 Proof.
- intros (m,Hm); induction m;
- intros (m', Hm'); destruct m'; unfold eq; simpl;
- try destruct a as (x,e); try destruct p as (x',e'); auto.
- destruct (X.compare_spec x x')  as [Hlt|Heq|Hlt];
-  elim X.compare_spec; try MapS.Raw.MX.order; intuition.
- inversion_clear Hm; inversion_clear Hm'.
- apply (IHm H0 (Mkt H4)); auto.
+ destruct m1 as (m,Hm), m2 as (m',Hm'). unfold eq; simpl.
+ revert m' Hm'.
+ induction m as [|(x,e) m IH]; destruct m' as [|(x',e') m'];
+  intros Hm'; simpl; try (intuition; fail).
+ inversion_clear Hm; inversion_clear Hm'; Raw.chok. intuition.
 Qed.
 
-Lemma eq_trans : forall m1 m2 m3 : t, eq m1 m2 -> eq m2 m3 -> eq m1 m3.
+Lemma eq_trans (m1 m2 m3 : t) : eq m1 m2 -> eq m2 m3 -> eq m1 m3.
 Proof.
- intros (m1,Hm1); induction m1;
- intros (m2, Hm2); destruct m2;
- intros (m3, Hm3); destruct m3; unfold eq; simpl;
- try destruct a as (x,e);
- try destruct p as (x',e');
- try destruct p0 as (x'',e''); try contradiction; auto.
- destruct (X.compare_spec x x') as [Hlt|Heq|Hlt];
-  destruct (X.compare_spec x' x'') as [Hlt'|Heq'|Hlt'];
-   elim X.compare_spec; try MapS.Raw.MX.order; intuition.
- now transitivity e'.
- inversion_clear Hm1; inversion_clear Hm2; inversion_clear Hm3.
- apply (IHm1 H1 (Mkt H6) (Mkt H8)); intuition.
+ destruct m1 as (m1,Hm1), m2 as (m2,Hm2), m3 as (m3,Hm3).
+ unfold eq; simpl. revert m2 Hm2 m3 Hm3.
+ induction m1 as [|(x1,e1) m1 IH];
+  destruct m2 as [|(x2,e2) m2], m3 as [|(x3,e3) m3];
+  intros Hm3; simpl; try (intuition; fail).
+ inversion_clear Hm1; inversion_clear Hm2; inversion_clear Hm3;
+ Raw.chok.
+ intuition; try etransitivity; eauto.
 Qed.
 
 Instance eq_equiv : Equivalence eq.
 Proof. split; [exact eq_refl|exact eq_sym|exact eq_trans]. Qed.
 
-Lemma lt_trans : forall m1 m2 m3 : t, lt m1 m2 -> lt m2 m3 -> lt m1 m3.
+Lemma lt_trans (m1 m2 m3 : t) : lt m1 m2 -> lt m2 m3 -> lt m1 m3.
 Proof.
- intros (m1,Hm1); induction m1;
- intros (m2, Hm2); destruct m2;
- intros (m3, Hm3); destruct m3; unfold lt; simpl;
- try destruct a as (x,e);
- try destruct p as (x',e');
- try destruct p0 as (x'',e''); try contradiction; auto.
- destruct (X.compare_spec x x') as [Hlt|Heq|Hlt];
-  destruct (X.compare_spec x' x'') as [Hlt'|Heq'|Hlt'];
-   elim X.compare_spec; try MapS.Raw.MX.order; intuition.
- left; transitivity e'; auto.
- left; MD.order.
- left; MD.order.
- right.
- split.
- transitivity e'; auto.
- inversion_clear Hm1; inversion_clear Hm2; inversion_clear Hm3.
- apply (IHm1 H2 (Mkt H6) (Mkt H8)); intuition.
+ destruct m1 as (m1,Hm1), m2 as (m2,Hm2), m3 as (m3,Hm3).
+ unfold lt; simpl. revert m2 Hm2 m3 Hm3.
+ induction m1 as [|(x1,e1) m1 IH];
+  destruct m2 as [|(x2,e2) m2], m3 as [|(x3,e3) m3];
+  intros Hm3; simpl; try (intuition; fail).
+ inversion_clear Hm1; inversion_clear Hm2; inversion_clear Hm3;
+ Raw.chok.
+ intuition; repeat ((left; order) || (right; split; try order)).
+ eauto.
 Qed.
 
-Lemma lt_irrefl : forall m, ~ lt m m.
+Lemma lt_irrefl m : ~ lt m m.
 Proof.
- intros (m,Hm); induction m; unfold lt; simpl; auto.
- destruct a.
- destruct (X.compare_spec t0 t0) as [Hlt|Heq|Hlt]; auto.
- - intuition. MD.order. inversion_clear Hm. now apply (IHm H0).
- - MapS.Raw.MX.order.
+ destruct m as (m,Hm). unfold lt; simpl.
+ induction m as [|(x,e) m IH]; simpl; auto.
+ inversion_clear Hm; Raw.chok. intuition order.
 Qed.
 
 Instance lt_strorder : StrictOrder lt.
 Proof. split; [exact lt_irrefl|exact lt_trans]. Qed.
 
-Lemma lt_compat1 : forall m1 m1' m2, eq m1 m1' -> lt m1 m2 -> lt m1' m2.
+Lemma lt_compat1 m1 m2 m3 : eq m1 m2 -> lt m1 m3 -> lt m2 m3.
 Proof.
- intros (m1,Hm1); induction m1;
- intros (m1',Hm1'); destruct m1';
- intros (m2,Hm2); destruct m2; unfold eq, lt;
- try destruct a as (x,e);
- try destruct p as (x',e');
- try destruct p0 as (x'',e''); try contradiction; simpl; auto.
- destruct (X.compare_spec x x') as [Hlt|Heq|Hlt];
-  destruct (X.compare_spec x' x'') as [Hlt'|Heq'|Hlt'];
-   elim X.compare_spec; try MapS.Raw.MX.order; intuition.
- left; MD.order.
- right.
- split.
- MD.order.
- inversion_clear Hm1; inversion_clear Hm1'; inversion_clear Hm2.
- apply (IHm1 H0 (Mkt H6) (Mkt H8)); intuition.
+ destruct m1 as (m1,Hm1), m2 as (m2,Hm2), m3 as (m3,Hm3).
+ unfold lt, eq; simpl. revert m2 Hm2 m3 Hm3.
+ induction m1 as [|(x1,e1) m1 IH];
+  destruct m2 as [|(x2,e2) m2], m3 as [|(x3,e3) m3];
+  intros Hm3; simpl; try (intuition; fail).
+ inversion_clear Hm1; inversion_clear Hm2; inversion_clear Hm3;
+ Raw.chok.
+ intuition; repeat ((left; order) || (right; split; try order)).
+ eauto.
 Qed.
 
-Lemma lt_compat2 : forall m1 m2 m2', eq m2 m2' -> lt m1 m2 -> lt m1 m2'.
+Lemma lt_compat2 m1 m2 m3 : eq m2 m3 -> lt m1 m2 -> lt m1 m3.
 Proof.
- intros (m1,Hm1); induction m1;
- intros (m2,Hm2); destruct m2;
- intros (m2',Hm2'); destruct m2'; unfold eq, lt;
- try destruct a as (x,e);
- try destruct p as (x',e');
- try destruct p0 as (x'',e''); try contradiction; simpl; auto.
- destruct (X.compare_spec x x') as [Hlt|Heq|Hlt];
-  destruct (X.compare_spec x' x'') as [Hlt'|Heq'|Hlt'];
-   elim X.compare_spec; try MapS.Raw.MX.order; intuition.
- left; MD.order.
- right.
- split.
- MD.order.
- inversion_clear Hm1; inversion_clear Hm2; inversion_clear Hm2'.
- apply (IHm1 H0 (Mkt H6) (Mkt H8)); intuition.
+ destruct m1 as (m1,Hm1), m2 as (m2,Hm2), m3 as (m3,Hm3).
+ unfold lt, eq; simpl. revert m2 Hm2 m3 Hm3.
+ induction m1 as [|(x1,e1) m1 IH];
+  destruct m2 as [|(x2,e2) m2], m3 as [|(x3,e3) m3];
+  intros Hm3; simpl; try (intuition; fail).
+ inversion_clear Hm1; inversion_clear Hm2; inversion_clear Hm3;
+ Raw.chok.
+ intuition; repeat ((left; order) || (right; split; try order)).
+ eauto.
 Qed.
 
 Instance lt_compat : Proper (eq==>eq==>iff) lt.
@@ -1067,7 +1014,7 @@ Proof.
 Qed.
 
 Ltac cmp_solve :=
-  unfold eq, lt; simpl; elim X.compare_spec; try Raw.MX.order; auto.
+  unfold eq, lt; simpl; case X.compare_spec; try order; auto.
 
 Fixpoint compare_list m1 m2 := match m1, m2 with
 | nil, nil => Eq
@@ -1087,20 +1034,19 @@ end.
 
 Definition compare m1 m2 := compare_list m1.(this) m2.(this).
 
-Lemma compare_spec : forall m1 m2, CompSpec eq lt m1 m2 (compare m1 m2).
+Lemma compare_spec (m1 m2 : t) : CompSpec eq lt m1 m2 (compare m1 m2).
 Proof.
  unfold CompSpec.
- intros (m1,Hm1)(m2,Hm2). unfold compare, eq, lt; simpl.
+ destruct m1 as (m1,Hm1), m2 as (m2,Hm2). unfold compare, eq, lt; simpl.
  revert m2 Hm2.
- induction m1 as [|(k1,e1) m1 IH1]; destruct m2 as [|(k2,e2) m2];
+ induction m1 as [|(k1,e1) m1 IH]; destruct m2 as [|(k2,e2) m2];
   try constructor; simpl; intros; auto.
- elim X.compare_spec; simpl; try constructor; auto; intros.
- elim D.compare_spec; simpl; try constructor; auto; intros.
- inversion_clear Hm1; inversion_clear Hm2.
- destruct (IH1 H1 _ H3); simpl; try constructor; auto.
- elim X.compare_spec; try Raw.MX.order. right. now split.
- elim X.compare_spec; try Raw.MX.order. now left.
- elim X.compare_spec; try Raw.MX.order; auto.
+ case X.compare_spec; simpl; try constructor; auto; intros.
+ case D.compare_spec; simpl; try constructor; auto; intros.
+ - inversion_clear Hm1; inversion_clear Hm2. Raw.chok.
+   destruct (IH _ m2 _); simpl; try constructor; auto.
+   do 2 (right; split; try order). auto.
+ - right; split; try order. now left.
 Qed.
 
 End Make_ord.

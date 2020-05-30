@@ -632,5 +632,5 @@ End MakeRaw.
 
 Module Make (K:DecidableType) <: Interface.WS K.
  Module Raw := MakeRaw K.
- Include Raw.WRaw2Maps K Raw.
+ Include Raw.WPack K Raw.
 End Make.

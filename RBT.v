@@ -1634,7 +1634,7 @@ End MakeRaw.
 
 Module Make (K: OrderedType) <: Interface.S K.
  Module Raw := MakeRaw K.
- Include Raw.Raw2Maps K Raw.
+ Include Raw.Pack K Raw.
 End Make.
 
 Module Make_ord (K:OrderedType)(D:OrderedType) <: Sord K D.
@@ -1696,9 +1696,7 @@ Module Make_ord (K:OrderedType)(D:OrderedType) <: Sord K D.
    K.eq x1 x2 -> D.eq d1 d2 ->
    Cmp c l1 l2 -> Cmp c ((x1,d1)::l1) ((x2,d2)::l2).
   Proof.
-    destruct c; simpl; unfold flip; simpl; intros; case K.compare_spec;
-      auto; try F.order.
-    intros. right. split; auto. now symmetry.
+    destruct c; simpl; unfold flip; simpl; intuition.
   Qed.
   Local Hint Resolve cons_Cmp.
 
@@ -1714,8 +1712,7 @@ Module Make_ord (K:OrderedType)(D:OrderedType) <: Sord K D.
        (R.flatten_e (R.More x2 d2 r2 e2)).
   Proof.
    simpl; case K.compare_spec; simpl;
-   try case D.compare_spec; simpl; unfold flip; simpl; auto;
-   case K.compare_spec; try R.F.order; auto.
+   try case D.compare_spec; simpl; unfold flip; simpl; intuition.
   Qed.
 
   Lemma compare_cont_Cmp : forall s1 cont e2 l,
@@ -1757,7 +1754,7 @@ Module Make_ord (K:OrderedType)(D:OrderedType) <: Sord K D.
   (* Proofs about [eq] and [lt] *)
 
   Definition sbindings (m1 : t) :=
-   LO.MapS.Mkt (@R.bindings_spec2 _ m1.(this) _).
+   @LO.MapS.Mkt _ _ (@R.bindings_spec2 _ m1.(this) _).
 
   Definition seq (m1 m2 : t) := LO.eq (sbindings m1) (sbindings m2).
   Definition slt (m1 m2 : t) := LO.lt (sbindings m1) (sbindings m2).
