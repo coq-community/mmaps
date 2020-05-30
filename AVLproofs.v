@@ -16,7 +16,7 @@
 
     This is an adapation of Coq [MSetFullAVL] to maps. *)
 
-From Coq Require Import ZArith Int ROmega PeanoNat FunInd Orders.
+From Coq Require Import ZArith Int Lia PeanoNat FunInd Orders.
 From MMaps Require Import GenTree AVL.
 
 Set Implicit Arguments.
@@ -27,7 +27,7 @@ Module Import II := MoreInt I.
 Local Open Scope pair_scope.
 Local Open Scope Int_scope.
 
-Ltac omega_max := i2z_refl; romega with Z.
+Ltac omega_max := i2z_refl; lia.
 Ltac mysubst :=
  match goal with
    | E : _=_ |- _ => rewrite E in *; clear E; mysubst
