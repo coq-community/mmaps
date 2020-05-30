@@ -1131,4 +1131,60 @@ Qed.
 
 End Mapi.
 
+Section Elt.
+Variable elt : Type.
+Implicit Type m : t elt.
+
+(** mindepth / maxdepth (used later in AVLproofs and RBTproofs *)
+
+Local Open Scope nat.
+
+Lemma mindepth_maxdepth m : mindepth m <= maxdepth m.
+Proof.
+ induction m; simpl; auto.
+ rewrite <- Nat.succ_le_mono.
+ transitivity (mindepth m1). apply Nat.le_min_l.
+ transitivity (maxdepth m1). trivial. apply Nat.le_max_l.
+Qed.
+
+Lemma maxdepth_cardinal m : cardinal m < 2^(maxdepth m).
+Proof.
+ unfold Peano.lt.
+ induction m as [|c l IHl x e r IHr].
+ - auto.
+ - simpl. rewrite <- Nat.add_succ_r, <- Nat.add_succ_l, Nat.add_0_r.
+   apply Nat.add_le_mono; etransitivity;
+   try apply IHl; try apply IHr; apply Nat.pow_le_mono; auto.
+   * apply Nat.le_max_l.
+   * apply Nat.le_max_r.
+Qed.
+
+Lemma mindepth_cardinal m : 2^(mindepth m) <= S (cardinal m).
+Proof.
+ unfold Peano.lt.
+ induction m as [|c l IHl x e r IHr].
+ - auto.
+ - simpl. rewrite <- Nat.add_succ_r, <- Nat.add_succ_l, Nat.add_0_r.
+   apply Nat.add_le_mono; etransitivity;
+   try apply IHl; try apply IHr; apply Nat.pow_le_mono; auto.
+   * apply Nat.le_min_l.
+   * apply Nat.le_min_r.
+Qed.
+
+Lemma maxdepth_log_cardinal m : m <> Leaf _ ->
+ Nat.log2 (cardinal m) < maxdepth m.
+Proof.
+ intros H.
+ apply Nat.log2_lt_pow2. destruct m; simpl; intuition.
+ apply maxdepth_cardinal.
+Qed.
+
+Lemma mindepth_log_cardinal m : mindepth m <= Nat.log2 (S (cardinal m)).
+Proof.
+ apply Nat.log2_le_pow2. auto with arith.
+ apply mindepth_cardinal.
+Qed.
+
+End Elt.
+
 End Props.

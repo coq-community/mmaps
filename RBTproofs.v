@@ -112,52 +112,6 @@ Local Hint Resolve arb_nrr_rb arb_nr_rb.
 Definition redcarac s :=
  rcase (elt:=elt) (fun _ _ _ _ => 1) (fun _ => 0) s.
 
-Lemma mindepth_maxdepth s : mindepth s <= maxdepth s.
-Proof.
- induction s; simpl; auto.
- rewrite <- Nat.succ_le_mono.
- transitivity (mindepth s1). apply Nat.le_min_l.
- transitivity (maxdepth s1). trivial. apply Nat.le_max_l.
-Qed.
-
-Lemma maxdepth_cardinal s : cardinal s < 2^(maxdepth s).
-Proof.
- unfold Peano.lt.
- induction s as [|c l IHl x e r IHr].
- - auto.
- - simpl. rewrite <- Nat.add_succ_r, <- Nat.add_succ_l, Nat.add_0_r.
-   apply Nat.add_le_mono; etransitivity;
-   try apply IHl; try apply IHr; apply Nat.pow_le_mono; auto.
-   * apply Nat.le_max_l.
-   * apply Nat.le_max_r.
-Qed.
-
-Lemma mindepth_cardinal s : 2^(mindepth s) <= S (cardinal s).
-Proof.
- unfold Peano.lt.
- induction s as [|c l IHl x e r IHr].
- - auto.
- - simpl. rewrite <- Nat.add_succ_r, <- Nat.add_succ_l, Nat.add_0_r.
-   apply Nat.add_le_mono; etransitivity;
-   try apply IHl; try apply IHr; apply Nat.pow_le_mono; auto.
-   * apply Nat.le_min_l.
-   * apply Nat.le_min_r.
-Qed.
-
-Lemma maxdepth_log_cardinal s : s <> Leaf ->
- Nat.log2 (cardinal s) < maxdepth s.
-Proof.
- intros H.
- apply Nat.log2_lt_pow2. destruct s; simpl; intuition.
- apply maxdepth_cardinal.
-Qed.
-
-Lemma mindepth_log_cardinal s : mindepth s <= Nat.log2 (S (cardinal s)).
-Proof.
- apply Nat.log2_le_pow2. auto with arith.
- apply mindepth_cardinal.
-Qed.
-
 Lemma rb_maxdepth s n : rbt n s -> maxdepth s <= 2*n + redcarac s.
 Proof.
  induction 1.

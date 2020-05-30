@@ -19,12 +19,8 @@
     the binary search tree invariant ([Bst], a.k.a [Ok] predicate here),
     but *not* the AVL balancing invariant. Indeed, the former is enough
     to implement the desired interface [S], and ensure observational
-    correctness. And proceeding this way is much lighter.
-
-    Of course, the AVL invariants are also meant to be preserved here
-    (otherwise we could end with wrong complexities). It shouldn't be
-    too hard to adapt the proofs of [MSetFullAVL] to this file, but
-    this remains to be done.
+    correctness. And proceeding this way is quite lighter. For the
+    proofs of AVL balancing, see [MMaps.AVLproofs].
 *)
 
 From Coq Require Import Bool PeanoNat BinInt FunInd Int.

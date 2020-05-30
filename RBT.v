@@ -10,12 +10,8 @@
     the binary search tree invariant ([Bst], a.k.a [Ok] predicate here),
     but *not* the Red/Black balancing invariant. Indeed, the former
     is enough to implement the desired interface [S], and ensure
-    observational correctness. And proceeding this way is much lighter.
-
-    Of course, the Red/Black invariants are also meant to be preserved
-    here (otherwise we could end with wrong complexities). It shouldn't
-    be too hard to adapt the proofs of [MSetRBT.BalanceProps] to this
-    file, but this remains to be done.
+    observational correctness. And proceeding this way is quite lighter.
+    For the proofs of RBT balancing, see [MMaps.RBTproofs].
 *)
 
 From Coq Require Rtauto.
