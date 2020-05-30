@@ -8,4 +8,5 @@ Positive.v
 GenTree.v
 AVL.v
 RBT.v
+RBTproofs.v
 MMaps.v
