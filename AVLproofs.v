@@ -527,7 +527,7 @@ Instance concat_avl s1 s2 `{!Avl s1, !Avl s2} : Avl (concat s1 s2).
 Proof.
  functional induction (concat s1 s2); auto.
  apply join_avl; auto.
- generalize (remove_min_avl l2 x2 d2 r2 _). now mysubst.
+ generalize (@remove_min_avl l2 x2 d2 r2 _ _). now mysubst.
 Qed.
 
 (** split *)

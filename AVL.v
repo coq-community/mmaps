@@ -940,10 +940,10 @@ Proof.
     destruct (@mapl_f0 y m2) as (y' & ? & ->); trivial.
     intros A B. rewrite B in A. now elim A.
   - rewrite join_in in *. revert IHt2 IHt0 H. cleansplit.
-    generalize (split_ok_l m2 x1) (split_ok_r m2 x1).
+    generalize (@split_ok_l _ m2 x1 _) (@split_ok_r _ m2 x1 _).
     rewrite split_in_r, split_in_l; intuition_in.
   - rewrite concat_in in *. revert IHt2 IHt0 H; cleansplit.
-    generalize (split_ok_l m2 x1) (split_ok_r m2 x1).
+    generalize (@split_ok_l _ m2 x1 _) (@split_ok_r _ m2 x1 _).
     rewrite split_in_r, split_in_l; intuition_in.
 Qed.
 
@@ -999,7 +999,7 @@ Proof.
     exists y; split; trivial.
     rewrite E. simpl. apply in_find in H; trivial.
     destruct (find x m2); simpl; intuition.
-  - generalize (split_ok_l m2 x1) (split_ok_r m2 x1).
+  - generalize (@split_ok_l _ m2 x1 _) (@split_ok_r _ m2 x1 _).
     rewrite (@split_find _ m2 x1 x); autok.
     rewrite e1 in *; simpl in *. intros.
     rewrite join_find by (cleansplit; constructor; autok).
@@ -1011,7 +1011,7 @@ Proof.
     + apply IHt0; auto. clear IHt2 IHt0.
       cleansplit; rewrite split_in_r; trivial.
       intuition_in; order.
-  - generalize (split_ok_l m2 x1) (split_ok_r m2 x1).
+  - generalize (@split_ok_l _ m2 x1 _) (@split_ok_r _ m2 x1 _).
     rewrite (@split_find _ m2 x1 x); autok.
     pose proof (@split_lt_l _ m2 x1 _).
     pose proof (@split_gt_r _ m2 x1 _).

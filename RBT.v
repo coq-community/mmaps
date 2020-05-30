@@ -620,7 +620,7 @@ Proof.
  intros Hl Hr y. apply find_mapsto_equiv; auto using rbal'_mapsto; autok.
 Qed.
 
-Local Hint Rewrite (@In_node_iff elt)
+Hint Rewrite (@In_node_iff elt)
  makeRed_in makeBlack_in lbal_in rbal_in rbal'_in : rb.
 
 (** ** Insertion *)
@@ -631,7 +631,7 @@ Proof.
  induct m; destmatch; autorew; rewrite ?IHl, ?IHr; intuition_in.
  setoid_replace y with x; eauto.
 Qed.
-Local Hint Rewrite ins_in : rb.
+Hint Rewrite ins_in : rb.
 
 Lemma ins_above m x v y : y >> m -> x < y -> y >> ins x v m.
 Proof.
@@ -686,7 +686,7 @@ Lemma add_in m x v y :
 Proof.
  unfold add. now autorew.
 Qed.
-Local Hint Rewrite add_in : rb.
+Hint Rewrite add_in : rb.
 
 Lemma add_spec1 m x v `{!Ok m} : find x (add x v m) = Some v.
 Proof.
@@ -770,7 +770,7 @@ Proof.
  intros Hl Hr y. apply find_mapsto_equiv; auto using rbalS_mapsto; autok.
 Qed.
 
-Local Hint Rewrite lbalS_in rbalS_in : rb.
+Hint Rewrite lbalS_in rbalS_in : rb.
 
 (** ** Append for deletion *)
 
@@ -824,7 +824,7 @@ Proof.
  rewrite !In_alt'; setoid_rewrite append_mapsto. firstorder.
 Qed.
 
-Local Hint Rewrite append_in : rb.
+Hint Rewrite append_in : rb.
 
 Global Instance append_ok : forall l r `{!Ok l, !Ok r},
  l <<< r -> Ok (@append elt l r).
@@ -852,7 +852,7 @@ Proof.
 induct m; destmatch; treeorder.
 Qed.
 
-Local Hint Rewrite del_in : rb.
+Hint Rewrite del_in : rb.
 
 Global Instance del_ok m x `{!Ok m} : Ok (del x m).
 Proof.
@@ -896,7 +896,7 @@ Proof.
 unfold remove. now autorew.
 Qed.
 
-Local Hint Rewrite remove_in : rb.
+Hint Rewrite remove_in : rb.
 
 Global Instance remove_ok m x `{!Ok m} : Ok (remove x m).
 Proof.

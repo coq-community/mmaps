@@ -663,10 +663,10 @@ Proof.
  intros.
  rewrite <- merge_equiv.
  unfold merge'.
- assert (Hmm':=combine_ok m m').
+ assert (Hmm':=@combine_ok m m' _ _).
  set (l0:=combine m m') in *; clearbody l0.
  set (f':= fun k p => f k (fst p) (snd p)).
- assert (H1:=mapi_ok f' l0).
+ assert (H1:=@mapi_ok _ _ f' l0 _).
  set (l1:=mapi f' l0) in *; clearbody l1.
  clear f' f Hmm' l0 Hm Hm' m m'.
  (* Ok fold_right_pair *)
@@ -749,7 +749,7 @@ Proof.
  rewrite <- merge_equiv.
  unfold merge'.
  assert (H:=combine_spec x).
- assert (H2:=combine_ok m m').
+ assert (H2:=@combine_ok m m' _ _).
  set (f':= fun k p => f k (fst p) (snd p)).
  set (m0 := combine m m') in *; clearbody m0.
  set (o:=find x m) in *; clearbody o.
