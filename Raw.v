@@ -184,9 +184,8 @@ End S.
     The rest is a wrapper around the raw functions. *)
 
 Module WPack (K : DecidableType) (R : WS K) <: Interface.WS K.
- Definition key := K.t.
-
  Import R. (** The raw datatype for maps *)
+ Definition key := K.t.
 
  (** The map structure with adequacy proofs attached *)
 
@@ -207,7 +206,7 @@ Module WPack (K : DecidableType) (R : WS K) <: Interface.WS K.
      of [m] are properly shared in memory). This is a typical
      time/memory trade-off. *)
 
- Definition Mkt_bool {elt} (m : R.t elt)(b : isok m = true) :=
+ Definition Mkt_bool {elt} (m : R.t elt)(b : isok m = true) : t elt :=
   @Mkt _ m (isok_Ok b).
 
  Section Elt.
