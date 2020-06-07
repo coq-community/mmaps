@@ -17,15 +17,15 @@ Unset Strict Implicit.
 (** When compared with Ocaml Map, this signature has been split in
     several parts :
 
- - The first part [WS] propose signatures for weak  maps,
+ - The first part [WS] propose signatures for weak maps,
    which are maps with no ordering on the key type nor the
    data type. For obtaining an instance of this interface,
    a decidable equality on keys in enough (see for example
-   [WeakList]). Thes signature contain the usual operators
+   [WeakList]). These signature contains the usual operators
    (add, find, ...). The only function that asks for more is
    [equal], whose first argument should be a comparison on data.
 
- - Then comes [S], that extend [WS] to the case where the key type
+ - Then comes [S], that extends [WS] to the case where the key type
    is ordered. The main novelty is that [bindings] is required
    to produce sorted lists.
 
@@ -38,7 +38,8 @@ Unset Strict Implicit.
  Some additional differences with Ocaml:
 
  - no [iter] function, useless since Coq is purely functional
- - [option] types are used instead of [Not_found] exceptions
+ - [option] types are used instead of [Not_found] exceptions.
+   Said otherwise, [find] below is OCaml's [find_opt].
 
  Equality of maps
 
@@ -153,10 +154,14 @@ Module Type WS (K : DecidableType).
 
     Parameter merge : (key -> option elt -> option elt' -> option elt'') ->
                       t elt -> t elt' ->  t elt''.
-    (** [merge f m m'] creates a new map whose bindings belong to the ones
-        of either [m] or [m']. The presence and value for a key [k] is
-        determined by [f k e e'] where [e] and [e'] are the (optional)
-        bindings of [k] in [m] and [m']. *)
+    (** [merge f m m'] creates a new map whose keys are a subset of keys of
+        [m] and [m']. The presence of each such binding, and the corresponding
+        value, is determined with the function [f]. More precisely, for
+        a key [k], if its optional bindings [oe] in [m] and [oe'] in [m']
+        are not both [None], then the presence and value of key [k] in
+        the merged map is determined by [f k oe oe']. Note that
+        [f k None None] will never be considered, and may differ from
+        [None]. *)
 
   End Ops.
   Section Specs.
@@ -219,7 +224,7 @@ Module Type WS (K : DecidableType).
     (** Note : the specifications for [mapi] and [merge] below are
         general enough to work even when [f] is not a morphism w.r.t.
         [K.eq]. For [merge], we could also have [f k None None <> None].
-        Alas, this leads to relatively akward statements.
+        Alas, this leads to relatively awkward statements.
         See the [Properties] functor for more usual and pratical statements,
         for instance [merge_spec1mn]. *)
 
