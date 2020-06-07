@@ -1,4 +1,8 @@
 
+* TODO opam package, see :
+** https://coq.inria.fr/opam-packaging.html
+** https://github.com/coq-community/manifesto
+
 * TODO extra ops 
 ** filter + partition ? Or just leave the emulation in Facts based on fold (hence O(nlogn)).
 ** singleton ?
