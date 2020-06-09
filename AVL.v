@@ -309,7 +309,7 @@ End Merge.
 (** * Correctness proofs *)
 
 Include MMaps.GenTree.Props K I.
-Import T.
+Import Ind.
 
 Local Infix "∈" := In (at level 70).
 Local Infix "==" := K.eq (at level 70).
@@ -1071,12 +1071,10 @@ Qed.
 
 End Merge.
 
-Definition MapsTo := T.MapsTo.
-Definition In := T.In0.
-Definition Equal := @T.Equal.
-Definition Eqdom := T.Eqdom0.
-Definition Equiv := T.Equiv0.
-Definition Equivb := T.Equivb0.
+Definition In := Ind.In0.
+Definition Eqdom := Ind.Eqdom0.
+Definition Equiv := Ind.Equiv0.
+Definition Equivb := Ind.Equivb0.
 
 End MakeRaw.
 

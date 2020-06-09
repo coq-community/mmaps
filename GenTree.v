@@ -253,15 +253,12 @@ Module Type Props (K:OrderedType)(Info:InfoTyp)(Import M:Ops K Info).
 
 (** ** Occurrence in a tree *)
 
-Module T. (* Module allowing a "Definition" of MapsTo later. *)
+Module Ind. (* Module allowing a "Definition" of MapsTo below. *)
 
 Inductive MapsTo elt (x : key)(e : elt) : t elt -> Prop :=
-  | MapsRoot : forall l r h y,
-      K.eq x y -> MapsTo x e (Node h l y e r)
-  | MapsLeft : forall l r h y e',
-      MapsTo x e l -> MapsTo x e (Node h l y e' r)
-  | MapsRight : forall l r h y e',
-      MapsTo x e r -> MapsTo x e (Node h l y e' r).
+| MapsRoot l r h y : K.eq x y -> MapsTo x e (Node h l y e r)
+| MapsLeft l r h y e' : MapsTo x e l -> MapsTo x e (Node h l y e' r)
+| MapsRight l r h y e' : MapsTo x e r -> MapsTo x e (Node h l y e' r).
 
 Inductive In elt (x : key) : t elt -> Prop :=
   | InRoot : forall l r h y e,
@@ -271,20 +268,23 @@ Inductive In elt (x : key) : t elt -> Prop :=
   | InRight : forall l r h y e',
       In x r -> In x (Node h l y e' r).
 
+Definition In0 elt k m := exists e:elt, MapsTo k e m.
 Definition Eqdom elt (m m' : t elt) := forall k, In k m <-> In k m'.
-Definition Equal elt (m m' : t elt) := forall k, find k m = find k m'.
 Definition Equiv elt (R:elt->elt->Prop) m m' :=
  Eqdom m m' /\ (forall k e e', MapsTo k e m -> MapsTo k e' m' -> R e e').
 Definition Equivb elt cmp := @Equiv elt (Cmp cmp).
 
-Definition In0 elt k m := exists e:elt, MapsTo k e m.
 Definition Eqdom0 elt (m m' : t elt) := forall k, In0 k m <-> In0 k m'.
 Definition Equiv0 elt (R:elt->elt->Prop) m m' :=
  Eqdom0 m m' /\ (forall k e e', MapsTo k e m -> MapsTo k e' m' -> R e e').
 Definition Equivb0 elt cmp := @Equiv0 elt (Cmp cmp).
 
-End T.
-Import T.
+End Ind.
+Definition MapsTo := Ind.MapsTo.
+Import Ind.
+
+Definition Equal elt (m m' : t elt) := forall k, find k m = find k m'.
+
 
 (** ** Binary search trees *)
 
@@ -330,10 +330,6 @@ Local Infix ">>" := Above (at level 70).
 Local Infix "<<<" := Apart (at level 70).
 
 Scheme tree_ind := Induction for tree Sort Prop.
-Scheme MapsTo_ind := Induction for MapsTo Sort Prop.
-Scheme In_ind := Induction for In Sort Prop.
-Scheme Above_ind := Induction for Above Sort Prop.
-Scheme Below_ind := Induction for Below Sort Prop.
 
 Functional Scheme mem_ind := Induction for mem Sort Prop.
 Functional Scheme find_ind := Induction for find Sort Prop.
@@ -440,13 +436,15 @@ Qed.
 
 Lemma MapsTo_In {elt} k (e:elt) m : MapsTo k e m -> k ∈ m.
 Proof.
- induction 1; auto.
+ induction m; inversion 1; subst; auto.
 Qed.
 Local Hint Resolve MapsTo_In.
 
 Lemma In_MapsTo {elt} k m : k ∈ m -> exists (e:elt), MapsTo k e m.
 Proof.
- induction 1; try destruct IHIn as (e,He); exists e; auto.
+ induction m as [|h l IHl x e r IHr]; inversion_clear 1; eauto.
+ - destruct IHl; eauto.
+ - destruct IHr; eauto.
 Qed.
 
 Lemma In_alt' {elt} k (m:t elt) : k ∈ m <-> exists e, MapsTo k e m.
@@ -508,9 +506,7 @@ Qed.
 Lemma above_alt {elt} (m:t elt) x :
   x >> m <-> forall y, y ∈ m -> y < x.
 Proof.
- split.
- - induction 1; intuition_in; F.order.
- - induction m; constructor; auto.
+ induction m; split; try inversion_clear 1; intuition_in; F.order.
 Qed.
 
 Global Instance Above_m {elt} :
@@ -525,9 +521,7 @@ Qed.
 Lemma below_alt {elt} (m:t elt) x :
   x << m <-> forall y, y ∈ m -> x < y.
 Proof.
- split.
- - induction 1; intuition_in; F.order.
- - induction m; constructor; auto.
+ induction m; split; try inversion_clear 1; intuition_in; F.order.
 Qed.
 
 Global Instance Below_m {elt} :
@@ -551,22 +545,22 @@ Qed.
 
 Lemma Above_not_In {elt} (m:t elt) x : x >> m -> ~ x ∈ m.
 Proof.
- induction 1; intuition_in; F.order.
+ rewrite above_alt. intros H IN. specialize (H _ IN). F.order.
 Qed.
 
 Lemma Below_not_In {elt} (m:t elt) x : x << m -> ~ x ∈ m.
 Proof.
- induction 1; intuition_in; F.order.
+ rewrite below_alt. intros H IN. specialize (H _ IN). F.order.
 Qed.
 
 Lemma Above_trans {elt} (m:t elt) x y : x < y -> x >> m -> y >> m.
 Proof.
- induction 2; constructor; trivial; F.order.
+ rewrite !above_alt; intros LT H z IN. specialize (H _ IN). F.order.
 Qed.
 
 Lemma Below_trans {elt} (m:t elt) x y : y < x -> x << m -> y << m.
 Proof.
- induction 2; constructor; trivial; F.order.
+ rewrite !below_alt; intros LT H z IN. specialize (H _ IN). F.order.
 Qed.
 
 Local Hint Resolve
