@@ -12,6 +12,7 @@
 ** update ? (via merge ?)
 ** gmerge (as already in AVL) ? unsure
 ** common merge instance, such as diff, inter, union ? Cf Facts
+** of_list = fold add, of_sorted_list (cf treeify in RBT) ?
 
 * DONE add_cardinal_2 (cf PR Coq)
 ** DONE SameKeys another equivalence on maps (on keys only) --> here named Eqdom
@@ -23,6 +24,7 @@
 ** TODO do we want ZM.key or Z ? How to choose ? Weird : R.key becomes Z, not ZM.key ?!
 ** TODO R.empty without implicit elt ?
 ** TODO type of Mkt ?
+** TODO test demo.v and Coq 8.11
 
 * TODO Maps on unit + Eqdom --> an MSets implementation
 ** Issue : compare on sets ?
@@ -31,6 +33,7 @@
 ** How to specify without being too heavy ? compare_trans and co ?
 
 * TODO unified spec of add and remove based on some key_eqb (cf. add_o) ?
+** Not ideal since DecidableType K have K.eq_dec, not K.eqb
 
 * TODO AVL.gmerge could start by comparing height (better have the little map on the right)
 
