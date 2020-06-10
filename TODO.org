@@ -25,6 +25,7 @@
 ** TODO R.empty without implicit elt ?
 ** TODO type of Mkt ?
 ** TODO test demo.v and Coq 8.11
+** TODO avoid printing message during compilation ?
 
 * TODO Maps on unit + Eqdom --> an MSets implementation
 ** Issue : compare on sets ?
@@ -57,7 +58,7 @@
 ** DONE put MapsTo just after, instead of at the very end of (AVL/RBT).MakeRaw
 ** DONE directly use In0 instead of two version (inductive vs exists) ?
 
-* TODO warnings in Coq 8.11
+* DONE warnings in Coq 8.11
 ** DONE Hints not in core
 
 #+STARTUP: showall
