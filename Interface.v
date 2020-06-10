@@ -85,7 +85,6 @@ Definition Cmp {elt:Type}(cmp:elt->elt->bool) e1 e2 := cmp e1 e2 = true.
 Module Type WS (K : DecidableType).
 
   Definition key := K.t.
-  Hint Transparent key.
 
   Definition eq_key {elt} (p p':key*elt) := K.eq (fst p) (fst p').
 

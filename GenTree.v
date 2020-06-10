@@ -41,7 +41,6 @@ End InfoTyp.
 Module Type Ops (K:OrderedType)(Info:InfoTyp).
 
 Definition key := K.t.
-Hint Transparent key.
 
 Section Elt.
 
@@ -324,10 +323,10 @@ Scheme tree_ind := Induction for tree Sort Prop.
 
 (** * Automation and dedicated tactics. *)
 
-Local Hint Constructors tree MapsTo Bst.
-Local Hint Unfold Ok In.
-Local Hint Immediate F.eq_sym.
-Local Hint Resolve F.eq_refl.
+Local Hint Constructors tree MapsTo Bst : map.
+Local Hint Unfold Ok In : map.
+Local Hint Immediate F.eq_sym : map.
+Local Hint Resolve F.eq_refl : map.
 
 Tactic Notation "factornode" ident(s) :=
  try clear s;
@@ -382,8 +381,10 @@ Ltac inv_all :=
   end.
 
 Ltac chok := change Bst with Ok in *.
-Ltac autok := chok; auto with typeclass_instances.
+Ltac autok := chok; auto with typeclass_instances map.
 Ltac invok := inv_all; chok.
+Ltac autom := auto with map.
+Ltac eautom := eauto with map.
 
 Ltac intuition_m := repeat (intuition; inv MapsTo).
 
@@ -411,13 +412,13 @@ Qed.
 
 Lemma mapsto_in {elt} k (e:elt) m : m@k ↦ e -> k ∈ m.
 Proof.
- eauto.
+ eauto with map.
 Qed.
-Local Hint Resolve mapsto_in.
+Local Hint Resolve mapsto_in : map.
 
 Lemma in_mapsto {elt} k m : k ∈ m -> exists e:elt, m@k ↦ e.
 Proof.
- auto.
+ auto with map.
 Qed.
 
 Lemma mapsto_eq {elt} m x y (e:elt) :
@@ -425,7 +426,7 @@ Lemma mapsto_eq {elt} m x y (e:elt) :
 Proof.
  induction m; simpl; intuition_m; eauto. constructor. F.order.
 Qed.
-Hint Immediate mapsto_eq.
+Local Hint Immediate mapsto_eq : map.
 
 Global Instance MapsTo_compat {elt} :
   Proper (K.eq==>Logic.eq==>Logic.eq==>iff) (@MapsTo elt).
@@ -442,7 +443,7 @@ Lemma node_mapsto {elt} l x (e:elt) r h y v :
  (Node h l x e r)@y ↦ v <->
    l@y ↦ v \/ (y == x /\ v = e) \/ r@y ↦ v.
 Proof.
- intuition_m; subst; auto.
+ intuition_m; subst; auto with map.
 Qed.
 
 Global Instance in_compat {elt} :
@@ -475,7 +476,7 @@ Lemma in_right {elt} l x (e:elt) r h y : y ∈ r -> y ∈ (Node h l x e r).
 Proof.
  intuition_in.
 Qed.
-Local Hint Resolve in_left in_right.
+Local Hint Resolve in_left in_right : map.
 
 (** Results about [AllKeys] *)
 
@@ -496,8 +497,8 @@ Global Instance allkeys_m {elt} :
 Proof.
  intros P P' HP m m' Hm. unfold AllKeys.
  split; intros H x IN.
- - rewrite <- (HP x); auto. apply H, Hm; auto.
- - rewrite (HP x); auto. apply H, Hm; auto.
+ - rewrite <- (HP x); autom. apply H, Hm; autom.
+ - rewrite (HP x); autom. apply H, Hm; autom.
 Qed.
 
 (** Results about [<] *)
@@ -558,7 +559,7 @@ Ltac ok :=
    | |- Ok (Node _ _ _ _ _) => constructor; autok; ok
    | |- _ < Node _ _ _ _ _ => rewrite !below_node; repeat split; ok
    | |- Node _ _ _ _ _ < _ => rewrite !above_node; repeat split; ok
-   | _ => eauto with typeclass_instances
+   | _ => eauto with typeclass_instances map
  end.
 
 Ltac order := intros; match goal with
@@ -589,7 +590,7 @@ Proof.
  intros until 3; order.
 Qed.
 
-Local Hint Resolve above_notin above_trans below_notin below_trans.
+Local Hint Resolve above_notin above_trans below_notin below_trans : map.
 
 Lemma between {elt} (m m':t elt) x :
   m < x -> x < m' -> m < m'.
@@ -808,7 +809,7 @@ Proof.
  revert acc.
  induction m as [ | h l Hl y e' r Hr ]; intros acc; simpl; auto.
  - intuition_m.
- - rewrite Hl, InA_cons, Hr. redk. intuition_m. subst; auto.
+ - rewrite Hl, InA_cons, Hr. redk. intuition_m. subst; autom.
 Qed.
 
 Lemma bindings_spec1 m x e :
@@ -835,26 +836,26 @@ Proof.
  invok.
  apply Hl; auto.
  - constructor.
-   + apply Hr; eauto.
+   + apply Hr; eautom.
    + clear Hl Hr.
      apply InA_InfA with (eqA:=eqke); auto with *.
      intros (y',e') Hy'.
-     apply bindings_aux_mapsto in Hy'. change (y < y'). intuition; eauto.
+     apply bindings_aux_mapsto in Hy'. change (y < y'). intuition; eautom.
  - clear Hl Hr. intros x e' y' Hx Hy'.
    rewrite InA_cons in Hx. redk. destruct Hx as [(Hx,->)|Hx].
    + order.
-   + apply bindings_aux_mapsto in Hx. intuition. order. eauto.
+   + apply bindings_aux_mapsto in Hx. intuition. order. eautom.
 Qed.
 
 Lemma bindings_spec2 m `{!Ok m} : sort ltk (bindings m).
 Proof.
  unfold bindings; apply bindings_aux_sort; auto. inversion 1.
 Qed.
-Hint Resolve bindings_spec2.
+Local Hint Resolve bindings_spec2 : map.
 
 Lemma bindings_spec2w m `{!Ok m} : NoDupA eqk (bindings m).
 Proof.
- intros; apply O.Sort_NoDupA; auto.
+ intros; apply O.Sort_NoDupA; autom.
 Qed.
 
 Lemma bindings_aux_cardinal m acc :

@@ -34,7 +34,7 @@ Definition eq_key_elt {elt} := @PX.eqke elt.
 Definition IsOk {elt} := sort (@ltk elt).
 Class Ok {elt}(m:t elt) : Prop := ok : sort ltk m.
 
-Local Hint Unfold Ok IsOk.
+Local Hint Unfold Ok IsOk : map.
 Ltac chok :=
  match goal with
  | H : context [sort (@ltk ?elt)] |- _ =>
@@ -43,7 +43,8 @@ Ltac chok :=
    change (sort (@ltk elt)) with (@Ok elt); chok
  | _ => idtac
  end.
-Ltac autok := chok; auto with typeclass_instances.
+Ltac autok := chok; auto with typeclass_instances map.
+Ltac eautok := chok; eauto with typeclass_instances map.
 
 Local Notation Sort := (sort ltk).
 Local Notation Inf := (lelistA (ltk)).
@@ -166,7 +167,7 @@ Qed.
 
 Global Instance empty_ok : Ok empty.
 Proof.
- unfold empty; auto.
+ unfold empty; autok.
 Qed.
 
 (** * [is_empty] *)
@@ -229,7 +230,7 @@ Proof.
  compute in H0,H1.
  simpl; case X.compare; intuition.
 Qed.
-Hint Resolve add_Inf.
+Local Hint Resolve add_Inf : map.
 
 Global Instance add_ok m x e {Hm:Ok m} : Ok (add x e m).
 Proof.
@@ -293,7 +294,7 @@ Proof.
  inversion_clear Hm.
  apply Inf_lt with (x'',e''); auto.
 Qed.
-Hint Resolve remove_Inf.
+Local Hint Resolve remove_Inf : map.
 
 Global Instance remove_ok m x {Hm:Ok m} : Ok (remove x m).
 Proof.
@@ -484,12 +485,12 @@ Proof.
  induction m as [|(x0,e0) m IH]; simpl; auto.
  inversion_clear 1; auto.
 Qed.
-Hint Resolve map_Inf.
+Local Hint Resolve map_Inf : map.
 
 Global Instance map_ok (f:elt->elt')(m: t elt){Hm : Ok m} : Ok (map f m).
 Proof.
- induction m as [|(x,e) m IH]; simpl; auto.
- inversion_clear Hm. constructor; autok. eauto.
+ induction m as [|(x,e) m IH]; simpl; autok.
+ inversion_clear Hm. constructor; eautok.
 Qed.
 
 (** Specification of [mapi] *)
@@ -515,7 +516,7 @@ Proof.
  induction m as [|(x0,e0) m IH]; simpl; auto.
  inversion_clear 1; auto.
 Qed.
-Hint Resolve mapi_Inf.
+Local Hint Resolve mapi_Inf : map.
 
 Global Instance mapi_ok (f:key->elt->elt') m {Hm : Ok m} :
   Ok (mapi f m).
@@ -630,7 +631,7 @@ Proof.
      * inversion_clear H; auto.
      * inversion_clear H0; auto.
 Qed.
-Hint Resolve combine_Inf.
+Local Hint Resolve combine_Inf : map.
 
 Global Instance combine_ok m m' {Hm : Ok m}{Hm' : Ok m'} :
  Ok (combine m m').
@@ -671,7 +672,7 @@ Proof.
  clear f' f Hmm' l0 Hm Hm' m m'.
  (* Ok fold_right_pair *)
  induction l1.
- - simpl; auto.
+ - simpl; autok.
  - inversion_clear H1. chok.
    destruct a; destruct o; auto.
    simpl.

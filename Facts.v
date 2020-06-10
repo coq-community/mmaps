@@ -386,10 +386,10 @@ Lemma map2_2 {elt elt' elt''}(m: t elt)(m': t elt')
   In x (map2 f m m') -> In x m \/ In x m'.
 Proof. apply merge_spec2. Qed.
 
-Hint Immediate MapsTo_1 mem_2 is_empty_2
-     map_2 mapi_2 add_3 remove_3 find_2 : map.
-Hint Resolve mem_1 is_empty_1 is_empty_2 add_1 add_2 remove_1
-     remove_2 find_1 fold_1 map_1 mapi_1 mapi_2 : map.
+Hint Immediate MapsTo_1 mem_2 is_empty_2 : map.
+Hint Immediate map_2 mapi_2 add_3 remove_3 find_2 : map.
+Hint Resolve mem_1 is_empty_1 is_empty_2 add_1 add_2 remove_1 : map.
+Hint Resolve remove_2 find_1 fold_1 map_1 mapi_1 mapi_2 : map.
 
 (** ** Specifications written using equivalences *)
 

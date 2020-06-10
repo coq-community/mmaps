@@ -53,7 +53,7 @@ Instance avl_Avl elt (s:tree elt) (Hs : avl s) : Avl s := Hs.
 
 (** * Automation and dedicated tactics *)
 
-Local Hint Constructors avl.
+Local Hint Constructors avl : map.
 
 (** A tactic for cleaning hypothesis after use of functional induction. *)
 
@@ -286,7 +286,7 @@ Lemma avl_node :
 Proof.
   autok.
 Qed.
-Hint Resolve avl_node.
+Local Hint Resolve avl_node : map.
 
 (** * The AVL invariant is preserved by set operations *)
 
@@ -301,7 +301,7 @@ Qed.
 
 Instance singleton_avl x e : Avl (singleton x e).
 Proof.
- unfold singleton. constructor; auto; simpl; omega_max.
+ unfold singleton. constructor; autom; simpl; omega_max.
 Qed.
 
 (** create *)
@@ -311,7 +311,7 @@ Lemma create_avl :
    -(2) <= height l - height r <= 2 ->
    Avl (create l x e r).
 Proof.
- unfold create; auto.
+ unfold create; autom.
 Qed.
 
 Lemma create_height :
@@ -319,7 +319,7 @@ Lemma create_height :
    -(2) <= height l - height r <= 2 ->
    height (create l x e r) = max (height l) (height r) + 1.
 Proof.
- unfold create; auto.
+ unfold create; autom.
 Qed.
 
 (** bal *)
@@ -371,7 +371,7 @@ Lemma add_avl_1 : forall s x e `{!Avl s},
  Avl (add x e s) /\ 0 <= height (add x e s) - height s <= 1.
 Proof.
  induct s; inv_avl.
- - intuition; try constructor; simpl; auto; omega_max.
+ - intuition; try constructor; simpl; autom; omega_max.
  - (* Eq *)
    simpl. intuition; omega_max.
  - (* Lt *)

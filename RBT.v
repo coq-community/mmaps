@@ -326,16 +326,16 @@ Local Infix "===" := Equal (at level 70).
 Local Notation "m @ x ↦ e" := (MapsTo x e m)
  (at level 9, format "m '@' x  '↦'  e").
 
-Local Hint Constructors tree MapsTo Bst.
-Local Hint Unfold Ok Bst_Ok In.
-Local Hint Immediate F.eq_sym.
-Local Hint Resolve F.eq_refl.
-Local Hint Resolve above_notin above_trans below_notin below_trans.
-Local Hint Resolve above_leaf below_leaf.
+Local Hint Constructors tree MapsTo Bst : map.
+Local Hint Unfold Ok Bst_Ok In : map.
+Local Hint Immediate F.eq_sym : map.
+Local Hint Resolve F.eq_refl : map.
+Local Hint Resolve above_notin above_trans below_notin below_trans : map.
+Local Hint Resolve above_leaf below_leaf : map.
 
 Ltac rtauto := Rtauto.rtauto.
-Ltac autorew := autorewrite with rb.
-Tactic Notation "autorew" "in" ident(H) := autorewrite with rb in H.
+Ltac autorew := autorewrite with map.
+Tactic Notation "autorew" "in" ident(H) := autorewrite with map in H.
 Ltac treeorder := try intro; autorew; intuition_in; order.
 
 Ltac induct m :=
@@ -362,7 +362,7 @@ Implicit Types v vx vy : elt.
 Lemma singleton_spec x y vx vy :
   (singleton x vx)@y ↦ vy <-> y == x /\ vy = vx.
 Proof.
- unfold singleton; intuition_m. subst; auto.
+ unfold singleton; intuition_m. subst; autok.
 Qed.
 
 Global Instance singleton_ok x vx : Ok (singleton x vx).
@@ -540,19 +540,19 @@ Qed.
 Global Instance lbal_ok l x v r `(!Ok l, !Ok r, l < x, x < r) :
  Ok (lbal l x v r).
 Proof.
- destruct (lbal_match l x v r); ok; invlt; intuition; eauto.
+ destruct (lbal_match l x v r); ok; invlt; intuition; eautom.
 Qed.
 
 Global Instance rbal_ok l x v r `(!Ok l, !Ok r, l < x, x < r) :
  Ok (rbal l x v r).
 Proof.
- destruct (rbal_match l x v r); ok; invlt; intuition; eauto.
+ destruct (rbal_match l x v r); ok; invlt; intuition; eautom.
 Qed.
 
 Global Instance rbal'_ok l x v r `(!Ok l, !Ok r, l < x, x < r) :
  Ok (rbal' l x v r).
 Proof.
- destruct (rbal'_match l x v r); ok; invlt; intuition; eauto.
+ destruct (rbal'_match l x v r); ok; invlt; intuition; eautom.
 Qed.
 
 (** Note : Rd is arbitrary here and in all similar results below *)
@@ -617,8 +617,8 @@ Proof.
  intros Hl Hr y. apply find_mapsto_equiv; auto using rbal'_mapsto; autok.
 Qed.
 
-Hint Rewrite (@in_node elt)
- makeRed_in makeBlack_in lbal_in rbal_in rbal'_in : rb.
+Hint Rewrite (@in_node elt) makeRed_in makeBlack_in : map.
+Hint Rewrite lbal_in rbal_in rbal'_in : map.
 
 (** ** Insertion *)
 
@@ -628,7 +628,7 @@ Proof.
  induct m; destmatch; autorew; rewrite ?IHl, ?IHr; intuition_in.
  setoid_replace y with x; eauto.
 Qed.
-Hint Rewrite ins_in : rb.
+Hint Rewrite ins_in : map.
 
 Lemma ins_above m x v y : m < y -> x < y -> ins x v m < y.
 Proof.
@@ -639,7 +639,7 @@ Lemma ins_below m x v y : y < m -> y < x -> y < ins x v m.
 Proof.
  intros. treeorder.
 Qed.
-Local Hint Resolve ins_above ins_below.
+Local Hint Resolve ins_above ins_below : map.
 
 Global Instance ins_ok m x v `{!Ok m} : Ok (ins x v m).
 Proof.
@@ -683,7 +683,7 @@ Lemma add_in m x v y :
 Proof.
  unfold add. now autorew.
 Qed.
-Hint Rewrite add_in : rb.
+Hint Rewrite add_in : map.
 
 Lemma add_spec1 m x v `{!Ok m} : find x (add x v m) = Some v.
 Proof.
@@ -767,7 +767,7 @@ Proof.
  intros Hl Hr y. apply find_mapsto_equiv; auto using rbalS_mapsto; autok.
 Qed.
 
-Hint Rewrite lbalS_in rbalS_in : rb.
+Hint Rewrite lbalS_in rbalS_in : map.
 
 (** ** Append for deletion *)
 
@@ -821,7 +821,7 @@ Proof.
  unfold "∈". setoid_rewrite append_mapsto. firstorder.
 Qed.
 
-Hint Rewrite append_in : rb.
+Hint Rewrite append_in : map.
 
 Global Instance append_ok : forall l r `{!Ok l, !Ok r},
  l < r -> Ok (@append elt l r).
@@ -833,12 +833,12 @@ Proof.
    assert (U : Ok (append lr rl)) by auto.
    assert (V : lx < append lr rl) by (invlt;treeorder).
    assert (W : append lr rl < rx) by (invlt;treeorder).
-   simpl. destmatch; invlt; ok; intuition; eauto.
+   simpl. destmatch; invlt; ok; intuition; eautom.
  - (* Bk / Bk *)
    assert (U : Ok (append lr rl)) by auto.
    assert (V : lx < append lr rl) by (invlt;treeorder).
    assert (W : append lr rl < rx) by (invlt;treeorder).
-   simpl. destmatch; try apply lbalS_ok; invlt; ok; intuition; eauto.
+   simpl. destmatch; try apply lbalS_ok; invlt; ok; intuition; eautom.
 Qed.
 
 (** ** Deletion *)
@@ -850,7 +850,7 @@ induct m; destmatch; autorew; try rewrite IHl; try rewrite IHr;
  try clear IHl IHr; treeorder.
 Qed.
 
-Hint Rewrite del_in : rb.
+Hint Rewrite del_in : map.
 
 Global Instance del_ok m x `{!Ok m} : Ok (del x m).
 Proof.
@@ -894,7 +894,7 @@ Proof.
 unfold remove. now autorew.
 Qed.
 
-Hint Rewrite remove_in : rb.
+Hint Rewrite remove_in : map.
 
 Global Instance remove_ok m x `{!Ok m} : Ok (remove x m).
 Proof.
@@ -1235,8 +1235,8 @@ Proof.
  apply -> ApartL_rev in AP'.
  apply -> ApartL_consl in AP. destruct AP as (AP1,AP).
  apply IH; clear IH; simpl; auto; destruct (f k e); simpl; auto.
- - apply sort_cons_key. eauto using ApartL_eqk_l.
- - apply ApartL_consr. eauto using ApartL_eqk_r.
+ - apply sort_cons_key. eauto using ApartL_eqk_l with map.
+ - apply ApartL_consr. eauto using ApartL_eqk_r with map.
 Qed.
 
 Global Instance mapo_ok m `{!Ok m} : Ok (mapo f m).
@@ -1285,8 +1285,8 @@ Proof.
  - destruct (f k e) eqn:Hf; simpl in *; rewrite IH; clear IH; auto.
    rewrite ?InA_cons.
    + firstorder; try red in H; try red in H0; simpl in *; subst.
-     * left. exists k, e; auto.
-     * injection H0 as <- <-. right; left. compute; split; auto.
+     * left. exists k, e; autom.
+     * injection H0 as <- <-. right; left. compute; split; autom.
        congruence.
    + firstorder. injection H0 as <- <-. congruence.
 Qed.
@@ -1300,7 +1300,7 @@ Proof.
  intros [(y & v & E & IN & Hf)|[ ]].
  rewrite rev_bindings_rev, <-In_rev in IN.
  exists y, v. repeat split; auto. apply bindings_spec1.
- rewrite InA_alt. exists (y, v). split; auto.
+ rewrite InA_alt. exists (y, v). split; autom.
 Qed.
 
 Lemma mapo_find m x `{!Ok m} :
@@ -1355,8 +1355,8 @@ Proof.
       apply IHl || apply IHl'; clear IHl IHl'; auto;
       destruct f; simpl; auto; try apply sort_cons_key;
        try apply ApartL_consr; try apply ApartL_consl; split; auto;
-       eauto using ApartL_eqk_l, ApartL_eqk_r;
-       apply ApartL_consl; split; try (eapply ApartL_ltk_r; eauto; fail);
+       eauto using ApartL_eqk_l, ApartL_eqk_r with map;
+       apply ApartL_consl; split; try (eapply ApartL_ltk_r; eautom; fail);
        intros (?,?) (?,?); compute; intuition congruence.
 Qed.
 
@@ -1378,14 +1378,14 @@ Proof.
  - simpl. intros l' acc (v,H). right.
    apply mapoL_mapsto in H.
    destruct H as [(y & v' & E & IN & _)|H].
-   + left; exists v'. rewrite InA_alt. exists (y,v'); split; auto.
+   + left; exists v'. rewrite InA_alt. exists (y,v'); split; autom.
    + firstorder.
  - induction l' as [|(y',e') l' IHl']; intros acc.
    + intros (v,H). apply mapoL_mapsto in H; simpl in *.
      destruct H as [(y' & v' & E & [[= <- <-]|IN] & _)|H].
-     * left. exists e; eauto.
+     * left. exists e; eautom.
      * left. exists v'. rewrite InA_cons. right. rewrite InA_alt.
-       exists (y',v'); auto.
+       exists (y',v'); autom.
      * firstorder.
    + rewrite mergeL_eqn.
      destmatch; [intros EQ H| intros LT H|intros LT H];
@@ -1684,7 +1684,7 @@ Module Make_ord (K:OrderedType)(D:OrderedType) <: Sord K D.
   Proof.
     destruct c; simpl; unfold flip; simpl; intuition.
   Qed.
-  Local Hint Resolve cons_Cmp.
+  Local Hint Resolve cons_Cmp : map.
 
   Lemma compare_end_Cmp e2 :
    Cmp (compare_end e2) nil (R.flatten_e e2).

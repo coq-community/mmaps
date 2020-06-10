@@ -69,8 +69,8 @@ Class Rbt elt (t:tree elt) :=  RBT : exists d, rbt d t.
 (** ** Basic tactics and results about red-black *)
 
 Scheme rbt_ind := Induction for rbt Sort Prop.
-Local Hint Constructors rbt rrt arbt.
-Local Hint Extern 0 (notred _) => (exact I).
+Local Hint Constructors rbt rrt arbt : map.
+Local Hint Extern 0 (notred _) => (exact I) : map.
 Ltac invrb := intros; inv rrt; inv rbt; try contradiction.
 Ltac descolor := destruct_all Color.t.
 Ltac destree t := destruct t as [|[|] ? ? ? ?].
@@ -88,24 +88,24 @@ Lemma rr_nrr_rb n t :
  rrt n t -> notredred t -> rbt n t.
 Proof.
  destruct 1 as [l x e r Hl Hr].
- unfold rrcase; destmatch; now auto.
+ unfold rrcase; destmatch; now autom.
 Qed.
 
-Local Hint Resolve rr_nrr_rb.
+Local Hint Resolve rr_nrr_rb : map.
 
 Lemma arb_nrr_rb n t :
  arbt n t -> notredred t -> rbt n t.
 Proof.
- destruct 1; auto.
+ destruct 1; autom.
 Qed.
 
 Lemma arb_nr_rb n t :
  arbt n t -> notred t -> rbt n t.
 Proof.
- destruct 1; destruct t; descolor; invrb; auto.
+ destruct 1; destruct t; descolor; invrb; autom.
 Qed.
 
-Local Hint Resolve arb_nrr_rb arb_nr_rb.
+Local Hint Resolve arb_nrr_rb arb_nr_rb : map.
 
 (** ** A Red-Black tree has indeed a logarithmic depth *)
 
@@ -166,7 +166,7 @@ Qed.
 
 Lemma singleton_rb x e : Rbt (singleton x e).
 Proof.
- unfold singleton. exists 1; auto.
+ unfold singleton. exists 1; autom.
 Qed.
 
 (** ** [makeBlack] and [makeRed] *)
@@ -174,15 +174,15 @@ Qed.
 Lemma makeBlack_rb n t : arbt n t -> Rbt (makeBlack t).
 Proof.
  destruct t as [|[|] l x e r].
- - exists 0; simpl; auto.
- - destruct 1; invrb; exists (S n); simpl; auto.
- - exists n; auto.
+ - exists 0; simpl; autom.
+ - destruct 1; invrb; exists (S n); simpl; autom.
+ - exists n; autom.
 Qed.
 
 Lemma makeRed_rr t n :
  rbt (S n) t -> notred t -> rrt n (makeRed t).
 Proof.
- destruct t as [|[|] l x e r]; invrb; simpl; auto.
+ destruct t as [|[|] l x e r]; invrb; simpl; autom.
 Qed.
 
 (** ** Balancing *)
@@ -190,19 +190,19 @@ Qed.
 Lemma lbal_rb n l k e r :
  arbt n l -> rbt n r -> rbt (S n) (lbal l k e r).
 Proof.
-case lbal_match; intros; desarb; invrb; auto.
+case lbal_match; intros; desarb; invrb; autom.
 Qed.
 
 Lemma rbal_rb n l k e r :
  rbt n l -> arbt n r -> rbt (S n) (rbal l k e r).
 Proof.
-case rbal_match; intros; desarb; invrb; auto.
+case rbal_match; intros; desarb; invrb; autom.
 Qed.
 
 Lemma rbal'_rb n l k e r :
  rbt n l -> arbt n r -> rbt (S n) (rbal' l k e r).
 Proof.
-case rbal'_match; intros; desarb; invrb; auto.
+case rbal'_match; intros; desarb; invrb; autom.
 Qed.
 
 Lemma lbalS_rb n l x e r :
@@ -212,20 +212,20 @@ Proof.
  destruct r as [|[|] rl rx rv rr]; invrb. clear Hr'.
  revert Hl.
  case lbalS_match.
- - destruct 1; invrb; auto.
- - intros. apply rbal'_rb; auto.
+ - destruct 1; invrb; autom.
+ - intros. apply rbal'_rb; autom.
 Qed.
 
 Lemma lbalS_arb n l x e r :
  arbt n l -> rbt (S n) r -> arbt (S n) (lbalS l x e r).
 Proof.
  case lbalS_match.
- - destruct 1; invrb; auto.
+ - destruct 1; invrb; autom.
  - clear l. intros l Hl Hl' Hr.
    destruct r as [|[|] rl rx rv rr]; invrb.
    * destruct rl as [|[|] rll rlx rlv rlr]; invrb.
-     right; auto using rbal'_rb, makeRed_rr.
-   * left; apply rbal'_rb; auto.
+     right; auto using rbal'_rb, makeRed_rr with map.
+   * left; apply rbal'_rb; autom.
 Qed.
 
 Lemma rbalS_rb n l x e r :
@@ -235,20 +235,20 @@ Proof.
  destruct l as [|[|] ll lx lv lr]; invrb. clear Hl'.
  revert Hr.
  case rbalS_match.
- - destruct 1; invrb; auto.
- - intros. apply lbal_rb; auto.
+ - destruct 1; invrb; autom.
+ - intros. apply lbal_rb; autom.
 Qed.
 
 Lemma rbalS_arb n l x e r :
  rbt (S n) l -> arbt n r -> arbt (S n) (rbalS l x e r).
 Proof.
  case rbalS_match.
- - destruct 2; invrb; auto.
+ - destruct 2; invrb; autom.
  - clear r. intros r Hr Hr' Hl.
    destruct l as [|[|] ll lx lv lr]; invrb.
    * destruct lr as [|[|] lrl lrx lrv lrr]; invrb.
-     right; auto using lbal_rb, makeRed_rr.
-   * left; apply lbal_rb; auto.
+     right; auto using lbal_rb, makeRed_rr with map.
+   * left; apply lbal_rb; autom.
 Qed.
 
 
@@ -273,12 +273,12 @@ Lemma ins_rr_rb x e s n : rbt n s ->
  ifred s (rrt n (ins x e s)) (rbt n (ins x e s)).
 Proof.
 induction 1 as [ | n l k v r | n l k v r Hl IHl Hr IHr ].
-- simpl; auto.
+- simpl; autom.
 - simpl. rewrite ifred_notred in * by trivial.
-  destmatch; auto.
-- rewrite ifred_notred by trivial.
+  destmatch; autom.
+- rewrite ifred_notred by autom.
   cbn. destmatch; intro.
-  * auto.
+  * autom.
   * apply lbal_rb; trivial. apply ifred_or in IHl; intuition.
   * apply rbal_rb; trivial. apply ifred_or in IHr; intuition.
 Qed.
@@ -341,27 +341,27 @@ Lemma append_arb_rb n l r : rbt n l -> rbt n r ->
 Proof.
 revert r n.
 append_tac l r.
-- split; auto.
-- split; auto.
+- split; autom.
+- split; autom.
 - (* Red / Red *)
   intros n. invrb.
   case (IHlr n); auto; clear IHlr.
   case append_rr_match.
   + intros a x v b _ H; split; invrb.
-    assert (rbt n (Rd a x v b)) by auto. invrb. auto.
-  + split; invrb; auto.
+    assert (rbt n (Rd a x v b)) by autom. invrb. autom.
+  + split; invrb; autom.
 - (* Red / Black *)
-  split; invrb. destruct (IHlr n) as (_,IH); auto.
+  split; invrb. destruct (IHlr n) as (_,IH); autom.
 - (* Black / Red *)
-  split; invrb. destruct (IHrl n) as (_,IH); auto.
+  split; invrb. destruct (IHrl n) as (_,IH); autom.
 - (* Black / Black *)
   nonzero n.
   invrb.
   destruct (IHlr n) as (IH,_); auto; clear IHlr.
   revert IH.
   case append_bb_match.
-  + intros a x v b IH; split; destruct IH; invrb; auto.
-  + split; [left | invrb]; auto using lbalS_rb.
+  + intros a x v b IH; split; destruct IH; invrb; autom.
+  + split; [left | invrb]; auto using lbalS_rb with map.
 Qed.
 
 Ltac induct' m :=
@@ -377,19 +377,19 @@ Proof.
   induct' s; descolor; try easy; invrb.
   - apply append_arb_rb; assumption.
   - assert (IHl' := del_rb l x). clear IHr del_arb del_rb.
-    destruct l as [|[|] ll lx lv lr]; auto.
-    nonzero n. apply lbalS_arb; auto.
+    destruct l as [|[|] ll lx lv lr]; autom.
+    nonzero n. apply lbalS_arb; autom.
   - assert (IHr' := del_rb r x). clear IHl del_arb del_rb.
-    destruct r as [|[|] rl rx rv rr]; auto.
+    destruct r as [|[|] rl rx rv rr]; autom.
     nonzero n. apply rbalS_arb; auto. }
 { revert n.
   induct' s; descolor; try easy; invrb.
   - apply append_arb_rb; assumption.
   - assert (IHl' := del_arb l x). clear IHr del_arb del_rb.
-    destruct l as [|[|] ll lx lv lr]; auto.
-    nonzero n. destruct n as [|n]; [invrb|]; apply lbalS_rb; auto.
+    destruct l as [|[|] ll lx lv lr]; autom.
+    nonzero n. destruct n as [|n]; [invrb|]; apply lbalS_rb; autom.
   - assert (IHr' := del_arb r x). clear IHl del_arb del_rb.
-    destruct r as [|[|] rl rx rv rr]; auto.
+    destruct r as [|[|] rl rx rv rr]; autom.
     nonzero n. apply rbalS_rb; auto. }
 Qed.
 
@@ -397,9 +397,9 @@ Instance remove_rb s x : Rbt s -> Rbt (remove x s).
 Proof.
  intros (n,H). unfold remove.
  destruct s as [|[|] l y v r].
- - apply (@makeBlack_rb n). auto.
- - apply (@makeBlack_rb n). left. apply del_rb; simpl; auto.
- - nonzero n. apply (@makeBlack_rb n). apply del_arb; simpl; auto.
+ - apply (@makeBlack_rb n). autom.
+ - apply (@makeBlack_rb n). left. apply del_rb; simpl; autom.
+ - nonzero n. apply (@makeBlack_rb n). apply del_arb; simpl; autom.
 Qed.
 
 (** ** Treeify *)
@@ -415,12 +415,12 @@ Definition treeify_rb_invariant size depth (f:treeify_t) :=
 
 Lemma treeify_zero_rb : treeify_rb_invariant 0 0 (@treeify_zero elt).
 Proof.
- intros acc _; simpl; auto.
+ intros acc _; simpl; autom.
 Qed.
 
 Lemma treeify_one_rb : treeify_rb_invariant 1 0 (@treeify_one elt).
 Proof.
- intros [|(x,e) acc]; simpl; auto; inversion 1.
+ intros [|(x,e) acc]; simpl; autom; inversion 1.
 Qed.
 
 Lemma treeify_cont_rb f g size1 size2 size d :
@@ -443,7 +443,7 @@ Proof.
    { revert Hacc.
      rewrite H, <- Hf2, Nat.add_succ_r, <- Nat.succ_le_mono.
      apply Nat.add_le_mono_l. }
-   split; auto.
+   split; autom.
    now rewrite H, <- Hf2, <- Hg2, Nat.add_succ_r, Nat.add_assoc.
 Qed.
 

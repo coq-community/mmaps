@@ -32,7 +32,6 @@ Definition eq_key_elt {elt} := @P.eqke elt.
 Definition IsOk {elt} := NoDupA (@eqk elt).
 Class Ok {elt}(m:t elt) : Prop := ok : NoDupA eqk m.
 
-Local Hint Unfold Ok IsOk.
 Ltac chok :=
  match goal with
  | H : context [NoDupA (@eqk ?elt)] |- _ =>
@@ -107,7 +106,7 @@ Fixpoint isok (m: t elt) : bool :=
 Lemma isok_spec (m: t elt) : isok m = true <-> Ok m.
 Proof.
  induction m as [|(x,e) m IH]; simpl.
- - intuition.
+ - split; constructor.
  - rewrite andb_true_iff, IH. split.
    + intros (H,O). constructor; auto.
      rewrite <- In_alt', <- mem_spec; auto. now destruct mem.
@@ -129,7 +128,7 @@ Qed.
 
 Global Instance empty_ok : Ok empty.
 Proof.
- unfold empty; autok.
+ unfold empty; red; auto.
 Qed.
 
 (** * [is_empty] *)
@@ -422,9 +421,8 @@ Qed.
 
 Global Instance map_ok (f:elt->elt') m (Hm : Ok m) : Ok (map f m).
 Proof.
- induction m as [|(x,e) m IH]; simpl; auto.
- inversion_clear Hm.
- constructor; autok. now rewrite map_InA.
+ induction m as [|(x,e) m IH]; simpl. red; constructor.
+ inversion_clear Hm. constructor; autok. now rewrite map_InA.
 Qed.
 
 (** Specification of [mapi] *)
@@ -445,7 +443,7 @@ Proof. apply mapi_spec'. Qed.
 
 Global Instance mapi_ok (f: key->elt->elt') m (Hm:Ok m) : Ok (mapi f m).
 Proof.
- induction m as [|(x,e) m IH]; simpl; auto.
+ induction m as [|(x,e) m IH]; simpl. red; constructor.
  inversion_clear Hm; auto.
  constructor; autok.
  contradict H. clear IH H0.

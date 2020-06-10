@@ -329,12 +329,12 @@ Functional Scheme gmerge_ind := Induction for gmerge Sort Prop.
 
 (** * Automation and dedicated tactics. *)
 
-Local Hint Constructors tree MapsTo Bst.
-Local Hint Unfold Ok Bst_Ok In.
-Local Hint Immediate F.eq_sym.
-Local Hint Resolve F.eq_refl.
-Local Hint Resolve above_notin above_trans below_notin below_trans.
-Local Hint Resolve above_leaf below_leaf.
+Local Hint Constructors tree MapsTo Bst : map.
+Local Hint Unfold Ok Bst_Ok In : map.
+Local Hint Immediate F.eq_sym : map.
+Local Hint Resolve F.eq_refl : map.
+Local Hint Resolve above_notin above_trans below_notin below_trans : map.
+Local Hint Resolve above_leaf below_leaf : map.
 
 (* Function/Functional Scheme can't deal with internal fix.
    Let's do its job by hand: *)
@@ -375,7 +375,7 @@ Implicit Types m r : t elt.
 Global Instance create_ok l x e r `{!Ok l, !Ok r} :
  l < x -> x < r -> Ok (create l x e r).
 Proof.
- unfold create; auto.
+ unfold create; autok.
 Qed.
 
 Lemma create_in l x e r y :
@@ -432,7 +432,7 @@ Lemma add_gt m x e y : y < m -> y < x -> y < add x e m.
 Proof.
  intros ? ? z. rewrite add_in. destruct 1; order.
 Qed.
-Hint Resolve add_lt add_gt.
+Local Hint Resolve add_lt add_gt : map.
 
 Global Instance add_ok m x e `{!Ok m} : Ok (add x e m).
 Proof.
@@ -514,7 +514,7 @@ Lemma remove_min_lt m m' p : RemoveMin m (m',p) ->
 Proof.
  intros R y L z Hz. apply L. apply (remove_min_in R). now right.
 Qed.
-Hint Resolve remove_min_lt.
+Local Hint Resolve remove_min_lt : map.
 
 Lemma remove_min_gt m m' p `{!Ok m} : RemoveMin m (m',p) ->
  p#1 < m'.
@@ -611,7 +611,7 @@ Lemma remove_gt m x y `{!Ok m} : y < m -> y < remove x m.
 Proof.
  intros ? z. rewrite remove_in by trivial. destruct 1; order.
 Qed.
-Hint Resolve remove_gt remove_lt.
+Local Hint Resolve remove_gt remove_lt : map.
 
 Global Instance remove_ok m x `{!Ok m} : Ok (remove x m).
 Proof.
@@ -742,7 +742,7 @@ Lemma split_gt_l m x y : y < m -> y < (split x m)#l.
 Proof.
   intros ? z Hz. apply split_in_l0 in Hz. order.
 Qed.
-Hint Resolve split_lt_l split_lt_r split_gt_l split_gt_r.
+Local Hint Resolve split_lt_l split_lt_r split_gt_l split_gt_r : map.
 
 Global Instance split_ok_l m x `{!Ok m} : Ok (split x m)#l.
 Proof.
@@ -813,7 +813,7 @@ Proof.
    + rewrite (remove_min_find R y).
      case K.compare_spec; intros; auto.
      destruct (find y m2'); trivial.
-     simpl. symmetry. apply not_find_iff; eauto.
+     simpl. symmetry. apply not_find_iff; eautom.
    + apply create_ok; eauto with *. now apply (remove_min_gt R).
 Qed.
 
@@ -830,12 +830,12 @@ Proof.
 functional induction (mapo f m); simpl; auto.
 - intuition_in.
 - rewrite join_in; intros [H|[H|H]].
-  + exists x0, d. do 2 (split; auto). congruence.
-  + destruct (IHt0 H) as (y & e & ? & ? & ?). exists y, e. auto.
-  + destruct (IHt1 H) as (y & e & ? & ? & ?). exists y, e. auto.
+  + exists x0, d. do 2 (split; autom). congruence.
+  + destruct (IHt0 H) as (y & e & ? & ? & ?). exists y, e. autom.
+  + destruct (IHt1 H) as (y & e & ? & ? & ?). exists y, e. autom.
 - rewrite concat_in; intros [H|H].
-  + destruct (IHt0 H) as (y & e & ? & ? & ?). exists y, e. auto.
-  + destruct (IHt1 H) as (y & e & ? & ? & ?). exists y, e. auto.
+  + destruct (IHt0 H) as (y & e & ? & ? & ?). exists y, e. autom.
+  + destruct (IHt1 H) as (y & e & ? & ? & ?). exists y, e. autom.
 Qed.
 
 Lemma mapo_lt m x : m < x -> mapo f m < x.
@@ -847,13 +847,13 @@ Lemma mapo_gt m x : x < m -> x < mapo f m.
 Proof.
   intros H y Hy. destruct (mapo_in Hy) as (y' & e & ? & ? & ?). order.
 Qed.
-Hint Resolve mapo_lt mapo_gt.
+Local Hint Resolve mapo_lt mapo_gt : map.
 
 Global Instance mapo_ok m `{!Ok m} : Ok (mapo f m).
 Proof.
-functional induction (mapo f m); simpl; auto; invok.
-- apply join_ok, create_ok; auto.
-- apply concat_ok; eauto using between.
+functional induction (mapo f m); simpl; autok; invok.
+- apply join_ok, create_ok; autok.
+- apply concat_ok; eauto using between with map.
 Qed.
 
 Ltac nonify e :=
@@ -886,7 +886,7 @@ functional induction (mapo f m); simpl; auto; invok.
     * nonify (find x l). exists y'. split; trivial.
       destruct (find x r); simpl; trivial.
       now destruct (f y' e).
-  + apply between with x0; auto.
+  + apply between with x0; autom.
 Qed.
 
 End Mapo.
@@ -941,15 +941,15 @@ Lemma gmerge_gt m m' x `{!Ok m, !Ok m'} :
 Proof.
   intros ? ? y Hy. apply gmerge_in in Hy; intuition_in; order.
 Qed.
-Hint Resolve gmerge_lt gmerge_gt.
-Hint Resolve split_ok_l split_ok_r split_lt_l split_gt_r.
+Local Hint Resolve gmerge_lt gmerge_gt : map.
+Local Hint Resolve split_ok_l split_ok_r split_lt_l split_gt_r : map.
 
 Global Instance gmerge_ok m m' `{!Ok m, !Ok m'} : Ok (gmerge m m').
 Proof.
   functional induction (gmerge m m'); auto; factornode m2; invok;
   (apply join_ok, create_ok || apply concat_ok);
   revert IHt2 IHt0; cleansplit; intuition.
-  apply between with x1; auto.
+  apply between with x1; autom.
 Qed.
 
 Lemma oelse_none_r {A} (o:option A) : oelse o None = o.
@@ -985,8 +985,8 @@ Proof.
     rewrite e1 in *; simpl in *. intros.
     rewrite join_find by (cleansplit; constructor; autok).
     simpl. case K.compare_spec; intros.
-    + exists x1. split; auto. now rewrite <- e3, f0_f.
-    + apply IHt2; auto. clear IHt2 IHt0.
+    + exists x1. split; autom. now rewrite <- e3, f0_f.
+    + apply IHt2; autom. clear IHt2 IHt0.
       cleansplit; rewrite split_in_l; trivial.
       intuition_in; order.
     + apply IHt0; auto. clear IHt2 IHt0.
@@ -1000,7 +1000,7 @@ Proof.
     rewrite concat_find by (try apply between with x1; autok).
     case K.compare_spec; intros.
     + clear IHt0 IHt2.
-      exists x1. split; auto. rewrite <- f0_f, e2.
+      exists x1. split; autom. rewrite <- f0_f, e2.
       nonify (find x (gmerge r1 r2')).
       nonify (find x (gmerge l1 l2')). trivial.
     + nonify (find x (gmerge r1 r2')).
@@ -1124,7 +1124,7 @@ Module IntMake_ord (I:Int)(K:OrderedType)(D:OrderedType) <: Sord K D.
   Proof.
     destruct c; simpl; unfold flip; simpl; intuition.
   Qed.
-  Hint Resolve cons_Cmp.
+  Local Hint Resolve cons_Cmp : map.
 
   Lemma compare_end_Cmp e2 :
    Cmp (compare_end e2) nil (R.flatten_e e2).
