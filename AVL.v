@@ -24,15 +24,8 @@ From MMaps Require Import Interface OrdList GenTree.
 
 Local Set Implicit Arguments.
 Local Unset Strict Implicit.
-
-(* For nicer extraction, we create inductive principles
-   only when needed *)
+(* For nicer extraction, we create inductive principles only when needed *)
 Local Unset Elimination Schemes.
-
-(** Notations and helper lemma about pairs *)
-
-Notation "s #1" := (fst s) (at level 9, format "s '#1'") : pair_scope.
-Notation "s #2" := (snd s) (at level 9, format "s '#2'") : pair_scope.
 
 (** * The Raw functor
 
@@ -48,8 +41,7 @@ Module MakeRaw (Import I:Int)(K: OrderedType) <: Raw.S K.
     provided by this generic functor. *)
 
 Include MMaps.GenTree.Ops K I.
-
-Local Open Scope pair_scope.
+Import GenTree.PairNotations. (* #1 and #2 for fst and snd *)
 Local Open Scope lazy_bool_scope.
 Local Open Scope Int_scope.
 Local Notation int := I.t.
@@ -203,16 +195,15 @@ Fixpoint join l : key -> elt -> t -> t :=
     - [o] is the result of [find x m].
 *)
 
-Record triple := mktriple { t_left:t; t_opt:option elt; t_right:t }.
-Notation "〚 l , b , r 〛" := (mktriple l b r) (at level 9).
+Record triple := Triple { t_left:t; t_opt:option elt; t_right:t }.
 
 Fixpoint split x m : triple := match m with
-  | Leaf _ => 〚 Leaf _, None, Leaf _ 〛
+  | Leaf _ => Triple (Leaf _) None (Leaf _)
   | Node h l y d r =>
      match K.compare x y with
-      | Lt => let (ll,o,rl) := split x l in 〚 ll, o, join rl y d r 〛
-      | Eq => 〚 l, Some d, r 〛
-      | Gt => let (rl,o,rr) := split x r in 〚 join l y d rl, o, rr 〛
+      | Lt => let (ll,o,rl) := split x l in Triple ll o (join rl y d r )
+      | Eq => Triple l (Some d) r
+      | Gt => let (rl,o,rr) := split x r in Triple (join l y d rl) o rr
      end
  end.
 
@@ -231,10 +222,9 @@ Definition concat m1 m2 :=
    end.
 
 End Elt.
-Notation "〚 l , b , r 〛" := (mktriple l b r) (at level 9).
-Notation "t #l" := (t_left t) (at level 9, format "t '#l'").
-Notation "t #o" := (t_opt t) (at level 9, format "t '#o'").
-Notation "t #r" := (t_right t) (at level 9, format "t '#r'").
+Local Notation "t #l" := (t_left t) (at level 9, format "t '#l'").
+Local Notation "t #o" := (t_opt t) (at level 9, format "t '#o'").
+Local Notation "t #r" := (t_right t) (at level 9, format "t '#r'").
 
 (** * Map with removal *)
 
@@ -353,10 +343,10 @@ Ltac join_tac l x d r :=
 Ltac cleansplit :=
   simpl; cleanf; invok;
   match goal with
-  | E:split _ _ = 〚 ?l, ?o, ?r 〛 |- _ =>
-    change l with (〚l,o,r〛#l); rewrite <- ?E;
-    change o with (〚l,o,r〛#o); rewrite <- ?E;
-    change r with (〚l,o,r〛#r); rewrite <- ?E
+  | E:split _ _ = Triple ?l ?o ?r |- _ =>
+    change l with ((Triple l o r)#l); rewrite <- ?E;
+    change o with ((Triple l o r)#o); rewrite <- ?E;
+    change r with ((Triple l o r)#r); rewrite <- ?E
   | _ => idtac
   end.
 

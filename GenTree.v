@@ -32,6 +32,11 @@ Unset Strict Implicit.
    only when needed *)
 Local Unset Elimination Schemes.
 
+Module PairNotations.
+Notation "s #1" := (fst s) (at level 9, format "s '#1'").
+Notation "s #2" := (snd s) (at level 9, format "s '#2'").
+End PairNotations.
+
 Module Type InfoTyp.
  Parameter t : Set.
 End InfoTyp.

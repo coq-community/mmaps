@@ -21,8 +21,8 @@ Set Implicit Arguments.
 Module AvlProofs (Import I:Int)(X:OrderedType).
 Include MMaps.AVL.MakeRaw I X.
 Module Import II := MoreInt I.
-Local Open Scope pair_scope.
 Local Open Scope Int_scope.
+Import GenTree.PairNotations. (* #1 and #2 for fst and snd *)
 
 Ltac omega_max := i2z_refl; lia.
 Ltac mysubst :=
@@ -530,7 +530,7 @@ Qed.
 (** split *)
 
 Lemma split_avl : forall s x `{!Avl s},
-  Avl (split x s)#l /\ Avl (split x s)#r.
+  Avl (t_left (split x s)) /\ Avl (t_right (split x s)).
 Proof.
  intros s x. functional induction (split x s); simpl; auto.
  - intros. inv_avl; auto.

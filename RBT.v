@@ -31,11 +31,6 @@ Import ListNotations.
    only when needed *)
 Local Unset Elimination Schemes.
 
-(** Notations and helper lemma about pairs *)
-
-Notation "s #1" := (fst s) (at level 9, format "s '#1'") : pair_scope.
-Notation "s #2" := (snd s) (at level 9, format "s '#2'") : pair_scope.
-
 (** The type of color annotation. *)
 
 Inductive color := Red | Black.
@@ -58,8 +53,7 @@ Module MakeRaw (K: OrderedType) <: Raw.S K.
     provided by this generic functor. *)
 
 Include MMaps.GenTree.Ops K Color.
-
-Local Open Scope pair_scope.
+Import GenTree.PairNotations. (* #1 and #2 for fst and snd *)
 Local Open Scope lazy_bool_scope.
 Local Notation color := Color.t.
 Local Arguments Leaf {elt}.

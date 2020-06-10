@@ -23,8 +23,7 @@ Local Unset Elimination Schemes.
 
 Module BalanceProps(K:OrderedType).
 Include MMaps.RBT.MakeRaw K.
-
-Local Open Scope pair_scope.
+Import GenTree.PairNotations. (* #1 and #2 for fst and snd *)
 Local Open Scope lazy_bool_scope.
 Local Notation color := Color.t.
 Local Arguments Leaf {elt}.
