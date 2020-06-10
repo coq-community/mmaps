@@ -251,67 +251,65 @@ End Ops.
 
 Module Type Props (K:OrderedType)(Info:InfoTyp)(Import M:Ops K Info).
 
+Implicit Types x y k : K.t.
+
+Local Infix "==" := K.eq (at level 70).
+
+(** Overloaded "<" notation *)
+
+Class LessThan (A B : Type) := lessthan : A -> B -> Prop.
+Local Infix "<" := lessthan.
+
+Instance lt_key_key : LessThan K.t K.t := K.lt.
+
 (** ** Occurrence in a tree *)
 
 Module Ind. (* Module allowing a "Definition" of MapsTo below. *)
 
 Inductive MapsTo elt (x : key)(e : elt) : t elt -> Prop :=
-| MapsRoot l r h y : K.eq x y -> MapsTo x e (Node h l y e r)
+| MapsRoot l r h y : x == y -> MapsTo x e (Node h l y e r)
 | MapsLeft l r h y e' : MapsTo x e l -> MapsTo x e (Node h l y e' r)
 | MapsRight l r h y e' : MapsTo x e r -> MapsTo x e (Node h l y e' r).
 
-Inductive In elt (x : key) : t elt -> Prop :=
-  | InRoot : forall l r h y e,
-      K.eq x y -> In x (Node h l y e r)
-  | InLeft : forall l r h y e',
-      In x l -> In x (Node h l y e' r)
-  | InRight : forall l r h y e',
-      In x r -> In x (Node h l y e' r).
-
-Definition In0 elt k m := exists e:elt, MapsTo k e m.
-Definition Eqdom elt (m m' : t elt) := forall k, In k m <-> In k m'.
-Definition Equiv elt (R:elt->elt->Prop) m m' :=
- Eqdom m m' /\ (forall k e e', MapsTo k e m -> MapsTo k e' m' -> R e e').
-Definition Equivb elt cmp := @Equiv elt (Cmp cmp).
-
-Definition Eqdom0 elt (m m' : t elt) := forall k, In0 k m <-> In0 k m'.
-Definition Equiv0 elt (R:elt->elt->Prop) m m' :=
- Eqdom0 m m' /\ (forall k e e', MapsTo k e m -> MapsTo k e' m' -> R e e').
-Definition Equivb0 elt cmp := @Equiv0 elt (Cmp cmp).
-
 End Ind.
 Definition MapsTo := Ind.MapsTo.
-Import Ind.
+Import Ind. (* In the proofs below, let's work with Ind.MapsTo. *)
 
+Local Notation "m @ x ↦ e" := (MapsTo x e m)
+ (at level 9, format "m '@' x  '↦'  e").
+
+Definition In elt k m := exists e:elt, m@k ↦ e.
+Local Infix "∈" := In (at level 70).
+
+Definition Eqdom elt (m m' : t elt) := forall k, k ∈ m <-> k ∈ m'.
 Definition Equal elt (m m' : t elt) := forall k, find k m = find k m'.
+Definition Equiv elt (R:elt->elt->Prop) m m' :=
+ Eqdom m m' /\ (forall k e e', m@k ↦ e -> m'@k ↦ e' -> R e e').
+Definition Equivb elt cmp := @Equiv elt (Cmp cmp).
 
+Definition AllKeys elt (P:key->Prop) (m : t elt) :=
+ forall x, x ∈ m -> P x.
 
 (** ** Binary search trees *)
 
-(** [Above x m] : [x] is strictly greater than any key in [m].
-    [Below x m] : [x] is strictly smaller than any key in [m]. *)
+(** Strict order between keys and trees:
+    [x < m] when [x] is strictly smaller than any key in [m].
+    [m < x] when [x] is strictly greater than any key in [m].
+    [m < m'] when all keys in [m] are lower than all keys in [m']. *)
 
-Inductive Above elt (x:key) : t elt -> Prop :=
- | AbLeaf : Above x (Leaf _)
- | AbNode l r h y e : Above x l -> K.lt y x -> Above x r ->
-   Above x (Node h l y e r).
-
-Inductive Below elt (x:key) : t elt -> Prop :=
- | BeLeaf : Below x (Leaf _)
- | BeNode l r h y e : Below x l -> K.lt x y -> Below x r ->
-   Below x (Node h l y e r).
-
-(** [Apart] : all keys in [m1] are lower than all keys in [m2] *)
-
-Definition Apart elt (m1 m2 : t elt) : Prop :=
-  forall x1 x2, In x1 m1 -> In x2 m2 -> K.lt x1 x2.
+Instance lt_key_map elt : LessThan K.t (t elt) :=
+ fun x => AllKeys (lessthan x).
+Instance lt_map_key elt : LessThan (t elt) K.t :=
+ fun m x => AllKeys (fun y => y < x) m.
+Instance lt_map_map elt : LessThan (t elt) (t elt) :=
+ fun m m' => AllKeys (fun x => x < m') m.
 
 (** [Bst t] : [t] is a binary search tree *)
 
 Inductive Bst elt : t elt -> Prop :=
-  | BSLeaf : Bst (Leaf _)
-  | BSNode : forall h x e l r, Bst l -> Bst r ->
-     Above x l -> Below x r -> Bst (Node h l x e r).
+| BSLeaf : Bst (Leaf _)
+| BSNode h x e l r : Bst l -> Bst r -> l < x -> x < r ->
+  Bst (Node h l x e r).
 
 (** [Bst] is the (decidable) invariant our trees will have to satisfy. *)
 
@@ -322,24 +320,14 @@ Module F := OrderedTypeFacts K.
 Module O := KeyOrderedType K.
 Module L := MMaps.OrdList.MakeRaw K.
 
-Local Infix "∈" := In (at level 70).
-Local Infix "==" := K.eq (at level 70).
-Local Infix "<" := K.lt (at level 70).
-Local Infix "<<" := Below (at level 70).
-Local Infix ">>" := Above (at level 70).
-Local Infix "<<<" := Apart (at level 70).
-
 Scheme tree_ind := Induction for tree Sort Prop.
-
-Functional Scheme mem_ind := Induction for mem Sort Prop.
-Functional Scheme find_ind := Induction for find Sort Prop.
 
 (** * Automation and dedicated tactics. *)
 
-Local Hint Constructors tree MapsTo In Bst Above Below.
-Local Hint Unfold Apart Ok.
+Local Hint Constructors tree MapsTo Bst.
+Local Hint Unfold Ok In.
 Local Hint Immediate F.eq_sym.
-Local Hint Resolve F.eq_refl F.eq_trans F.lt_trans.
+Local Hint Resolve F.eq_refl.
 
 Tactic Notation "factornode" ident(s) :=
  try clear s;
@@ -396,16 +384,8 @@ Ltac inv_all :=
 Ltac chok := change Bst with Ok in *.
 Ltac autok := chok; auto with typeclass_instances.
 Ltac invok := inv_all; chok.
-Ltac ok :=
- invok;
- match goal with
-   | |- Ok (Node _ _ _ _ _) => constructor; autok; ok
-   | |- Above _ (Node _ _ _ _ _) => constructor; ok
-   | |- Below _ (Node _ _ _ _ _) => constructor; ok
-   | _ => eauto with typeclass_instances
- end.
 
-Ltac intuition_in := repeat (intuition; inv In; inv MapsTo).
+Ltac intuition_m := repeat (intuition; inv MapsTo).
 
 Ltac redk :=
   match goal with
@@ -416,189 +396,219 @@ Ltac redk :=
     simpl in H
   end.
 
+Arguments Ok {elt} m.
 Arguments Equal {elt} m m'.
 Arguments Eqdom {elt} m m'.
 
 Global Instance Equal_equiv {elt} : Equivalence (@Equal elt).
 Proof. split; congruence. Qed.
 Global Instance Eqdom_equiv {elt} : Equivalence (@Eqdom elt).
-Proof. firstorder. Qed.
-
-(** * Basic results about [MapsTo], [In], [Above], [Below], [height] *)
+Proof.
+ split; try firstorder. intros x y z E E' k. now rewrite (E k), (E' k).
+Qed.
 
 (** Facts about [MapsTo] and [In]. *)
 
-Lemma MapsRoot' {elt} x y e e' (l r:t elt) h :
- x == y -> e = e' -> MapsTo x e (Node h l y e' r).
+Lemma mapsto_in {elt} k (e:elt) m : m@k ↦ e -> k ∈ m.
 Proof.
- intros; subst; auto.
+ eauto.
+Qed.
+Local Hint Resolve mapsto_in.
+
+Lemma in_mapsto {elt} k m : k ∈ m -> exists e:elt, m@k ↦ e.
+Proof.
+ auto.
 Qed.
 
-Lemma MapsTo_In {elt} k (e:elt) m : MapsTo k e m -> k ∈ m.
+Lemma mapsto_eq {elt} m x y (e:elt) :
+  x == y -> m@x ↦ e -> m@y ↦ e.
 Proof.
- induction m; inversion 1; subst; auto.
+ induction m; simpl; intuition_m; eauto. constructor. F.order.
 Qed.
-Local Hint Resolve MapsTo_In.
-
-Lemma In_MapsTo {elt} k m : k ∈ m -> exists (e:elt), MapsTo k e m.
-Proof.
- induction m as [|h l IHl x e r IHr]; inversion_clear 1; eauto.
- - destruct IHl; eauto.
- - destruct IHr; eauto.
-Qed.
-
-Lemma In_alt' {elt} k (m:t elt) : k ∈ m <-> exists e, MapsTo k e m.
-Proof.
- split; [ apply In_MapsTo | intros (e,M); eapply MapsTo_In; eauto].
-Qed.
-
-Lemma In_alt {elt} k (m:t elt) : In0 k m <-> k ∈ m.
-Proof.
- symmetry. apply In_alt'.
-Qed.
-
-Lemma MapsTo_1 {elt} m x y (e:elt) :
-  x == y -> MapsTo x e m -> MapsTo y e m.
-Proof.
- induction m; simpl; intuition_in; eauto.
-Qed.
-Hint Immediate MapsTo_1.
+Hint Immediate mapsto_eq.
 
 Global Instance MapsTo_compat {elt} :
   Proper (K.eq==>Logic.eq==>Logic.eq==>iff) (@MapsTo elt).
 Proof.
- intros x x' Hx e e' He m m' Hm. subst.
- split; now apply MapsTo_1.
+ split; subst; now apply mapsto_eq.
 Qed.
 
-Global Instance In_compat {elt} :
+Lemma leaf_mapsto {elt} y e : (Leaf elt)@y ↦ e <-> False.
+Proof.
+ now split.
+Qed.
+
+Lemma node_mapsto {elt} l x (e:elt) r h y v :
+ (Node h l x e r)@y ↦ v <->
+   l@y ↦ v \/ (y == x /\ v = e) \/ r@y ↦ v.
+Proof.
+ intuition_m; subst; auto.
+Qed.
+
+Global Instance in_compat {elt} :
   Proper (K.eq==>Logic.eq==>iff) (@In elt).
 Proof.
- intros x x' H m m' <-.
- induction m; simpl; intuition_in; eauto.
+ intros x x' E m m' <-.
+ split; intros (e,M); exists e. now rewrite <-E. now rewrite E.
 Qed.
 
-Lemma In_leaf {elt} y : y ∈ (@Leaf elt) <-> False.
+Lemma in_leaf {elt} y : y ∈ (@Leaf elt) <-> False.
 Proof.
- intuition_in.
+ unfold In. setoid_rewrite leaf_mapsto. firstorder.
 Qed.
 
-Lemma In_node_iff {elt} l x (e:elt) r h y :
+Lemma in_node {elt} l x (e:elt) r h y :
   y ∈ (Node h l x e r) <-> y ∈ l \/ y == x \/ y ∈ r.
 Proof.
- intuition_in.
+ unfold In. setoid_rewrite node_mapsto. firstorder.
+ exists e. intuition.
 Qed.
 
-Lemma MapsTo_leaf {elt} y e : MapsTo y e (@Leaf elt) <-> False.
+Ltac intuition_in := rewrite ?in_node, ?in_leaf; intuition.
+
+Lemma in_left {elt} l x (e:elt) r h y : y ∈ l -> y ∈ (Node h l x e r).
 Proof.
  intuition_in.
 Qed.
 
-Lemma MapsTo_node_iff {elt} l x (e:elt) r h y v :
-  MapsTo y v (Node h l x e r) <->
-   MapsTo y v l \/ (y == x /\ v = e) \/ MapsTo y v r.
+Lemma in_right {elt} l x (e:elt) r h y : y ∈ r -> y ∈ (Node h l x e r).
 Proof.
- intuition_in. subst; auto.
+ intuition_in.
+Qed.
+Local Hint Resolve in_left in_right.
+
+(** Results about [AllKeys] *)
+
+Lemma allkeys_leaf {elt} P : AllKeys P (@Leaf elt).
+Proof.
+ intros y (e,M). inversion M.
 Qed.
 
-(** Results about [Above] and [Below] *)
-
-Lemma above_alt {elt} (m:t elt) x :
-  x >> m <-> forall y, y ∈ m -> y < x.
+Lemma allkeys_node {elt} P h l x (e:elt) r :
+  Proper (K.eq ==> iff) P ->
+  AllKeys P (Node h l x e r) <-> AllKeys P l /\ P x /\ AllKeys P r.
 Proof.
- induction m; split; try inversion_clear 1; intuition_in; F.order.
+ unfold AllKeys. setoid_rewrite in_node. firstorder.
 Qed.
 
-Global Instance Above_m {elt} :
-  Proper (K.eq ==> Eqdom ==> iff) (@Above elt).
+Global Instance allkeys_m {elt} :
+ Proper ((K.eq ==> iff) ==> Eqdom ==> iff) (@AllKeys elt).
 Proof.
- intros x x' Hx m m' Hm. rewrite !above_alt.
- split; intros H y.
- - rewrite <- Hx, <- (Hm y). auto.
- - rewrite Hx, (Hm y). auto.
+ intros P P' HP m m' Hm. unfold AllKeys.
+ split; intros H x IN.
+ - rewrite <- (HP x); auto. apply H, Hm; auto.
+ - rewrite (HP x); auto. apply H, Hm; auto.
 Qed.
 
-Lemma below_alt {elt} (m:t elt) x :
-  x << m <-> forall y, y ∈ m -> x < y.
+(** Results about [<] *)
+
+Lemma above_leaf {elt} x : @Leaf elt < x.
 Proof.
- induction m; split; try inversion_clear 1; intuition_in; F.order.
+ apply allkeys_leaf.
 Qed.
 
-Global Instance Below_m {elt} :
-  Proper (K.eq ==> Eqdom ==> iff) (@Below elt).
+Lemma above_node {elt} x h l y (e:elt) r :
+ Node h l y e r < x <-> l < x /\ y < x /\ r < x.
 Proof.
- intros x x' Hx m m' Hm. rewrite !below_alt.
- split; intros H y.
- - rewrite <- Hx, <- (Hm y). auto.
- - rewrite Hx, (Hm y). auto.
+ apply allkeys_node with (P := fun z => z < x). now intros ? ? ->.
 Qed.
 
-Lemma AboveLt {elt} (m:t elt) x y : x >> m -> y ∈ m -> y < x.
+Global Instance above_m {elt} :
+  Proper (@Eqdom elt ==> K.eq ==> iff) lessthan.
 Proof.
- rewrite above_alt; intuition.
+ intros until 2. apply allkeys_m; auto. split; F.order.
 Qed.
 
-Lemma BelowGt {elt} (m:t elt) x y : x << m -> y ∈ m -> x < y.
+Lemma below_leaf {elt} x : x < @Leaf elt.
 Proof.
- rewrite below_alt; intuition.
+ apply allkeys_leaf.
 Qed.
 
-Lemma Above_not_In {elt} (m:t elt) x : x >> m -> ~ x ∈ m.
+Lemma below_node {elt} x h l y (e:elt) r :
+ x < Node h l y e r <-> x < l /\ x < y /\ x < r.
 Proof.
- rewrite above_alt. intros H IN. specialize (H _ IN). F.order.
+ apply allkeys_node. now intros ? ? ->.
 Qed.
 
-Lemma Below_not_In {elt} (m:t elt) x : x << m -> ~ x ∈ m.
+Global Instance below_m {elt} :
+  Proper (K.eq ==> @Eqdom elt ==> iff) lessthan.
 Proof.
- rewrite below_alt. intros H IN. specialize (H _ IN). F.order.
+ intros until 2. apply allkeys_m; auto. split; F.order.
 Qed.
 
-Lemma Above_trans {elt} (m:t elt) x y : x < y -> x >> m -> y >> m.
+Global Instance apart_m {elt} :
+ Proper (@Eqdom elt ==> @Eqdom elt ==> iff) lessthan.
 Proof.
- rewrite !above_alt; intros LT H z IN. specialize (H _ IN). F.order.
+ intros until 2. apply allkeys_m; auto.
+ intros until 1. now apply below_m.
 Qed.
 
-Lemma Below_trans {elt} (m:t elt) x y : y < x -> x << m -> y << m.
-Proof.
- rewrite !below_alt; intros LT H z IN. specialize (H _ IN). F.order.
-Qed.
+(** Helper tactic concerning order of keys. *)
 
-Local Hint Resolve
- AboveLt Above_not_In Above_trans
- BelowGt Below_not_In Below_trans.
+Ltac invlt :=
+  match goal with
+  | H : _ < Node _ _ _ _ _ |- _ => rewrite !below_node in H; invlt
+  | H : Node _ _ _ _ _ < _ |- _ => rewrite !above_node in H; invlt
+  | _ => idtac
+  end.
 
-(** Helper tactic concerning order of elements. *)
+Ltac ok :=
+ invok;
+ match goal with
+   | |- Ok (Node _ _ _ _ _) => constructor; autok; ok
+   | |- _ < Node _ _ _ _ _ => rewrite !below_node; repeat split; ok
+   | |- Node _ _ _ _ _ < _ => rewrite !above_node; repeat split; ok
+   | _ => eauto with typeclass_instances
+ end.
 
 Ltac order := intros; match goal with
- | U: _ >> ?m, V: _ ∈ ?m |- _ =>
-   generalize (AboveLt U V); clear U; order
- | U: _ << ?m, V: _ ∈ ?m |- _ =>
-   generalize (BelowGt U V); clear U; order
- | U: _ >> ?m, V: MapsTo _ _ ?m |- _ =>
-   generalize (AboveLt U (MapsTo_In V)); clear U; order
- | U: _ << ?m, V: MapsTo _ _ ?m |- _ =>
-   generalize (BelowGt U (MapsTo_In V)); clear U; order
- | _ => F.order
+ | IN: _ ∈ ?m, LT: ?m < _ |- _ => specialize (LT _ IN); order
+ | IN: _ ∈ ?m, LT: _ < ?m |- _ => specialize (LT _ IN); order
+ | M: ?m @ _ ↦ _, LT: ?m < _ |- _ => specialize (LT _ (mapsto_in M)); order
+ | M: ?m @ _ ↦ _, LT: _ < ?m |- _ => specialize (LT _ (mapsto_in M)); order
+ | _ => simpl in *; F.order
 end.
 
-Lemma between {elt} (m m':t elt) x :
-  x >> m -> x << m' -> m <<< m'.
+Lemma above_notin {elt} (m:t elt) x : m < x -> ~ x ∈ m.
 Proof.
- intros H H' y y' Hy Hy'. order.
+ intros until 2; order.
+Qed.
+
+Lemma below_notin {elt} (m:t elt) x : x < m -> ~ x ∈ m.
+Proof.
+ intros until 2; order.
+Qed.
+
+Lemma above_trans {elt} (m:t elt) x y : x < y -> m < x -> m < y.
+Proof.
+ intros until 3; order.
+Qed.
+
+Lemma below_trans {elt} (m:t elt) x y : y < x -> x < m -> y < m.
+Proof.
+ intros until 3; order.
+Qed.
+
+Local Hint Resolve above_notin above_trans below_notin below_trans.
+
+Lemma between {elt} (m m':t elt) x :
+  m < x -> x < m' -> m < m'.
+Proof.
+ intros until 4; order.
 Qed.
 
 Lemma apart_node_l {elt} h l x v r (m:t elt) :
-  (Node h l x v r) <<< m <-> l <<< m /\ x << m /\ r <<< m.
+  (Node h l x v r) < m <-> l < m /\ x < m /\ r < m.
 Proof.
- unfold "<<<". setoid_rewrite In_node_iff. rewrite below_alt.
- firstorder. setoid_replace x1 with x; firstorder.
+ apply allkeys_node. now intros ? ? ->.
 Qed.
 
 Lemma apart_node_r {elt} h l x v r (m:t elt) :
-  m <<< (Node h l x v r) <-> m <<< l /\ x >> m /\ m <<< r.
+  m < (Node h l x v r) <-> m < l /\ m < x /\ m < r.
 Proof.
- unfold "<<<". setoid_rewrite In_node_iff. rewrite above_alt.
- firstorder. setoid_replace x2 with x; firstorder.
+ unfold "<"; unfold lt_map_map, lt_map_key, AllKeys.
+ setoid_rewrite below_node. split; [ | intuition].
+ intros H; repeat split; intros y IN; now specialize (H y IN).
 Qed.
 
 
@@ -633,35 +643,35 @@ Fixpoint isok {elt} (m : t elt) :=
  end.
 
 Lemma above_iff {elt} x (m:t elt) :
-  x >> m <-> above x m = true.
+  m < x <-> above x m = true.
 Proof.
  induction m as [|c l IHl y v r IHr]; simpl.
- - intuition.
- - case K.compare_spec.
-   + split; intros; try easy. inv Above. order.
-   + split; intros; try easy. inv Above. order.
-   + rewrite andb_true_iff, <- IHl, <- IHr. clear IHl IHr.
-     intuition; inv Above; auto.
+ - intuition. apply above_leaf.
+ - rewrite above_node.
+   case K.compare_spec.
+   + split; intros; try easy. intuition. order.
+   + split; intros; try easy. intuition. order.
+   + rewrite andb_true_iff; intuition.
 Qed.
 
 Lemma below_iff {elt} x (m:t elt) :
-  x << m <-> below x m = true.
+  x < m <-> below x m = true.
 Proof.
  induction m as [|c l IHl y v r IHr]; simpl.
- - intuition.
- - case K.compare_spec.
-   + split; intros; try easy. inv Below. order.
-   + rewrite !andb_true_iff, <-IHl, <-IHr. clear IHl IHr.
-     intuition; inv Below; auto.
-   + split; intros; try easy. inv Below. order.
+ - intuition. apply below_leaf.
+ - rewrite below_node.
+   case K.compare_spec.
+   + split; intros; try easy. intuition. order.
+   + rewrite !andb_true_iff. intuition.
+   + split; intros; try easy. intuition. order.
 Qed.
 
 Lemma isok_iff {elt} (m:t elt) : Ok m <-> isok m = true.
 Proof.
  induction m as [|c l IHl y v r IHr]; simpl.
- - intuition_in.
+ - intuition.
  - rewrite !andb_true_iff, <- IHl, <-IHr, <- below_iff, <- above_iff.
-   intuition; inv Ok; auto.
+   intuition; invok; auto.
 Qed.
 
 Lemma isok_spec {elt} (m:t elt) : reflect (Ok m) (isok m).
@@ -678,21 +688,21 @@ Implicit Types m r : t elt.
 
 (** * Membership *)
 
-Lemma find_1 m x e `{!Ok m} : MapsTo x e m -> find x m = Some e.
+Lemma find_1 m x e `{!Ok m} : m@x ↦ e -> find x m = Some e.
 Proof.
- functional induction (find x m); cleanf;
-  intros; inv Ok; intuition_in; order.
+ induction m; simpl; invok.
+ - intuition_m.
+ - rewrite node_mapsto.
+   case K.compare_spec; intuition_m; subst; auto; order.
 Qed.
 
-Lemma find_2 m x e : find x m = Some e -> MapsTo x e m.
+Lemma find_2 m x e : find x m = Some e -> m@x ↦ e.
 Proof.
- functional induction (find x m); cleanf; subst; intros; auto.
- - discriminate.
- - injection H as ->. auto.
+ induction m; simpl; try easy.
+ case K.compare_spec; [ intros -> [= ->] | .. ]; intuition_m.
 Qed.
 
-Lemma find_spec m x e `{!Ok m} :
- find x m = Some e <-> MapsTo x e m.
+Lemma find_spec m x e `{!Ok m} : find x m = Some e <-> m@x ↦ e.
 Proof.
  split; auto using find_1, find_2.
 Qed.
@@ -700,15 +710,13 @@ Qed.
 Lemma find_in m x : find x m <> None -> x ∈ m.
 Proof.
  destruct (find x m) eqn:F; intros H.
- - apply MapsTo_In with e. now apply find_2.
+ - exists e. now apply find_2.
  - now elim H.
 Qed.
 
 Lemma in_find m x `{!Ok m} : x ∈ m -> find x m <> None.
 Proof.
- intros IN.
- destruct (In_MapsTo IN) as (d,Hd).
- now rewrite (find_1 Hd).
+ intros (e,M). now rewrite (find_1 M).
 Qed.
 
 Lemma find_in_iff m x `{!Ok m} :
@@ -734,7 +742,7 @@ Qed.
 
 Lemma find_mapsto_equiv m m' x `{!Ok m, !Ok m'} :
  find x m = find x m' <->
-  (forall d, MapsTo x d m <-> MapsTo x d m').
+  (forall d, m@x ↦ d <-> m'@x ↦ d).
 Proof.
  rewrite eq_option_alt.
  split; intros H d. now rewrite <- 2 find_spec. now rewrite 2 find_spec.
@@ -756,14 +764,12 @@ Proof.
  - rewrite not_find_iff in *; trivial. now rewrite E.
 Qed.
 
-Lemma mem_spec' m x `{!Ok m} : mem x m = true <-> x ∈ m.
+Lemma mem_spec m x `{!Ok m} : mem x m = true <-> x ∈ m.
 Proof.
- functional induction (mem x m); auto; intros; cleanf;
-  inv Ok; intuition_in; try discriminate; order.
+ induction m; simpl.
+ - now rewrite in_leaf.
+ - invok. rewrite in_node. case K.compare_spec; intuition; order.
 Qed.
-
-Lemma mem_spec m x `{!Ok m} : mem x m = true <-> In0 x m.
-Proof. rewrite In_alt. now apply mem_spec'. Qed.
 
 (** * Empty map *)
 
@@ -797,17 +803,16 @@ Notation ltk := (O.ltk (elt:= elt)).
 
 
 Lemma bindings_aux_mapsto m acc x e :
- InA eqke (x,e) (bindings_aux acc m) <->
- MapsTo x e m \/ InA eqke (x,e) acc.
+ InA eqke (x,e) (bindings_aux acc m) <-> m@x ↦ e \/ InA eqke (x,e) acc.
 Proof.
  revert acc.
  induction m as [ | h l Hl y e' r Hr ]; intros acc; simpl; auto.
- - intuition_in.
- - rewrite Hl, InA_cons, Hr. redk. intuition_in. subst; auto.
+ - intuition_m.
+ - rewrite Hl, InA_cons, Hr. redk. intuition_m. subst; auto.
 Qed.
 
 Lemma bindings_spec1 m x e :
- InA eqke (x,e) (bindings m) <-> MapsTo x e m.
+ InA eqke (x,e) (bindings m) <-> m@x ↦ e.
 Proof.
  unfold bindings. rewrite bindings_aux_mapsto. rewrite InA_nil. intuition.
 Qed.
@@ -815,7 +820,6 @@ Qed.
 Lemma bindings_in m x : L.PX.In x (bindings m) <-> x ∈ m.
 Proof.
  unfold L.PX.In.
- rewrite In_alt'.
  split; intros (y,H); exists y.
  - now rewrite <- bindings_spec1.
  - unfold L.PX.MapsTo; now rewrite bindings_spec1.
@@ -828,18 +832,18 @@ Lemma bindings_aux_sort m acc `{!Ok m} :
 Proof.
  revert acc.
  induction m as [ | h l Hl y e r Hr ]; intros acc; simpl; intuition.
- inv Ok.
+ invok.
  apply Hl; auto.
  - constructor.
    + apply Hr; eauto.
    + clear Hl Hr.
      apply InA_InfA with (eqA:=eqke); auto with *.
      intros (y',e') Hy'.
-     apply bindings_aux_mapsto in Hy'. compute. intuition; eauto.
+     apply bindings_aux_mapsto in Hy'. change (y < y'). intuition; eauto.
  - clear Hl Hr. intros x e' y' Hx Hy'.
    rewrite InA_cons in Hx. redk. destruct Hx as [(Hx,->)|Hx].
    + order.
-   + apply bindings_aux_mapsto in Hx. intuition eauto.
+   + apply bindings_aux_mapsto in Hx. intuition. order. eauto.
 Qed.
 
 Lemma bindings_spec2 m `{!Ok m} : sort ltk (bindings m).
@@ -907,14 +911,13 @@ Qed.
 
 Lemma in_bindings k v (m:t elt) : List.In (k,v) (bindings m) -> In k m.
 Proof.
- intros IN. apply In_alt'; exists v.
- apply bindings_spec1, In_InA; eauto with *.
+ intros IN. exists v. apply bindings_spec1, In_InA; eauto with *.
 Qed.
 
 Lemma in_bindings_uniq k k' v v' (m:t elt) `{!Ok m}:
  List.In (k,v) (bindings m) ->
  List.In (k',v') (bindings m) ->
- K.eq k k' -> k = k' /\ v = v'.
+ k == k' -> k = k' /\ v = v'.
 Proof.
  induction m as [|c l IHl x e r IHr].
  - now cbn.
@@ -1041,28 +1044,14 @@ destruct H.
 apply (H2 k); unfold L.PX.MapsTo; rewrite bindings_spec1; auto.
 Qed.
 
-Lemma equal_Equivb m m' `{!Ok m, !Ok m'} :
+End Elt.
+
+Lemma equal_spec elt (m m':t elt) cmp `{!Ok m, !Ok m'} :
   equal cmp m m' = true <-> Equivb cmp m m'.
 Proof.
  rewrite Equivb_bindings, <- equal_IfEq.
- split; [apply L.equal_2 | apply L.equal_1]; unfold L.Ok; auto.
-Qed.
-
-End Elt.
-
-Lemma Equivb_alt {elt} (m m':t elt) cmp :
- Equivb0 cmp m m' <-> Equivb cmp m m'.
-Proof.
- unfold Equivb, Equivb0, Equiv, Equiv0.
- intuition; red.
- - setoid_rewrite <- In_alt; auto.
- - setoid_rewrite In_alt; auto.
-Qed.
-
-Lemma equal_spec {elt} (m m':t elt) cmp `{!Ok m, !Ok m'} :
-  equal cmp m m' = true <-> Equivb0 cmp m m'.
-Proof.
- now rewrite equal_Equivb, Equivb_alt.
+ split; [apply L.equal_2 | apply L.equal_1]; unfold L.Ok;
+   auto using bindings_spec2.
 Qed.
 
 Section Map.
@@ -1086,9 +1075,7 @@ Qed.
 
 Global Instance map_ok m `{!Ok m} : Ok (map f m).
 Proof.
-induction m; simpl; ok.
-- apply above_alt. intro. rewrite map_in. order.
-- apply below_alt. intro. rewrite map_in. order.
+induction m; simpl; ok; intro; rewrite map_in; order.
 Qed.
 
 End Map.
@@ -1098,7 +1085,7 @@ Variable f : key -> elt -> elt'.
 
 Lemma mapi_spec' m x :
   exists y:key,
-    K.eq y x /\ find x (mapi f m) = option_map (f y) (find x m).
+    y == x /\ find x (mapi f m) = option_map (f y) (find x m).
 Proof.
   induction m; simpl.
   - now exists x.
@@ -1107,7 +1094,7 @@ Qed.
 
 Lemma mapi_spec m x `{!Ok m} :
   exists y:key,
-    K.eq y x /\ find x (mapi f m) = option_map (f y) (find x m).
+    y == x /\ find x (mapi f m) = option_map (f y) (find x m).
 Proof. apply mapi_spec'. Qed.
 
 Lemma mapi_in m x : x ∈ (mapi f m) <-> x ∈ m.
@@ -1117,10 +1104,7 @@ Qed.
 
 Global Instance mapi_ok m `{!Ok m} : Ok (mapi f m).
 Proof.
-induction m; simpl; auto.
-intros; ok.
-- apply above_alt. intro. rewrite mapi_in. order.
-- apply below_alt. intro. rewrite mapi_in. order.
+induction m; simpl; ok; intro; rewrite mapi_in; order.
 Qed.
 
 End Mapi.

@@ -313,10 +313,9 @@ Import Ind.
 
 Local Infix "∈" := In (at level 70).
 Local Infix "==" := K.eq (at level 70).
-Local Infix "<" := K.lt (at level 70).
-Local Infix "<<" := Below (at level 70).
-Local Infix ">>" := Above (at level 70).
-Local Infix "<<<" := Apart (at level 70).
+Local Infix "<" := lessthan.
+Local Notation "m @ x ↦ e" := (MapsTo x e m)
+ (at level 9, format "m '@' x  '↦'  e").
 
 Functional Scheme bal_ind := Induction for bal Sort Prop.
 Functional Scheme add_ind := Induction for add Sort Prop.
@@ -330,13 +329,12 @@ Functional Scheme gmerge_ind := Induction for gmerge Sort Prop.
 
 (** * Automation and dedicated tactics. *)
 
-Local Hint Constructors tree MapsTo In Bst Above Below.
-Local Hint Unfold Apart Ok Bst_Ok.
+Local Hint Constructors tree MapsTo Bst.
+Local Hint Unfold Ok Bst_Ok In.
 Local Hint Immediate F.eq_sym.
-Local Hint Resolve F.eq_refl F.eq_trans F.lt_trans.
-Local Hint Resolve
- AboveLt Above_not_In Above_trans
- BelowGt Below_not_In Below_trans.
+Local Hint Resolve F.eq_refl.
+Local Hint Resolve above_notin above_trans below_notin below_trans.
+Local Hint Resolve above_leaf below_leaf.
 
 (* Function/Functional Scheme can't deal with internal fix.
    Let's do its job by hand: *)
@@ -369,12 +367,13 @@ Ltac cleansplit :=
 
 Section Elt.
 Variable elt:Type.
+Implicit Types x y : K.t.
 Implicit Types m r : t elt.
 
 (** * Helper functions *)
 
 Global Instance create_ok l x e r `{!Ok l, !Ok r} :
- x >> l -> x << r -> Ok (create l x e r).
+ l < x -> x < r -> Ok (create l x e r).
 Proof.
  unfold create; auto.
 Qed.
@@ -382,37 +381,37 @@ Qed.
 Lemma create_in l x e r y :
   y ∈ (create l x e r) <-> y == x \/ y ∈ l \/ y ∈ r.
 Proof.
- unfold create; split; [ inversion_clear 1 | ]; intuition.
+ unfold create. intuition_in.
 Qed.
 
 Global Instance bal_ok l x e r `{!Ok l, !Ok r} :
- x >> l -> x << r -> Ok (bal l x e r).
+ l < x -> x < r -> Ok (bal l x e r).
 Proof.
- functional induction (bal l x e r); intros; cleanf;
- invok; invok; inv Above; inv Below;
- repeat apply create_ok; auto; unfold create; constructor; eauto.
-Qed.
-
-Lemma bal_in l x e r y :
- y ∈ (bal l x e r) <-> y == x \/ y ∈ l \/ y ∈ r.
-Proof.
- functional induction (bal l x e r); intros; cleanf;
- rewrite !create_in; intuition_in.
+ functional induction (bal l x e r); intros; cleanf; invok; invlt;
+ repeat apply create_ok; rewrite ?above_node, ?below_node; intuition;
+ intro; rewrite create_in; intuition; order.
 Qed.
 
 Lemma bal_mapsto l x e r y e' :
  MapsTo y e' (bal l x e r) <-> MapsTo y e' (create l x e r).
 Proof.
  functional induction (bal l x e r); intros; cleanf;
- unfold assert_false, create; intuition_in.
+ unfold assert_false, create; intuition_m.
+Qed.
+
+Lemma bal_in l x e r y :
+ y ∈ (bal l x e r) <-> y == x \/ y ∈ l \/ y ∈ r.
+Proof.
+ unfold In. setoid_rewrite bal_mapsto. unfold create.
+ setoid_rewrite node_mapsto. firstorder. exists e; firstorder.
 Qed.
 
 Lemma bal_find l x e r y `{!Ok l, !Ok r} :
- x >> l -> x << r -> find y (bal l x e r) = find y (create l x e r).
+ l < x -> x < r -> find y (bal l x e r) = find y (create l x e r).
 Proof.
  functional induction (bal l x e r); intros; cleanf; trivial;
- invok; inv Above; inv Below;
- simpl; repeat case K.compare_spec; intuition; order.
+ invok; invlt; simpl;
+ repeat case K.compare_spec; intuition; order.
 Qed.
 
 (** * Insertion *)
@@ -424,14 +423,14 @@ Proof.
  rewrite ?bal_in; intuition_in. setoid_replace y with x; auto.
 Qed.
 
-Lemma add_lt m x e y : y >> m -> x < y -> y >> add x e m.
+Lemma add_lt m x e y : m < y -> x < y -> add x e m < y.
 Proof.
- intros. apply above_alt. intros z. rewrite add_in. destruct 1; order.
+ intros ? ? z. rewrite add_in. destruct 1; order.
 Qed.
 
-Lemma add_gt m x e y : y << m -> y < x -> y << add x e m.
+Lemma add_gt m x e y : y < m -> y < x -> y < add x e m.
 Proof.
- intros. apply below_alt. intros z. rewrite add_in. destruct 1; order.
+ intros ? ? z. rewrite add_in. destruct 1; order.
 Qed.
 Hint Resolve add_lt add_gt.
 
@@ -498,42 +497,35 @@ Proof.
  induction m as [|h l IH x d r _]; [destruct 1|].
  intros m' R. apply RemoveMin_step in R.
  destruct R as [(->,(->,->))|[m0 (R,->)]]; intros y e; simpl.
- - intuition_in. subst. now constructor.
+ - intuition_m. subst. now constructor.
  - rewrite bal_mapsto. unfold create. specialize (IH _ R y e).
-   intuition_in.
+   intuition_m.
 Qed.
 
 Lemma remove_min_in m m' p : RemoveMin m (m',p) ->
  forall y, y ∈ m <-> y == p#1 \/ y ∈ m'.
 Proof.
- revert m'.
- induction m as [|h l IH x e r _]; [destruct 1|].
- intros m' R y. apply RemoveMin_step in R.
- destruct R as [(->,(->,->))|[m0 (R,->)]].
- + intuition_in.
- + rewrite bal_in, In_node_iff, (IH _ R); intuition.
+ intros H y. unfold In. assert (H' := remove_min_mapsto H y).
+ firstorder. exists (p#2). rewrite H'. now left.
 Qed.
 
 Lemma remove_min_lt m m' p : RemoveMin m (m',p) ->
- forall y, y >> m -> y >> m'.
+ forall y, m < y -> m' < y.
 Proof.
- intros R y L. apply above_alt. intros z Hz.
- apply (AboveLt L).
- apply (remove_min_in R). now right.
+ intros R y L z Hz. apply L. apply (remove_min_in R). now right.
 Qed.
 Hint Resolve remove_min_lt.
 
 Lemma remove_min_gt m m' p `{!Ok m} : RemoveMin m (m',p) ->
- p#1 << m'.
+ p#1 < m'.
 Proof.
  revert m'.
  induction m as [|h l IH x e r _]; [destruct 1|].
  intros m' R. invok. apply RemoveMin_step in R.
  destruct R as [(_,(->,->))|[m0 (R,->)]]; auto.
- assert (p#1 << m0) by now apply IH.
- assert (In p#1 l) by (apply (remove_min_in R); now left).
- apply below_alt. intros z. rewrite bal_in.
- intuition_in; order.
+ assert (p#1 < m0) by now apply IH.
+ assert (p#1 ∈ l) by (apply (remove_min_in R); now left).
+ intros z. rewrite bal_in. intuition; order.
 Qed.
 
 Global Instance remove_min_ok m m' p `{!Ok m} : RemoveMin m (m',p) -> Ok m'.
@@ -559,12 +551,12 @@ Proof.
  apply RemoveMin_step in R.
  destruct R as [(->,(->,->))|[m0 (R,->)]]; auto.
  assert (Ok m0) by now apply remove_min_ok in R.
- assert (p#1 << m0) by now apply remove_min_gt in R.
- assert (x >> m0) by now apply (remove_min_lt R).
- assert (In p#1 l) by (apply (remove_min_in R); now left).
+ assert (p#1 < m0) by now apply remove_min_gt in R.
+ assert (m0 < x) by now apply (remove_min_lt R).
+ assert (p#1 ∈ l) by (apply (remove_min_in R); now left).
  simpl in *.
  rewrite (IH _ _ R), bal_find by trivial. clear IH. simpl.
- do 2 case K.compare_spec; trivial; try order.
+ do 2 case K.compare_spec; trivial; order.
 Qed.
 
 (** * Merging two trees *)
@@ -575,34 +567,29 @@ Ltac factor_remove_min m R := match goal with
    set (m:=Node h l x e r) in *; clearbody m; clear H l x e r
 end.
 
-Lemma append_in m1 m2 y :
-  y ∈ (append m1 m2) <-> y ∈ m1 \/ y ∈ m2.
-Proof.
- functional induction (append m1 m2); intros; try factornode m1.
- - intuition_in.
- - intuition_in.
- - factor_remove_min l R. rewrite bal_in, (remove_min_in R).
-   simpl; intuition.
-Qed.
-
 Lemma append_mapsto m1 m2 y e :
  MapsTo y e (append m1 m2) <-> MapsTo y e m1 \/ MapsTo y e m2.
 Proof.
  functional induction (append m1 m2); intros; try factornode m1.
- - intuition_in.
- - intuition_in.
+ - intuition_m.
+ - intuition_m.
  - factor_remove_min l R. rewrite bal_mapsto, (remove_min_mapsto R).
-   simpl. unfold create; intuition_in. subst. now constructor.
+   simpl. unfold create; intuition_m. subst. now constructor.
 Qed.
 
-Global Instance append_ok m1 m2 `{!Ok m1, !Ok m2} : m1 <<< m2 ->
+Lemma append_in m1 m2 y :
+  y ∈ (append m1 m2) <-> y ∈ m1 \/ y ∈ m2.
+Proof.
+ unfold In. setoid_rewrite append_mapsto. firstorder.
+Qed.
+
+Global Instance append_ok m1 m2 `{!Ok m1, !Ok m2} : m1 < m2 ->
  Ok (append m1 m2).
 Proof.
  functional induction (append m1 m2); intros B12; trivial.
  factornode m1. factor_remove_min l R.
  apply bal_ok; eauto with *.
- - apply above_alt. intros z Hz. apply B12; trivial.
-   rewrite (remove_min_in R). now left.
+ - intros z Hz. apply B12; trivial. rewrite (remove_min_in R). now left.
  - now apply (remove_min_gt R).
 Qed.
 
@@ -615,23 +602,21 @@ Proof.
   rewrite ?append_in, ?bal_in, ?IHt; intuition_in; order.
 Qed.
 
-Lemma remove_lt m x y `{!Ok m} : y >> m -> y >> remove x m.
+Lemma remove_lt m x y `{!Ok m} : m < y -> remove x m < y.
 Proof.
-  intros. apply above_alt. intro. rewrite remove_in by trivial.
-   destruct 1; order.
+ intros ? z. rewrite remove_in by trivial. destruct 1; order.
 Qed.
 
-Lemma remove_gt m x y `{!Ok m} : y << m -> y << remove x m.
+Lemma remove_gt m x y `{!Ok m} : y < m -> y < remove x m.
 Proof.
-  intros. apply below_alt. intro. rewrite remove_in by trivial.
-   destruct 1; order.
+ intros ? z. rewrite remove_in by trivial. destruct 1; order.
 Qed.
 Hint Resolve remove_gt remove_lt.
 
 Global Instance remove_ok m x `{!Ok m} : Ok (remove x m).
 Proof.
  functional induction (remove x m); simpl; intros; cleanf; invok; autok.
- apply append_ok; eauto.
+ apply append_ok; eauto using between.
 Qed.
 
 Lemma remove_spec1 m x `{!Ok m} : find x (remove x m) = None.
@@ -644,11 +629,8 @@ Lemma remove_spec2 m x y `{!Ok m} : ~ x == y ->
 Proof.
  functional induction (remove x m); simpl; intros; cleanf; invok; autok.
  - case K.compare_spec; intros; try order;
-   rewrite find_mapsto_equiv; auto.
-   + intros. rewrite append_mapsto; intuition; order.
-   + apply append_ok; auto. red; intros; transitivity y0; order.
-   + intros. rewrite append_mapsto; intuition; order.
-   + apply append_ok; auto. now apply between with y0.
+   rewrite find_mapsto_equiv; eauto using append_ok, between;
+    intros; rewrite append_mapsto; intuition; order.
  - rewrite bal_find by autok. simpl. case K.compare_spec; auto.
  - rewrite bal_find by autok. simpl. case K.compare_spec; auto.
 Qed.
@@ -659,23 +641,25 @@ Lemma join_in l x d r y :
  y ∈ (join l x d r) <-> y == x \/ y ∈ l \/ y ∈ r.
 Proof.
  join_tac l x d r.
- - simpl join. rewrite add_in. intuition_in.
- - rewrite add_in. intuition_in.
+ - simpl join. rewrite add_in; intuition_in.
+ - rewrite add_in; intuition_in.
  - rewrite bal_in, Hlr. clear Hlr Hrl. intuition_in.
- - rewrite bal_in, Hrl; clear Hlr Hrl; intuition_in.
+ - rewrite bal_in, Hrl. clear Hlr Hrl. intuition_in.
  - apply create_in.
 Qed.
 
 Global Instance join_ok l x d r :
  Ok (create l x d r) -> Ok (join l x d r).
 Proof.
-  join_tac l x d r; unfold create in *;
-  invok; invok; inv Above; inv Below; autok.
+  join_tac l x d r; unfold create in *; invok; invok; invlt; autok.
   - simpl. autok.
   - apply bal_ok; auto.
-    apply below_alt. intro. rewrite join_in. intuition_in; order.
+    + apply Hlr; ok; intuition.
+    + intro. rewrite join_in; intuition_in; order.
   - apply bal_ok; auto.
-    apply above_alt. intro. rewrite join_in. intuition_in; order.
+    + apply Hrl; ok; intuition.
+    + intro. rewrite join_in; intuition_in; order.
+  - ok; intuition.
 Qed.
 
 Lemma join_find l x d r y :
@@ -692,16 +676,18 @@ Proof.
    rewrite add_find by auto.
    case K.compare_spec; intros; trivial.
    apply not_find_iff; auto. intro. order.
- - clear Hrl LT. factornode r. invok; invok; inv Above; inv Below;
+ - clear Hrl LT. factornode r. invok; invlt;
    rewrite bal_find; autok; simpl.
-   + rewrite Hlr; auto; simpl.
-     repeat (case K.compare_spec; trivial; try order).
-   + apply below_alt. intro. rewrite join_in. intuition_in; order.
- - clear Hlr LT LT'. factornode l. invok; invok; inv Above; inv Below;
+   + rewrite Hlr by (ok; intuition). simpl.
+     do 2 (case K.compare_spec; intuition; try order).
+   + apply join_ok, create_ok; ok; intuition.
+   + intro. rewrite join_in. intuition; order.
+ - clear Hlr LT LT'. factornode l. invok; invlt;
    rewrite bal_find; autok; simpl.
-   + rewrite Hrl; auto; simpl.
-     repeat (case K.compare_spec; trivial; try order).
-   + apply above_alt. intro. rewrite join_in. intuition_in; order.
+   + rewrite Hrl by (ok; intuition). simpl.
+     do 2 (case K.compare_spec; intuition; try order).
+   + apply join_ok, create_ok; ok; intuition.
+   + intro. rewrite join_in. intuition; order.
 Qed.
 
 (** * split *)
@@ -709,13 +695,13 @@ Qed.
 Lemma split_in_l0 m x y : y ∈ (split x m)#l -> y ∈ m.
 Proof.
   functional induction (split x m); cleansplit;
-  rewrite ?join_in; intuition.
+  rewrite ?join_in; intuition_in.
 Qed.
 
 Lemma split_in_r0 m x y : y ∈ (split x m)#r -> y ∈ m.
 Proof.
   functional induction (split x m); cleansplit;
-  rewrite ?join_in; intuition.
+  rewrite ?join_in; intuition_in.
 Qed.
 
 Lemma split_in_l m x y `{!Ok m} :
@@ -737,24 +723,24 @@ Proof.
   functional induction (split x m); intros; cleansplit; auto.
 Qed.
 
-Lemma split_lt_l m x `{!Ok m} : x >> (split x m)#l.
+Lemma split_lt_l m x `{!Ok m} : (split x m)#l < x.
 Proof.
-  apply above_alt. intro. rewrite split_in_l; intuition; order.
+  intro. rewrite split_in_l; intuition; order.
 Qed.
 
-Lemma split_lt_r m x y : y >> m -> y >> (split x m)#r.
+Lemma split_lt_r m x y : m < y -> (split x m)#r < y.
 Proof.
-  intro. apply above_alt. intros z Hz. apply split_in_r0 in Hz. order.
+  intros ? z Hz. apply split_in_r0 in Hz. order.
 Qed.
 
-Lemma split_gt_r m x `{!Ok m} : x << (split x m)#r.
+Lemma split_gt_r m x `{!Ok m} : x < (split x m)#r.
 Proof.
-  apply below_alt. intro. rewrite split_in_r; intuition; order.
+  intro. rewrite split_in_r; intuition; order.
 Qed.
 
-Lemma split_gt_l m x y : y << m -> y << (split x m)#l.
+Lemma split_gt_l m x y : y < m -> y < (split x m)#l.
 Proof.
-  intro. apply below_alt. intros z Hz. apply split_in_l0 in Hz. order.
+  intros ? z Hz. apply split_in_l0 in Hz. order.
 Qed.
 Hint Resolve split_lt_l split_lt_r split_gt_l split_gt_r.
 
@@ -796,7 +782,7 @@ Proof.
    rewrite join_in, (remove_min_in R); simpl; intuition.
 Qed.
 
-Global Instance concat_ok m1 m2 `{!Ok m1, !Ok m2} : m1 <<< m2 ->
+Global Instance concat_ok m1 m2 `{!Ok m1, !Ok m2} : m1 < m2 ->
  Ok (concat m1 m2).
 Proof.
   functional induction (concat m1 m2); intros LT; auto;
@@ -804,8 +790,7 @@ Proof.
   factor_remove_min m2 R.
   apply join_ok, create_ok; auto.
   - now apply remove_min_ok in R.
-  - apply above_alt. intros y Hy. apply LT; trivial.
-    rewrite (remove_min_in R); now left.
+  - intros y Hy. apply LT; trivial. rewrite (remove_min_in R); now left.
   - now apply (remove_min_gt R).
 Qed.
 
@@ -815,14 +800,14 @@ Definition oelse {A} (o1 o2:option A) :=
   | None => o2
   end.
 
-Lemma concat_find m1 m2 y `{!Ok m1, !Ok m2} : m1 <<< m2 ->
+Lemma concat_find m1 m2 y `{!Ok m1, !Ok m2} : m1 < m2 ->
  find y (concat m1 m2) = oelse (find y m2) (find y m1).
 Proof.
  functional induction (concat m1 m2); intros B; auto; try factornode m1.
  - destruct (find y m2); auto.
  - factor_remove_min m2 R.
-   assert (xd#1 >> m1).
-   { apply above_alt. intros z Hz. apply B; trivial.
+   assert (m1 < xd#1).
+   { intros z Hz. apply B; trivial.
      rewrite (remove_min_in R). now left. }
    rewrite join_find; simpl; auto.
    + rewrite (remove_min_find R y).
@@ -840,29 +825,27 @@ Variable f : key -> elt -> option elt'.
 
 Lemma mapo_in m x :
  x ∈ (mapo f m) ->
- exists y d, K.eq y x /\ MapsTo x d m /\ f y d <> None.
+ exists y d, y == x /\ MapsTo x d m /\ f y d <> None.
 Proof.
-functional induction (mapo f m); simpl; auto; intro H.
-- inv In.
-- rewrite join_in in H; destruct H as [H|[H|H]].
+functional induction (mapo f m); simpl; auto.
+- intuition_in.
+- rewrite join_in; intros [H|[H|H]].
   + exists x0, d. do 2 (split; auto). congruence.
   + destruct (IHt0 H) as (y & e & ? & ? & ?). exists y, e. auto.
   + destruct (IHt1 H) as (y & e & ? & ? & ?). exists y, e. auto.
-- rewrite concat_in in H; destruct H as [H|H].
+- rewrite concat_in; intros [H|H].
   + destruct (IHt0 H) as (y & e & ? & ? & ?). exists y, e. auto.
   + destruct (IHt1 H) as (y & e & ? & ? & ?). exists y, e. auto.
 Qed.
 
-Lemma mapo_lt m x : x >> m -> x >> mapo f m.
+Lemma mapo_lt m x : m < x -> mapo f m < x.
 Proof.
-  intros H. apply above_alt. intros y Hy.
-  destruct (mapo_in Hy) as (y' & e & ? & ? & ?). order.
+  intros H y Hy. destruct (mapo_in Hy) as (y' & e & ? & ? & ?). order.
 Qed.
 
-Lemma mapo_gt m x : x << m -> x << mapo f m.
+Lemma mapo_gt m x : x < m -> x < mapo f m.
 Proof.
-  intros H. apply below_alt. intros y Hy.
-  destruct (mapo_in Hy) as (y' & e & ? & ? & ?). order.
+  intros H y Hy. destruct (mapo_in Hy) as (y' & e & ? & ? & ?). order.
 Qed.
 Hint Resolve mapo_lt mapo_gt.
 
@@ -870,7 +853,7 @@ Global Instance mapo_ok m `{!Ok m} : Ok (mapo f m).
 Proof.
 functional induction (mapo f m); simpl; auto; invok.
 - apply join_ok, create_ok; auto.
-- apply concat_ok; auto. apply between with x; auto.
+- apply concat_ok; eauto using between.
 Qed.
 
 Ltac nonify e :=
@@ -881,7 +864,7 @@ Definition obind {A B} (o:option A) (f:A->option B) :=
   match o with Some a => f a | None => None end.
 
 Lemma mapo_find m x `{!Ok m} :
-  exists y, K.eq y x /\
+  exists y, y == x /\
             find x (mapo f m) = obind (find x m) (f y).
 Proof.
 functional induction (mapo f m); simpl; auto; invok.
@@ -918,10 +901,10 @@ Hypothesis f0_f : forall x d o, f x d o = f0 x (Some d) o.
 Hypothesis mapl_ok : forall m, Ok m -> Ok (mapl m).
 Hypothesis mapr_ok : forall m', Ok m' -> Ok (mapr m').
 Hypothesis mapl_f0 : forall x m, Ok m ->
- exists y, K.eq y x /\
+ exists y, y == x /\
            find x (mapl m) = obind (find x m) (fun d => f0 y (Some d) None).
 Hypothesis mapr_f0 : forall x m, Ok m ->
- exists y, K.eq y x /\
+ exists y, y == x /\
            find x (mapr m) = obind (find x m) (fun d => f0 y None (Some d)).
 
 Notation gmerge := (gmerge f mapl mapr).
@@ -948,17 +931,15 @@ Proof.
 Qed.
 
 Lemma gmerge_lt m m' x `{!Ok m, !Ok m'} :
-  x >> m -> x >> m' -> x >> gmerge m m'.
+  m < x -> m' < x -> gmerge m m' < x.
 Proof.
-  intros. apply above_alt. intros y Hy.
-  apply gmerge_in in Hy; intuition_in; order.
+  intros ? ? y Hy. apply gmerge_in in Hy; intuition_in; order.
 Qed.
 
 Lemma gmerge_gt m m' x `{!Ok m, !Ok m'} :
-  x << m -> x << m' -> x << gmerge m m'.
+  x < m -> x < m' -> x < gmerge m m'.
 Proof.
-  intros. apply below_alt. intros y Hy.
-  apply gmerge_in in Hy; intuition_in; order.
+  intros ? ? y Hy. apply gmerge_in in Hy; intuition_in; order.
 Qed.
 Hint Resolve gmerge_lt gmerge_gt.
 Hint Resolve split_ok_l split_ok_r split_lt_l split_gt_r.
@@ -983,18 +964,18 @@ Ltac nonify e :=
    | rewrite E; clear E ].
 
 Lemma gmerge_find m m' x `{!Ok m, !Ok m'} :
- In x m \/ In x m' ->
- exists y, K.eq y x /\
+ x ∈ m \/ x ∈ m' ->
+ exists y, y == x /\
            find x (gmerge m m') = f0 y (find x m) (find x m').
 Proof.
-  functional induction (gmerge m m'); intros H;
-  try factornode m2; invok.
-  - destruct H; [ intuition_in | ].
+  functional induction (gmerge m m');
+  try factornode m2; invok; rewrite ?in_node, ?in_leaf.
+  - intros [[ ]|H].
     destruct (@mapr_f0 x m2) as (y,(Hy,E)); trivial.
     exists y; split; trivial.
     rewrite E. simpl. apply in_find in H; trivial.
     destruct (find x m2); simpl; intuition.
-  - destruct H; [ | intuition_in ].
+  - intros [H|[ ]].
     destruct (@mapl_f0 x m2) as (y,(Hy,E)); trivial.
     exists y; split; trivial.
     rewrite E. simpl. apply in_find in H; trivial.
@@ -1047,11 +1028,10 @@ apply gmerge_ok with f;
 Qed.
 
 Lemma merge_spec1 m m' x `{!Ok m, !Ok m'} :
- In0 x m \/ In0 x m' ->
- exists y, K.eq y x /\
+ x ∈ m \/ x ∈ m' ->
+ exists y, y == x /\
            find x (merge f m m') = f y (find x m) (find x m').
 Proof.
-  rewrite !In_alt.
   unfold merge; intros.
   edestruct (gmerge_find (f0:=f)) as (y,(Hy,E));
     eauto using mapo_ok.
@@ -1061,20 +1041,14 @@ Proof.
 Qed.
 
 Lemma merge_spec2 m m' x `{!Ok m, !Ok m'} :
-  In0 x (merge f m m') -> In0 x m \/ In0 x m'.
+  x ∈ (merge f m m') -> x ∈ m \/ x ∈ m'.
 Proof.
-rewrite !In_alt.
 unfold merge; intros.
 eapply gmerge_in with (f0:=f); try eassumption;
  auto using mapo_ok, mapo_find.
 Qed.
 
 End Merge.
-
-Definition In := Ind.In0.
-Definition Eqdom := Ind.Eqdom0.
-Definition Equiv := Ind.Equiv0.
-Definition Equivb := Ind.Equivb0.
 
 End MakeRaw.
 
@@ -1224,7 +1198,7 @@ Module IntMake_ord (I:Int)(K:OrderedType)(D:OrderedType) <: Sord K D.
   Lemma eq_spec m m' : eq m m' <-> MapS.Equivb cmp m m'.
   Proof.
   rewrite eq_seq; unfold seq.
-  rewrite Equivb_Equivb, R.Equivb_alt, R.Equivb_bindings.
+  rewrite Equivb_Equivb, R.Equivb_bindings.
   apply LO.eq_spec.
   Qed.
 
