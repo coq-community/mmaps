@@ -1,5 +1,5 @@
 
-(** * MMaps.RBTproofs *)
+(** * Finite Modular Maps : RBT Proofs *)
 
 (** This is a complement to [MMaps.RBT], proving the Red/Black balancing
     invariants for the code in [MMaps.RBT], and hence the logarithmic

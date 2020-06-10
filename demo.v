@@ -1,5 +1,9 @@
 
-(** MMaps : the demo *)
+(** MMaps Library : the demo *)
+
+(** Author : Pierre Letouzey (Université de Paris - INRIA),
+    adapted from earlier works in Coq Standard Library, see README.md.
+    Licence : LGPL 2.1, see file LICENSE. *)
 
 From Coq Require Import ZArith String Orders List.
 From MMaps Require Import MMaps.

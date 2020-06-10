@@ -1,7 +1,7 @@
 Name: MMaps
-Title: Modular Finite Maps overs Ordered Types
+Title: Finite Modular Maps over Ordered Types
 Author: Pierre Letouzey
-Institution: University Paris Diderot
+Institution: Université de Paris - INRIA
 Description:
   This contribution contains several implementations of finite maps over
   arbitrary ordered types using functors. This is an udpdated version of

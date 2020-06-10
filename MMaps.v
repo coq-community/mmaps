@@ -1,11 +1,9 @@
-(***********************************************************************)
-(*  v      *   The Coq Proof Assistant  /  The Coq Development Team    *)
-(* <O___,, *        INRIA-Rocquencourt  &  LRI-CNRS-Orsay              *)
-(*   \VV/  *************************************************************)
-(*    //   *      This file is distributed under the terms of the      *)
-(*         *       GNU Lesser General Public License Version 2.1       *)
-(***********************************************************************)
 
+(** * Finite Modular Maps *)
+
+(** Author : Pierre Letouzey (Université de Paris - INRIA),
+    adapted from earlier works in Coq Standard Library, see README.md.
+    Licence : LGPL 2.1, see file LICENSE. *)
 
 From Coq Require Export Orders OrdersEx OrdersAlt Equalities.
 From MMaps Require Export Interface Facts WeakList OrdList Positive.

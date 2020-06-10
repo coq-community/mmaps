@@ -1,8 +1,12 @@
 
-(** * MMaps.RBT *)
+(** * Finite Modular Maps : Red-Black Trees *)
+
+(** Author : Pierre Letouzey (Université de Paris - INRIA),
+    adapted from earlier works in Coq Standard Library, see README.md.
+    Licence : LGPL 2.1, see file LICENSE. *)
 
 (** This module implements finite maps using Red-Black trees.
-    This code is based on [MSetRBT.v], due initially to
+    This code is based on Coq [MSetRBT.v], due initially to
     Andrew W. Appel, 2011. See initial comment at the beginning
     of [MSetRBT.v].
 
