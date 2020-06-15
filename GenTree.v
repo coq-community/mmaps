@@ -21,6 +21,7 @@
 From Coq Require Import Bool PeanoNat BinInt FunInd.
 From Coq Require Import Orders OrdersFacts OrdersLists.
 From MMaps Require Import Comparisons Interface OrdList.
+Import ComparisonNotation.
 
 Local Open Scope list_scope.
 Local Open Scope lazy_bool_scope.
@@ -1014,64 +1015,36 @@ Proof.
   simpl flatten_e; rewrite IHs1; apply flatten_e_bindings; auto.
 Qed.
 
-(** Proof of correction for the comparison *)
+(** Proof of correction for the comparisons *)
 
-Variable cmp : elt->elt->bool.
+Variable eqb : elt->elt->bool.
 
-Definition IfEq b l1 l2 := L.equal cmp l1 l2 = b.
+Local Notation Leq := (L.equal eqb).
 
-Lemma cons_IfEq : forall b x1 x2 d1 d2 l1 l2,
-  x1 == x2 -> cmp d1 d2 = true ->
-  IfEq b l1 l2 ->
-    IfEq b ((x1,d1)::l1) ((x2,d2)::l2).
-Proof.
- unfold IfEq; destruct b; simpl; intros; case K.compare_spec; simpl;
-  try rewrite H0; auto; order.
-Qed.
-
-Lemma equal_end_IfEq : forall e2,
-  IfEq (equal_end e2) nil (flatten_e e2).
-Proof.
- destruct e2; red; auto.
-Qed.
-
-Lemma equal_more_IfEq :
- forall x1 d1 (cont:enumeration elt -> bool) x2 d2 r2 e2 l,
-  IfEq (cont (cons r2 e2)) l (bindings r2 ++ flatten_e e2) ->
-    IfEq (equal_more cmp x1 d1 cont (More x2 d2 r2 e2)) ((x1,d1)::l)
-       (flatten_e (More x2 d2 r2 e2)).
-Proof.
- unfold IfEq; simpl; intros; destruct K.compare; simpl; auto.
- rewrite <-andb_lazy_alt; f_equal; auto.
-Qed.
-
-Lemma equal_cont_IfEq : forall m1 cont e2 l,
-  (forall e, IfEq (cont e) l (flatten_e e)) ->
-  IfEq (equal_cont cmp m1 cont e2) (bindings m1 ++ l) (flatten_e e2).
+Lemma equal_cont_Leq : forall m1 cont e2 l,
+  (forall e, cont e = Leq l (flatten_e e)) ->
+  equal_cont eqb m1 cont e2 = Leq (bindings m1 ++ l) (flatten_e e2).
 Proof.
  induction m1 as [|h1 l1 Hl1 x1 d1 r1 Hr1]; intros; auto.
  rewrite bindings_node_acc; simpl.
  apply Hl1; auto.
- clear e2; intros [|x2 d2 r2 e2].
- simpl; red; auto.
- apply equal_more_IfEq.
+ clear e2; intros [|x2 d2 r2 e2]; simpl; auto.
+ case K.compare; auto. rewrite <- andb_lazy_alt. f_equal.
  rewrite <- cons_1; auto.
 Qed.
 
-Lemma equal_IfEq : forall (m1 m2:t elt),
-  IfEq (equal cmp m1 m2) (bindings m1) (bindings m2).
+Lemma equal_Leq m1 m2 :
+  equal eqb m1 m2 = Leq (bindings m1) (bindings m2).
 Proof.
- intros; unfold equal.
+ unfold equal.
  rewrite <- (app_nil_r (bindings m1)).
  replace (bindings m2) with (flatten_e (cons m2 (End _)))
   by (rewrite cons_1; simpl; rewrite app_nil_r; auto).
- apply equal_cont_IfEq.
- intros.
- apply equal_end_IfEq; auto.
+ apply equal_cont_Leq. now destruct e.
 Qed.
 
 Lemma Equivb_bindings m m' :
- Equivb cmp m m' <-> L.Equivb cmp (bindings m) (bindings m').
+ Equivb eqb m m' <-> L.Equivb eqb (bindings m) (bindings m').
 Proof.
 unfold Equivb, L.Equivb; split; split; try red; intros.
 do 2 rewrite bindings_in; firstorder.
@@ -1082,73 +1055,45 @@ destruct H.
 apply (H2 k); unfold L.PX.MapsTo; rewrite bindings_spec1; auto.
 Qed.
 
-End Elt.
-
-Lemma equal_spec elt cmp (m m':t elt)`{!Ok m, !Ok m'} :
-  equal cmp m m' = true <-> Equivb cmp m m'.
+Lemma equal_spec (m m':t elt)`{!Ok m, !Ok m'} :
+  equal eqb m m' = true <-> Equivb eqb m m'.
 Proof.
- rewrite Equivb_bindings, <- equal_IfEq.
- split; [apply L.equal_2 | apply L.equal_1]; unfold L.Ok;
-   auto using bindings_spec2.
+ rewrite Equivb_bindings, equal_Leq.
+ split; [apply L.equal_2 | apply L.equal_1];
+   unfold L.Ok; apply bindings_spec2.
 Qed.
 
-Section Compare.
-Variable elt : Type.
 Variable cmp : elt -> elt -> comparison.
 
-Notation Cmp := (fun c l1 l2 => L.compare cmp l1 l2 = c).
+Local Notation Lcmp := (L.compare cmp).
 
-Definition cons_Cmp c x1 x2 d1 d2 l1 l2 :
- K.eq x1 x2 -> cmp d1 d2 = Eq ->
- Cmp c l1 l2 ->
- Cmp c ((x1,d1)::l1) ((x2,d2)::l2).
-Proof.
- simpl. rewrite <- F.compare_eq_iff. now intros -> ->.
-Qed.
-
-Lemma compare_end_Cmp e2 :
-  Cmp (compare_end e2) nil (flatten_e e2).
-Proof.
- destruct e2; simpl; auto.
-Qed.
-
-Lemma compare_more_Cmp x1 d1 cont x2 d2 r2 e2 l :
-  Cmp (cont (cons r2 e2)) l (bindings r2 ++ flatten_e e2) ->
-  Cmp (compare_more cmp x1 d1 cont (More x2 d2 r2 e2)) ((x1,d1)::l)
-       (flatten_e (More x2 d2 r2 e2)).
-Proof.
- simpl; case K.compare_spec; simpl; auto.
- case cmp; simpl; auto.
-Qed.
-
-Lemma compare_cont_Cmp : forall s1 cont e2 l,
-  (forall e, Cmp (cont e) l (flatten_e e)) ->
-  Cmp (compare_cont cmp s1 cont e2) (bindings s1 ++ l) (flatten_e e2).
+Lemma compare_cont_Lcmp : forall s1 cont e2 l,
+  (forall e, cont e = Lcmp l (flatten_e e)) ->
+  compare_cont cmp s1 cont e2 =
+   Lcmp (bindings s1 ++ l) (flatten_e e2).
 Proof.
  induction s1 as [|h1 l1 Hl1 x1 d1 r1 Hr1]; intros; simpl; auto.
  rewrite bindings_node_acc; simpl.
  apply Hl1; auto. clear e2. intros [|x2 d2 r2 e2]; simpl; auto.
- apply compare_more_Cmp. rewrite <- cons_1; auto.
+ case K.compare; auto. case cmp; auto. rewrite <- cons_1; auto.
 Qed.
 
-Lemma compare_Cmp m1 m2 :
- Cmp (compare cmp m1 m2) (bindings m1) (bindings m2).
+Lemma compare_Lcmp m1 m2 :
+ compare cmp m1 m2 = Lcmp (bindings m1) (bindings m2).
 Proof.
  unfold compare; simpl.
  rewrite <- (app_nil_r (bindings m1)).
  replace (bindings m2) with (flatten_e (cons m2 (End _))) by
  (rewrite cons_1; simpl; rewrite app_nil_r; auto).
- auto using compare_cont_Cmp, compare_end_Cmp.
+ apply compare_cont_Lcmp. now destruct e.
 Qed.
 
 Lemma compare_spec (m m':t elt)`{!Ok m, !Ok m'} :
   compare cmp m m' =
   list_compare (pair_compare K.compare cmp) (bindings m) (bindings m').
-Proof.
- now rewrite <- compare_Cmp.
-Qed.
+Proof. apply compare_Lcmp. Qed.
 
-End Compare.
+End Elt.
 
 Section Map.
 Variable elt elt' : Type.

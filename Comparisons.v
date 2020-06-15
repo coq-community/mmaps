@@ -9,8 +9,11 @@ Set Implicit Arguments.
 (** A notation for lexicographic comparison.
     Note that [c2] might not need to be evaluated (lazyness). *)
 
+Module ComparisonNotation.
 Notation "c1 >>= c2" :=
   (match c1 with Lt => Lt | Gt => Gt | Eq => c2 end) (at level 70).
+End ComparisonNotation.
+Import ComparisonNotation.
 
 (** The comparison function in OrderedType are symmetric and
     transitive in the following sense: *)
