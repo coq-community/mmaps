@@ -6,6 +6,7 @@
     Licence : LGPL 2.1, see file LICENSE. *)
 
 From Coq Require Export Bool Equalities Orders SetoidList.
+From MMaps Require Import Comparisons.
 Set Implicit Arguments.
 Unset Strict Implicit.
 
@@ -196,46 +197,41 @@ Module Type WS (K : DecidableType).
     Parameter fold_spec :
       forall {A} (i : A) (f : key -> elt -> A -> A),
       fold f m i = fold_left (fun a p => f (fst p) (snd p) a) (bindings m) i.
-
-    Definition Equal (m m':t elt) := forall y, find y m = find y m'.
-    Definition Eqdom (m m':t elt) := forall y, In y m <-> In y m'.
-    Definition Equiv (R:elt->elt->Prop) m m' :=
-      Eqdom m m' /\ (forall k e e', MapsTo k e m -> MapsTo k e' m' -> R e e').
-    Definition Equivb (cmp: elt->elt->bool) := Equiv (Cmp cmp).
-
-    (** Specification of [equal] *)
-    Parameter equal_spec : forall cmp : elt -> elt -> bool,
-      equal cmp m m' = true <-> Equivb cmp m m'.
-
   End Specs.
-  Section SpecMaps.
 
-    Variables elt elt' elt'' : Type.
+  Definition Equal {elt} (m m':t elt) := forall y, find y m = find y m'.
+  Definition Eqdom {elt} (m m':t elt) := forall y, In y m <-> In y m'.
+  Definition Equiv {elt} (R:elt->elt->Prop) m m' :=
+    Eqdom m m' /\ (forall k e e', MapsTo k e m -> MapsTo k e' m' -> R e e').
+  Definition Equivb {elt} (cmp: elt->elt->bool) := Equiv (Cmp cmp).
 
-    Parameter map_spec : forall (f:elt->elt') m x,
-      find x (map f m) = option_map f (find x m).
+  (** Specification of [equal] *)
+  Parameter equal_spec : forall {elt} (cmp : elt -> elt -> bool)(m m':t elt),
+    equal cmp m m' = true <-> Equivb cmp m m'.
 
-    (** Note : the specifications for [mapi] and [merge] below are
-        general enough to work even when [f] is not a morphism w.r.t.
-        [K.eq]. For [merge], we could also have [f k None None <> None].
-        Alas, this leads to relatively awkward statements.
-        See the [Properties] functor for more usual and pratical statements,
-        for instance [merge_spec1mn]. *)
+  Parameter map_spec : forall {elt elt'}(f:elt->elt') m x,
+    find x (map f m) = option_map f (find x m).
 
-    Parameter mapi_spec : forall (f:key->elt->elt') m x,
-      exists y:key, K.eq y x /\ find x (mapi f m) = option_map (f y) (find x m).
+  (** Note : the specifications for [mapi] and [merge] below are
+      general enough to work even when [f] is not a morphism w.r.t.
+      [K.eq]. For [merge], we could also have [f k None None <> None].
+      Alas, this leads to relatively awkward statements.
+      See the [Properties] functor for more usual and pratical statements,
+      for instance [merge_spec1mn]. *)
 
-    Parameter merge_spec1 :
-      forall (f:key->option elt->option elt'->option elt'') m m' x,
-      In x m \/ In x m' ->
-      exists y:key, K.eq y x /\
-                    find x (merge f m m') = f y (find x m) (find x m').
+  Parameter mapi_spec : forall {elt elt'}(f:key->elt->elt') m x,
+    exists y:key, K.eq y x /\ find x (mapi f m) = option_map (f y) (find x m).
 
-    Parameter merge_spec2 :
-      forall (f:key -> option elt->option elt'->option elt'') m m' x,
-      In x (merge f m m') -> In x m \/ In x m'.
+  Parameter merge_spec1 :
+    forall {elt elt' elt''}(f:key->option elt->option elt'->option elt'') m m' x,
+    In x m \/ In x m' ->
+    exists y:key, K.eq y x /\
+                  find x (merge f m m') = f y (find x m) (find x m').
 
-  End SpecMaps.
+  Parameter merge_spec2 :
+    forall {elt elt' elt''}(f:key -> option elt->option elt'->option elt'') m m' x,
+    In x (merge f m m') -> In x m \/ In x m'.
+
 End WS.
 
 
@@ -253,6 +249,18 @@ Module Type S (K : OrderedType).
   (** Remark: since [fold] is specified via [bindings], this stronger
    specification of [bindings] has an indirect impact on [fold],
    which can now be proved to receive bindings in increasing order. *)
+
+  Parameter compare :
+    forall {elt}, (elt -> elt -> comparison) -> t elt -> t elt -> comparison.
+  (** [compare cmp m m'] compares the maps [m] and [m'], in a way compatible
+      with a lexicographic ordering of [bindings m] and [bindings m'],
+      using [K.compare] on keys and [cmp] on values. *)
+
+  Parameter compare_spec :
+    forall {elt} (cmp : elt -> elt -> comparison) (m m':t elt),
+      compare cmp m m' =
+      list_compare (pair_compare K.compare cmp)
+         (bindings m) (bindings m').
 
 End S.
 

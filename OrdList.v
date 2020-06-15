@@ -11,8 +11,8 @@
     have linear complexity. *)
 
 From Coq Require Import OrdersFacts OrdersLists.
-From MMaps Require Interface Raw.
-Import Interface.
+From MMaps Require Comparisons Interface Raw.
+Import Comparisons Interface.
 
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -413,7 +413,7 @@ Proof.
      * eapply E2; eauto.
 Qed.
 
-Lemma equal_spec m m' cmp {Hm:Ok m}{Hm':Ok m'} :
+Lemma equal_spec cmp m m' {Hm:Ok m}{Hm':Ok m'} :
   equal cmp m m' = true <-> Equivb cmp m m'.
 Proof.
  split. now apply equal_2. now apply equal_1.
@@ -864,6 +864,14 @@ Instance MapsTo_compat {elt} :
 Proof.
  intros x x' Hx e e' <- m m' <-. unfold MapsTo. now rewrite Hx.
 Qed.
+
+Definition compare {elt} cmp (m m':t elt) :=
+  list_compare (pair_compare X.compare cmp) m m'.
+
+Definition compare_spec {elt} cmp (m m':t elt) {Hm : Ok m}{Hm' : Ok m'}:
+ compare cmp m m' =
+ list_compare (pair_compare X.compare cmp) m m'.
+Proof. reflexivity. Qed.
 
 End MakeRaw.
 

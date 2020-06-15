@@ -6,7 +6,7 @@
     Licence : LGPL 2.1, see file LICENSE. *)
 
 From Coq Require Import Bool PeanoNat BinPos Orders OrdersEx OrdersLists.
-From MMaps Require Import Interface.
+From MMaps Require Import Comparisons Interface.
 
 Set Implicit Arguments.
 Local Open Scope lazy_bool_scope.
@@ -628,11 +628,20 @@ Module PositiveMap <: S PositiveOrderedTypeBits.
   try discriminate.
   Qed.
 
-  Lemma equal_spec : forall (A:Type)(m m':t A)(cmp:A->A->bool),
+  Lemma equal_spec : forall (A:Type)(cmp:A->A->bool)(m m':t A),
     equal cmp m m' = true <-> Equivb cmp m m'.
   Proof.
     split. apply equal_2. apply equal_1.
   Qed.
+
+  (* TODO : improve this (by deforestation, continuation, etc) *)
+  Definition compare (A:Type)(cmp : A -> A -> comparison)(m m':t A) :=
+   list_compare (pair_compare E.compare cmp) (bindings m) (bindings m').
+
+  Lemma compare_spec A cmp (m m':t A) :
+    compare cmp m m' =
+    list_compare (pair_compare E.compare cmp) (bindings m) (bindings m').
+  Proof. reflexivity. Qed.
 
 End PositiveMap.
 

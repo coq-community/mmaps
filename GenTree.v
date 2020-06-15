@@ -20,7 +20,7 @@
 
 From Coq Require Import Bool PeanoNat BinInt FunInd.
 From Coq Require Import Orders OrdersFacts OrdersLists.
-From MMaps Require Import Interface OrdList.
+From MMaps Require Import Comparisons Interface OrdList.
 
 Local Open Scope list_scope.
 Local Open Scope lazy_bool_scope.
@@ -1052,13 +1052,22 @@ Qed.
 
 End Elt.
 
-Lemma equal_spec elt (m m':t elt) cmp `{!Ok m, !Ok m'} :
+Lemma equal_spec elt cmp (m m':t elt)`{!Ok m, !Ok m'} :
   equal cmp m m' = true <-> Equivb cmp m m'.
 Proof.
  rewrite Equivb_bindings, <- equal_IfEq.
  split; [apply L.equal_2 | apply L.equal_1]; unfold L.Ok;
    auto using bindings_spec2.
 Qed.
+
+(* TODO : improve this (by deforestation, continuation, etc) *)
+Definition compare elt (cmp : elt -> elt -> comparison)(m m':t elt) :=
+  list_compare (pair_compare K.compare cmp) (bindings m) (bindings m').
+
+Lemma compare_spec {elt} cmp (m m':t elt)`{!Ok m, !Ok m'} :
+  compare cmp m m' =
+  list_compare (pair_compare K.compare cmp) (bindings m) (bindings m').
+Proof. reflexivity. Qed.
 
 Section Map.
 Variable elt elt' : Type.

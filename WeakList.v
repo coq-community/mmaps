@@ -365,7 +365,7 @@ Qed.
 
 (** Specification of [equal] *)
 
-Lemma equal_spec m m' cmp {Hm:Ok m}{Hm': Ok m'} :
+Lemma equal_spec cmp m m' {Hm:Ok m}{Hm': Ok m'} :
   equal cmp m m' = true <-> Equivb cmp m m'.
 Proof.
  unfold equal.

@@ -36,7 +36,7 @@
     extra explanations. *)
 
 From Coq Require Export Bool Equalities Orders SetoidList.
-From MMaps Require Export Interface.
+From MMaps Require Export Comparisons Interface.
 Set Implicit Arguments.
 Unset Strict Implicit.
 (* No induction principles for the records below *)
@@ -140,7 +140,7 @@ Module Type WS (K : DecidableType).
   Definition Equivb (cmp: elt->elt->bool) := Equiv (Cmp cmp).
 
   Parameter equal_spec :
-   forall (cmp : elt -> elt -> bool)`{!Ok m, !Ok m'},
+   forall (cmp : elt -> elt -> bool) m m' `{!Ok m, !Ok m'},
     equal cmp m m' = true <-> Equivb cmp m m'.
 
   Parameter map_spec : forall (f:elt->elt') m x `{!Ok m},
@@ -172,6 +172,17 @@ Module Type S (K : OrderedType).
 
   Parameter bindings_spec2 :
     forall {elt}(m : t elt)`{!Ok m}, sort lt_key (bindings m).
+
+  Parameter compare :
+    forall {elt}, (elt -> elt -> comparison) -> t elt -> t elt -> comparison.
+
+  Parameter compare_spec :
+    forall {elt} (cmp : elt -> elt -> comparison)
+      (m m':t elt)`{!Ok m, !Ok m'},
+      compare cmp m m' =
+      list_compare (pair_compare K.compare cmp)
+         (bindings m) (bindings m').
+
 End S.
 
 (** ** From Raw.WS to Interface.WS
@@ -287,7 +298,7 @@ Module WPack (K : DecidableType) (R : WS K) <: Interface.WS K.
  unfold Equivb, Equiv, R.Equivb, R.Equiv. intuition.
  Qed.
 
- Lemma equal_spec m m' cmp :
+ Lemma equal_spec cmp m m' :
    equal cmp m m' = true <-> Equivb cmp m m'.
  Proof. rewrite Equivb_Equivb. apply equal_spec; apply ok. Qed.
 
@@ -322,5 +333,13 @@ Module Pack (K : OrderedType) (R : S K) <: Interface.S K.
 
  Lemma bindings_spec2 {elt}(m : t elt) : sort lt_key (bindings m).
  Proof. apply R.bindings_spec2. Qed.
+
+ Definition compare {elt} cmp (m m' : t elt) := R.compare cmp m m'.
+
+ Lemma compare_spec {elt} cmp (m m' : t elt) :
+   compare cmp m m' =
+   list_compare (pair_compare K.compare cmp)
+     (bindings m) (bindings m').
+ Proof. apply R.compare_spec; apply ok. Qed.
 
 End Pack.
