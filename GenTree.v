@@ -13,7 +13,7 @@
 
      - empty is_empty
      - find mem
-     - equal
+     - equal compare
      - fold cardinal bindings
      - map mapi
 *)
@@ -184,7 +184,7 @@ end.
 
 (** * Comparison *)
 
-Variable cmp : elt->elt->bool.
+Variable eqb : elt->elt->bool.
 
 (** Enumeration of the elements of a tree. This corresponds
     to the "samefringe" notion in the litterature. *)
@@ -209,7 +209,7 @@ Definition equal_more x1 v1 (cont:enumeration->bool) e2 :=
  | End => false
  | More x2 v2 r2 e2 =>
      match K.compare x1 x2 with
-      | Eq => cmp v1 v2 &&& cont (cons r2 e2)
+      | Eq => eqb v1 v2 &&& cont (cons r2 e2)
       | _ => false
      end
  end.
@@ -227,9 +227,41 @@ Fixpoint equal_cont m1 (cont:enumeration->bool) e2 :=
 
 Definition equal_end e2 := match e2 with End => true | _ => false end.
 
-(** The complete comparison *)
+(** The complete boolean comparison *)
 
 Definition equal m1 m2 := equal_cont m1 equal_end (cons m2 End).
+
+(** Ternary comparison *)
+
+Variable cmp : elt -> elt -> comparison.
+
+(** One step of comparison of bindings *)
+
+Definition compare_more x1 d1 (cont:enumeration -> comparison) e2 :=
+  match e2 with
+  | End => Gt
+  | More x2 d2 r2 e2 =>
+    K.compare x1 x2 >>= (cmp d1 d2 >>= cont (cons r2 e2))
+  end.
+
+(** Comparison of left tree, middle element, then right tree *)
+
+Fixpoint compare_cont s1 (cont:enumeration -> comparison) e2 :=
+  match s1 with
+  | Leaf => cont e2
+  | Node _ l1 x1 d1 r1 =>
+    compare_cont l1 (compare_more x1 d1 (compare_cont r1 cont)) e2
+  end.
+
+(** Initial continuation *)
+
+Definition compare_end (e2:enumeration) :=
+  match e2 with End => Eq | _ => Lt end.
+
+(** The complete comparison *)
+
+Definition compare m1 m2 :=
+  compare_cont m1 compare_end (cons m2 End).
 
 End Elt.
 
@@ -1060,14 +1092,63 @@ Proof.
    auto using bindings_spec2.
 Qed.
 
-(* TODO : improve this (by deforestation, continuation, etc) *)
-Definition compare elt (cmp : elt -> elt -> comparison)(m m':t elt) :=
-  list_compare (pair_compare K.compare cmp) (bindings m) (bindings m').
+Section Compare.
+Variable elt : Type.
+Variable cmp : elt -> elt -> comparison.
 
-Lemma compare_spec {elt} cmp (m m':t elt)`{!Ok m, !Ok m'} :
+Notation Cmp := (fun c l1 l2 => L.compare cmp l1 l2 = c).
+
+Definition cons_Cmp c x1 x2 d1 d2 l1 l2 :
+ K.eq x1 x2 -> cmp d1 d2 = Eq ->
+ Cmp c l1 l2 ->
+ Cmp c ((x1,d1)::l1) ((x2,d2)::l2).
+Proof.
+ simpl. rewrite <- F.compare_eq_iff. now intros -> ->.
+Qed.
+
+Lemma compare_end_Cmp e2 :
+  Cmp (compare_end e2) nil (flatten_e e2).
+Proof.
+ destruct e2; simpl; auto.
+Qed.
+
+Lemma compare_more_Cmp x1 d1 cont x2 d2 r2 e2 l :
+  Cmp (cont (cons r2 e2)) l (bindings r2 ++ flatten_e e2) ->
+  Cmp (compare_more cmp x1 d1 cont (More x2 d2 r2 e2)) ((x1,d1)::l)
+       (flatten_e (More x2 d2 r2 e2)).
+Proof.
+ simpl; case K.compare_spec; simpl; auto.
+ case cmp; simpl; auto.
+Qed.
+
+Lemma compare_cont_Cmp : forall s1 cont e2 l,
+  (forall e, Cmp (cont e) l (flatten_e e)) ->
+  Cmp (compare_cont cmp s1 cont e2) (bindings s1 ++ l) (flatten_e e2).
+Proof.
+ induction s1 as [|h1 l1 Hl1 x1 d1 r1 Hr1]; intros; simpl; auto.
+ rewrite bindings_node_acc; simpl.
+ apply Hl1; auto. clear e2. intros [|x2 d2 r2 e2]; simpl; auto.
+ apply compare_more_Cmp. rewrite <- cons_1; auto.
+Qed.
+
+Lemma compare_Cmp m1 m2 :
+ Cmp (compare cmp m1 m2) (bindings m1) (bindings m2).
+Proof.
+ unfold compare; simpl.
+ rewrite <- (app_nil_r (bindings m1)).
+ replace (bindings m2) with (flatten_e (cons m2 (End _))) by
+ (rewrite cons_1; simpl; rewrite app_nil_r; auto).
+ auto using compare_cont_Cmp, compare_end_Cmp.
+Qed.
+
+Lemma compare_spec (m m':t elt)`{!Ok m, !Ok m'} :
   compare cmp m m' =
   list_compare (pair_compare K.compare cmp) (bindings m) (bindings m').
-Proof. reflexivity. Qed.
+Proof.
+ now rewrite <- compare_Cmp.
+Qed.
+
+End Compare.
 
 Section Map.
 Variable elt elt' : Type.

@@ -30,11 +30,12 @@
 * TODO Maps on unit + Eqdom --> an MSets implementation
 ** Issue : compare on sets ?
 
-* TODO : dilute Sord inside S, with a compare taking a elt_compare as argument ?
-** TODO improve generic implem in Positive, AVL, RBT
-** TODO args order in equal_spec vs. compare_spec
-** TODO facts : from compare_spec to compare_sym, compare_trans, StrictOrder, etc
-** TODO Maps as OrderedTypes ?
+* DONE : dilute Sord inside S, with a compare taking a elt_compare as argument ?
+** DONE improve generic implem in AVL, RBT
+** TODO improve generic implem in Positive
+** DONE args order in equal_spec vs. compare_spec
+** DONE facts : from compare_spec to compare_sym, compare_trans, StrictOrder, etc
+** DONE Maps as OrderedTypes ?
 
 * TODO unified spec of add and remove based on some key_eqb (cf. add_o) ?
 ** Not ideal since DecidableType K have K.eq_dec, not K.eqb

@@ -11,8 +11,9 @@
 *)
 
 From Coq Require Import Bool Equalities Orders OrdersFacts OrdersLists.
+From Coq Require OrdersAlt.
 From Coq Require Import Morphisms Permutation SetoidPermutation.
-From MMaps Require Export Interface.
+From MMaps Require Export Comparisons Interface.
 Set Implicit Arguments.
 Unset Strict Implicit.
 
@@ -45,6 +46,9 @@ Qed.
 Module Properties (K:DecidableType)(Import M:WS K).
 
 Definition Empty {elt}(m : t elt) := forall x e, ~MapsTo x e m.
+
+Definition eq_key_elt {elt} := Duo K.eq (@Logic.eq elt).
+Definition eq_key {elt} := @Fst _ elt K.eq.
 
 (** A few things about K.eq *)
 
@@ -1043,11 +1047,11 @@ Section Elt.
   Notation eqk := (@eq_key elt).
 
   Instance eqk_equiv : Equivalence eqk.
-  Proof. unfold eq_key. destruct K.eq_equiv. constructor; eauto. Qed.
+  Proof. unfold eq_key, Fst. destruct K.eq_equiv. constructor; eauto. Qed.
 
   Instance eqke_equiv : Equivalence eqke.
   Proof.
-   unfold eq_key_elt; split; repeat red; intuition; simpl in *;
+   unfold eq_key_elt, Duo; split; repeat red; intuition; simpl in *;
     etransitivity; eauto.
   Qed.
 
@@ -1058,7 +1062,7 @@ Section Elt.
   Proof.
   intros Hk. rewrite 2 InA_alt.
   intros ((k'',e'') & (Hk'',He'') & H); simpl in *; subst e''.
-  exists (k'',e); split; auto. red; simpl. now transitivity k.
+  exists (k'',e); split; auto. compute. now transitivity k.
   Qed.
 
   Lemma InA_eqk_eqke k e l :
@@ -1155,7 +1159,7 @@ Section Elt.
     inversion_clear Hnodup as [| ? ? Hnotin Hnodup'].
     specialize (IH k e Hnodup'); clear Hnodup'.
     rewrite add_mapsto_iff, InA_cons, <- IH.
-    unfold eq_key_elt at 1; simpl.
+    unfold eq_key_elt, Duo at 1; simpl.
     split; destruct 1 as [H|H]; try (intuition;fail).
     destruct (K.eq_dec k k'); [left|right]; split; auto with map.
     contradict Hnotin.
@@ -1233,7 +1237,7 @@ Section Elt.
   - (* step *)
     intros m Hsame; destruct a as (k,e); simpl.
     apply Hstep' with (of_list l); auto.
-    + rewrite InA_cons; left; red; auto with map.
+    + rewrite InA_cons; left; compute; auto with map.
     + inversion_clear Hdup. contradict H. destruct H as (e',He').
       apply InA_eqke_eqk with k e'; auto with map.
       rewrite <- of_list_1; auto.
@@ -1305,7 +1309,7 @@ Section Elt.
   clearbody l; clear Rstep m.
   induction l; simpl; auto.
   apply Rstep'; auto.
-  destruct a; simpl; rewrite InA_cons; left; red; auto with map.
+  destruct a; simpl; rewrite InA_cons; left; compute; auto with map.
   Qed.
 
   (** From the induction principle on [fold], we can deduce some general
@@ -1417,7 +1421,8 @@ Section Elt.
   apply fold_right_equivlistA_restr2 with (R:=complement eqk)(eqA:=eqke)
   ; auto with *.
   - intros (k1,e1) (k2,e2) (Hk,He) a1 a2 Ha; simpl in *. now apply Hf.
-  - unfold complement, eq_key, eq_key_elt; repeat red. intuition eauto with map.
+  - unfold complement, eq_key, eq_key_elt, Duo,Fst.
+    repeat red. intuition eauto with map.
   - intros (k,e) (k',e') z z' h h'; unfold eq_key, uncurry;simpl; auto.
     rewrite h'. eapply Hf'; now eauto.
   - rewrite <- NoDupA_altdef; auto.
@@ -1440,15 +1445,16 @@ Section Elt.
   apply fold_right_add_restr with
    (R:=complement eqk)(eqA:=eqke); auto with *.
   - intros (k1,e1) (k2,e2) (Hk,He) a a' Ha; unfold f'; simpl in *. now apply Hf.
-  - unfold complement, eq_key_elt, eq_key; repeat red; intuition eauto with map.
-  - intros (k1,e1) (k2,e2) z1 z2; unfold eq_key, f', uncurry; simpl.
+  - unfold complement, eq_key_elt, eq_key, Duo, Fst.
+    repeat red; intuition eauto with map.
+  - intros (k1,e1) (k2,e2) z1 z2; unfold eq_key, f', uncurry, Fst; simpl.
     eapply Hf'; now eauto.
   - rewrite <- NoDupA_altdef; auto.
   - rewrite InA_rev, <- bindings_mapsto_iff by (auto with * ). firstorder.
   - intros (a,b).
     rewrite InA_cons, 2 InA_rev, <- 2 bindings_mapsto_iff,
     2 find_mapsto_iff by (auto with * ).
-    unfold eq_key_elt; simpl.
+    unfold eq_key_elt,Duo; simpl.
     rewrite Hm2, !find_spec, add_mapsto_new; intuition.
   Qed.
 
@@ -1631,7 +1637,7 @@ Section Elt.
   destruct (bindings m); try discriminate.
   exists p; auto.
   rewrite H0; destruct p; simpl; auto.
-  constructor; red; auto with map.
+  constructor; compute; auto with map.
   Qed.
 
   Lemma cardinal_inv_2b m :
@@ -2157,10 +2163,10 @@ Section Elt.
       intros Hk Hz.
       destruct (f k e), (f k' e'); rewrite <- Hz; try reflexivity.
       now apply add_add_2.
-    + apply NoDupA_incl with eq_key; trivial. intros; subst; now red.
+    + apply NoDupA_incl with eq_key; trivial. intros; subst; now compute.
     + apply PermutationA_preserves_NoDupA with l; auto with *.
       apply Permutation_PermutationA; auto with *.
-      apply NoDupA_incl with eq_key; trivial. intros; subst; now red.
+      apply NoDupA_incl with eq_key; trivial. intros; subst; now compute.
     + apply NoDupA_altdef. apply NoDupA_rev. apply eqk_equiv.
       apply bindings_spec2w.
     + apply PermutationA_equivlistA; auto with *.
@@ -2238,6 +2244,10 @@ Module OrdProperties (K:OrderedType)(M:S K).
   Definition Below x (m:t elt) := forall y, In y m -> K.lt x y.
 
   Section Bindings.
+
+  Lemma bindings_spec2' (m:t elt) : sort ltk (bindings m).
+  Proof. apply bindings_spec2. Qed.
+  Local Hint Resolve bindings_spec2' : map.
 
   Lemma sort_equivlistA_eqlistA : forall l l' : list (key*elt),
    sort ltk l -> sort ltk l' -> equivlistA eqke l l' -> eqlistA eqke l l'.
@@ -2399,22 +2409,67 @@ Module OrdProperties (K:OrderedType)(M:S K).
   F.order.
   Qed.
 
-  Lemma bindings_Equal_eqlistA : forall (m m': t elt),
-   m == m' -> eqlistA eqke (bindings m) (bindings m').
+  Lemma bindings_Equal_eqlistA (m m' : t elt) :
+   m == m' <-> eqlistA eqke (bindings m) (bindings m').
   Proof.
-  intros.
-  apply sort_equivlistA_eqlistA; auto with *.
-  red; intros.
-  destruct x; do 2 rewrite <- bindings_mapsto_iff.
-  do 2 rewrite find_mapsto_iff; rewrite H; split; auto.
+  split; intros.
+  - apply sort_equivlistA_eqlistA; auto with *.
+    red; intros.
+    destruct x; do 2 rewrite <- bindings_mapsto_iff.
+    do 2 rewrite find_mapsto_iff; rewrite H; split; auto.
+  - unfold Equal. setoid_rewrite bindings_o.
+    induction H; simpl; intros; auto.
+    destruct x as (x,e), x' as (x',e'). compute in H. destruct H. subst e'.
+    unfold eqb in *. do 2 case K.eq_dec; auto; order.
   Qed.
 
-  Lemma bindings_Eqdom_eqlistA : forall (m m': t elt),
-   Eqdom m m' -> eqlistA eqk (bindings m) (bindings m').
+  Lemma bindings_Eqdom_eqlistA (m m' : t elt) :
+   Eqdom m m' <-> eqlistA eqk (bindings m) (bindings m').
   Proof.
-  intros.
-  apply SortA_equivlistA_eqlistA with (ltA:=ltk); eauto with *.
-  intros (k,e). now rewrite <- !in_bindings_iff'.
+  split; intros.
+  - apply SortA_equivlistA_eqlistA with (ltA:=ltk); eauto with *.
+    intros (k,e). now rewrite <- !in_bindings_iff'.
+  - unfold Eqdom. setoid_rewrite bindings_in_iff.
+    induction H; simpl; auto.
+    + now setoid_rewrite InA_nil.
+    + intros y.
+      setoid_rewrite InA_cons.
+      destruct x as (x,e), x' as (x',e'). compute in H.
+      split; intros (e2,[E|IN]); try (firstorder; fail);
+       compute in E; destruct E; subst; eexists; left; compute;
+       split; eauto; order.
+  Qed.
+
+  Lemma bindings_Equiv_eqlistA R (m m' : t elt) :
+   Equiv R m m' <->
+   eqlistA (K.eq * R)%signature (bindings m) (bindings m').
+  Proof.
+   intros.
+   unfold Equiv. setoid_rewrite bindings_Eqdom_eqlistA.
+   setoid_rewrite <- bindings_spec1.
+   split.
+   - intros (H,H').
+     induction H; auto.
+     setoid_rewrite InA_cons in H'.
+     constructor; firstorder.
+     destruct x as (x,e), x' as (x',e'). compute. eapply H'; now left.
+   - split.
+     + induction H; auto. constructor; auto. destruct x, x'; apply H.
+     + assert (Hm := bindings_spec2 m); assert (Hm' := bindings_spec2 m').
+       induction H; simpl; auto.
+       * now setoid_rewrite InA_nil.
+       * inversion_clear Hm; inversion_clear Hm'. intros k e e'.
+         rewrite !InA_cons.
+         destruct x as (x,v), x' as (x',v'). compute in H. destruct H.
+         intros [E|IN] [E'|IN'];
+           try (compute in E; destruct E);
+           try (compute in E'; destruct E'); subst; eauto.
+         { assert (LT : ltk (x',v') (k,e')) by
+           (eapply SortA_InfA_InA with (eqA:=eqke); eauto with * ).
+           compute in LT. order. }
+         { assert (LT : ltk (x,v) (k,e)) by
+           (eapply SortA_InfA_InA with (l:=l)(eqA:=eqke); eauto with *).
+           compute in LT. order. }
   Qed.
 
   End Bindings.
@@ -2435,7 +2490,7 @@ Module OrdProperties (K:OrderedType)(M:S K).
   rewrite remove_in_iff in H0; destruct H0.
   rewrite bindings_in_iff in H1.
   destruct H1.
-  generalize (bindings_spec2 m).
+  generalize (bindings_spec2' m).
   destruct (bindings m).
   try discriminate.
   destruct p; injection H; intros; subst.
@@ -2455,7 +2510,7 @@ Module OrdProperties (K:OrderedType)(M:S K).
   destruct (bindings m).
   simpl; try discriminate.
   destruct p; simpl in *.
-  injection H; intros; subst; constructor; red; auto with *.
+  injection H; intros; subst; constructor; compute; auto with *.
   Qed.
 
   Lemma min_elt_Empty m :
@@ -2514,40 +2569,35 @@ Module OrdProperties (K:OrderedType)(M:S K).
     max_elt m = Some (x,e) -> Above x (remove x m).
   Proof.
   red; intros.
-  rewrite remove_in_iff in H0.
-  destruct H0.
-  rewrite bindings_in_iff in H1.
-  destruct H1.
+  rewrite remove_in_iff in H0. destruct H0.
+  rewrite bindings_in_iff in H1. destruct H1.
   unfold max_elt in *.
-  generalize (bindings_spec2 m).
+  generalize (bindings_spec2' m).
   revert x e H y x0 H0 H1.
-  induction (bindings m).
-  simpl; intros; try discriminate.
+  induction (bindings m); try easy.
   intros.
   destruct a; destruct l; simpl in *.
-  injection H; clear H; intros; subst.
-  inversion_clear H1.
-  red in H; simpl in *; intuition.
-  now elim H0.
-  inversion H.
-  change (optlast (p::l) = Some (x,e)) in H.
-  generalize (IHl x e H); clear IHl; intros IHl.
-  inversion_clear H1; [ | inversion_clear H2; eauto ].
-  red in H3; simpl in H3; destruct H3.
-  destruct p as (p1,p2).
-  destruct (K.eq_dec p1 x) as [Heq|Hneq].
-  rewrite <- Heq; auto.
-   inversion_clear H2.
-   inversion_clear H5.
-   red in H2; simpl in H2; F.order.
-  transitivity p1; auto.
-   inversion_clear H2.
-   inversion_clear H5.
-   red in H2; simpl in H2; F.order.
-  eapply IHl; eauto with *.
-  econstructor; eauto.
-  red; eauto with *.
-  inversion H2; auto.
+  - injection H; clear H; intros; subst.
+    inversion_clear H1.
+    + compute in H; simpl in *; intuition. order.
+    + inversion H.
+  - change (optlast (p::l) = Some (x,e)) in H.
+    generalize (IHl x e H); clear IHl; intros IHl.
+    inversion_clear H1; [ | inversion_clear H2; eauto ].
+    compute in H3; destruct H3. subst.
+    destruct p as (p1,p2).
+    destruct (K.eq_dec p1 x) as [Heq|Hneq].
+    + rewrite <- Heq; auto.
+      inversion_clear H2.
+      inversion_clear H4.
+      compute in H2; F.order.
+    + transitivity p1; auto.
+      * inversion_clear H2.
+        inversion_clear H4.
+        compute in H2; F.order.
+      * inversion H2; subst.
+        eapply IHl; eauto with *.
+        econstructor; eauto. compute; eauto with *.
   Qed.
 
   Lemma max_elt_MapsTo m x e :
@@ -2556,11 +2606,11 @@ Module OrdProperties (K:OrderedType)(M:S K).
   intros.
   unfold max_elt in *.
   rewrite bindings_mapsto_iff.
-  induction (bindings m).
-  simpl; try discriminate.
+  induction (bindings m); simpl; try easy.
+  rewrite InA_cons.
   destruct a; destruct l; simpl in *.
-  injection H; intros; subst; constructor; red; auto with *.
-  constructor 2; auto.
+  injection H as -> ->. now left.
+  right; auto.
   Qed.
 
   Lemma max_elt_Empty m : max_elt m = None -> Empty m.
@@ -2705,5 +2755,158 @@ Module OrdProperties (K:OrderedType)(M:S K).
   Qed.
 
   End Fold_properties.
+
+  (** Comparisons of maps *)
+
+  Lemma Kcompare_trans : Trans K.compare.
+  Proof.
+   intros [ ] x y z;
+    rewrite ?compare_eq_iff, ?compare_lt_iff,  ?compare_gt_iff; order.
+  Qed.
+
+  Global Instance Kcompare_symtrans : SymTrans K.compare.
+  Proof.
+   split. exact F.compare_antisym. exact Kcompare_trans.
+  Qed.
+
+  Definition isEq c := match c with Eq => true | _ => false end.
+
+  Lemma isEq_spec c : isEq c = true <-> c = Eq.
+  Proof. now destruct c. Qed.
+
+  Lemma compare_Equiv cmp (m m':t elt) :
+    compare cmp m m' = Eq <-> Equiv (fun e e' => cmp e e' = Eq) m m'.
+  Proof.
+  rewrite compare_spec.
+  rewrite list_compare_eq.
+  rewrite bindings_Equiv_eqlistA.
+  split; induction 1; simpl; auto; constructor; auto.
+  - destruct x as (x,e), y as (y,e'). compute.
+    rewrite pair_compare_eq in H. now rewrite compare_eq_iff in H.
+  - destruct x as (x,e), x' as (x',e').
+    rewrite pair_compare_eq. now rewrite compare_eq_iff.
+  Qed.
+
+  Lemma compare_equiv cmp (m m':t elt) :
+    isEq (compare cmp m m') = equal (fun e e' => isEq (cmp e e')) m m'.
+  Proof.
+  apply eq_true_iff_eq. rewrite equal_spec.
+  rewrite isEq_spec, compare_Equiv. unfold Equivb, Equiv, Cmp.
+  now setoid_rewrite isEq_spec.
+  Qed.
+
+  (** If the comparison function [cmp] on values is symmetric
+      and transitive, then [compare cmp] provides a OrderedType-like
+      structure on maps. *)
+
+  Section Compare.
+  Variable cmp : elt -> elt -> comparison.
+  Context `(!SymTrans cmp).
+
+  Global Instance compare_symtrans : SymTrans (compare cmp).
+  Proof.
+  constructor.
+  - intros x y. rewrite !compare_spec; apply sym; eauto with *.
+  - intros c x y z. rewrite !compare_spec; apply tra; eauto with *.
+  Qed.
+
+  Definition eq m m' := compare cmp m m' = Eq.
+  Definition lt m m' := compare cmp m m' = Lt.
+
+  Lemma compare_refl m : compare cmp m m = Eq.
+  Proof.
+  destruct (compare cmp m m) eqn:E; auto; assert (E':=E).
+  rewrite sym, CompOpp_iff in E. simpl in E. congruence.
+  rewrite sym, CompOpp_iff in E. simpl in E. congruence.
+  Qed.
+
+  Global Instance eq_equiv : Equivalence eq.
+  Proof.
+  split.
+  - intro x. apply compare_refl.
+  - intros x y E. unfold eq. now rewrite sym, CompOpp_iff.
+  - intros x y z. apply tra.
+  Qed.
+
+  Global Instance lt_strorder : StrictOrder lt.
+  Proof.
+  split.
+  - intros x. red. unfold lt. now rewrite compare_refl.
+  - intros x y z. apply tra.
+  Qed.
+
+  Global Instance lt_compat : Proper (eq ==> eq ==> iff) lt.
+  Proof.
+  intros x x' E y y' E'. unfold lt,eq in *. split; intros <-.
+  - symmetry.
+    rewrite SymTrans_CompatL; eauto with *.
+    rewrite SymTrans_CompatR; eauto with *.
+  - rewrite SymTrans_CompatL; eauto with *.
+    rewrite SymTrans_CompatR; eauto with *.
+  Qed.
+
+  Lemma compare_spec' m m' :
+    CompareSpec (eq m m') (lt m m') (lt m' m) (compare cmp m m').
+  Proof.
+   unfold eq, lt. rewrite (@sym _ (compare cmp) _ m m').
+   destruct (compare cmp m m'); auto.
+  Qed.
+
+  Lemma eq_spec m m' : eq m m' <-> Equiv (fun e e' => cmp e e' = Eq) m m'.
+  Proof. apply compare_Equiv. Qed.
+
+  Definition eq_dec m m' : {eq m m'} + {~eq m m'}.
+  Proof.
+  destruct (compare cmp m m') eqn:E.
+  - now left.
+  - right. unfold eq. now rewrite E.
+  - right. unfold eq. now rewrite E.
+  Defined.
+
+  End Compare.
  End Elt.
 End OrdProperties.
+
+(** Modular statement of the last group of results :
+    If we have an OrderedType on elements, then we have one on maps.
+    While building OrderedType of sets was both direct and useful
+    (for sets of sets), here OrderedType on maps is technically
+    complex (extra structure for elements) and seldom used
+    (maps or sets indexed by maps ??). Hence this separate functor. *)
+
+Module OrderedMaps (K:OrderedType)(D:OrderedType)(M:S K) <: OrderedType.
+ Module P := OrdProperties K M.
+ Module D' := OrdersAlt.OT_to_Alt(D).
+
+ Definition t := M.t D.t.
+ Definition eq := P.eq D.compare.
+ Definition lt := P.lt D.compare.
+ Definition compare := M.compare D.compare.
+
+ Instance Dcompare_symtrans : SymTrans D.compare.
+ Proof.
+ split. exact D'.compare_sym. exact D'.compare_trans.
+ Qed.
+
+ Instance compare_symtrans : SymTrans compare.
+ Proof. apply P.compare_symtrans, Dcompare_symtrans. Qed.
+
+ Instance eq_equiv : Equivalence eq := P.eq_equiv _.
+ Instance lt_strorder : StrictOrder lt := P.lt_strorder _.
+ Instance lt_compat : Proper (eq ==> eq ==> iff) lt := P.lt_compat _.
+
+ Lemma compare_spec (m m' :t) :
+  CompareSpec (eq m m') (lt m m') (lt m' m) (compare m m').
+ Proof. apply (P.compare_spec' _). Qed.
+
+ Definition eq_dec : forall m m', {eq m m'}+{~eq m m'} := P.eq_dec _.
+
+ (** Extra description of [eq] : *)
+
+ Lemma eq_spec m m' : eq m m' <-> M.Equiv D.eq m m'.
+ Proof.
+  unfold eq. rewrite P.eq_spec.
+  unfold M.Equiv. now setoid_rewrite D'.compare_Eq.
+ Qed.
+
+End OrderedMaps.

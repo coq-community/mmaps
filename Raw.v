@@ -177,11 +177,9 @@ Module Type S (K : OrderedType).
     forall {elt}, (elt -> elt -> comparison) -> t elt -> t elt -> comparison.
 
   Parameter compare_spec :
-    forall {elt} (cmp : elt -> elt -> comparison)
-      (m m':t elt)`{!Ok m, !Ok m'},
+    forall {elt} (cmp : elt -> elt -> comparison)(m m':t elt)`{!Ok m, !Ok m'},
       compare cmp m m' =
-      list_compare (pair_compare K.compare cmp)
-         (bindings m) (bindings m').
+      list_compare (pair_compare K.compare cmp) (bindings m) (bindings m').
 
 End S.
 
@@ -338,8 +336,7 @@ Module Pack (K : OrderedType) (R : S K) <: Interface.S K.
 
  Lemma compare_spec {elt} cmp (m m' : t elt) :
    compare cmp m m' =
-   list_compare (pair_compare K.compare cmp)
-     (bindings m) (bindings m').
+   list_compare (pair_compare K.compare cmp) (bindings m) (bindings m').
  Proof. apply R.compare_spec; apply ok. Qed.
 
 End Pack.

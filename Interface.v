@@ -19,15 +19,13 @@ Unset Strict Implicit.
    a decidable equality on keys in enough (see for example
    [WeakList]). These signature contains the usual operators
    (add, find, ...). The only function that asks for more is
-   [equal], whose first argument should be a comparison on data.
+   [equal], whose first argument should be a boolean comparison
+   on data.
 
  - Then comes [S], that extends [WS] to the case where the key type
    is ordered. The main novelty is that [bindings] is required
-   to produce sorted lists.
-
- - Finally, [Sord] extends [S] with a complete comparison function.
-   For that, the data type should have a decidable total ordering
-   as well.
+   to produce sorted lists. A [compare] function on maps is also
+   provided, whose first argument should be a comparison on data.
 
  If unsure, what you're looking for is probably [S].
 
@@ -58,7 +56,7 @@ Unset Strict Implicit.
 
  - [Equal] is then the most precise predicate, and probably the most
    natural, corresponding to an observational equivalence : [Equal]
-   maps will give equal results by [find] (or [MapsTo]).
+   maps will give (Leibniz) equal results by [find] (or [MapsTo]).
 
  - [Equivb] and [Equiv] are somewhat ad-hoc, but necessary to fully
    specify the [equal] function. [Equivb] is parametrized by a boolean
@@ -73,6 +71,12 @@ Unset Strict Implicit.
 
 Definition Cmp {elt:Type}(cmp:elt->elt->bool) e1 e2 := cmp e1 e2 = true.
 
+Definition Fst {A B}(R:relation A) : relation (A*B) :=
+ fun p p' => R (fst p) (fst p').
+
+Definition Duo {A B}(RA:relation A)(RB:relation B) : relation (A*B) :=
+ fun p p' => RA (fst p) (fst p') /\ RB (snd p) (snd p').
+
 (** ** Weak signature for maps
 
     No requirements for an ordering on keys nor elements, only decidability
@@ -81,11 +85,6 @@ Definition Cmp {elt:Type}(cmp:elt->elt->bool) e1 e2 := cmp e1 e2 = true.
 Module Type WS (K : DecidableType).
 
   Definition key := K.t.
-
-  Definition eq_key {elt} (p p':key*elt) := K.eq (fst p) (fst p').
-
-  Definition eq_key_elt {elt} (p p':key*elt) :=
-      K.eq (fst p) (fst p') /\ (snd p) = (snd p').
 
   Parameter t : Type -> Type.
   (** the abstract type of maps *)
@@ -185,10 +184,10 @@ Module Type WS (K : DecidableType).
 
     (** Specification of [bindings] *)
     Parameter bindings_spec1 :
-      InA eq_key_elt (x,e) (bindings m) <-> MapsTo x e m.
+      InA (Duo K.eq Logic.eq) (x,e) (bindings m) <-> MapsTo x e m.
     (** When compared with ordered maps, here comes the only
         property that is really weaker: *)
-    Parameter bindings_spec2w : NoDupA eq_key (bindings m).
+    Parameter bindings_spec2w : NoDupA (Fst K.eq) (bindings m).
 
     (** Specification of [cardinal] *)
     Parameter cardinal_spec : cardinal m = length (bindings m).
@@ -220,17 +219,16 @@ Module Type WS (K : DecidableType).
       for instance [merge_spec1mn]. *)
 
   Parameter mapi_spec : forall {elt elt'}(f:key->elt->elt') m x,
-    exists y:key, K.eq y x /\ find x (mapi f m) = option_map (f y) (find x m).
+   exists y:key, K.eq y x /\ find x (mapi f m) = option_map (f y) (find x m).
 
   Parameter merge_spec1 :
-    forall {elt elt' elt''}(f:key->option elt->option elt'->option elt'') m m' x,
-    In x m \/ In x m' ->
-    exists y:key, K.eq y x /\
-                  find x (merge f m m') = f y (find x m) (find x m').
+   forall {elt elt' elt''}(f:key->option elt->option elt'->option elt'') m m' x,
+   In x m \/ In x m' ->
+   exists y:key, K.eq y x /\ find x (merge f m m') = f y (find x m) (find x m').
 
   Parameter merge_spec2 :
-    forall {elt elt' elt''}(f:key -> option elt->option elt'->option elt'') m m' x,
-    In x (merge f m m') -> In x m \/ In x m'.
+   forall {elt elt' elt''}(f:key->option elt->option elt'->option elt'') m m' x,
+   In x (merge f m m') -> In x m \/ In x m'.
 
 End WS.
 
@@ -240,11 +238,10 @@ End WS.
 Module Type S (K : OrderedType).
   Include WS K.
 
-  Definition lt_key {elt} (p p':key*elt) := K.lt (fst p) (fst p').
-
   (** Additional specification of [bindings] *)
 
-  Parameter bindings_spec2 : forall {elt}(m : t elt), sort lt_key (bindings m).
+  Parameter bindings_spec2 :
+    forall {elt}(m : t elt), sort (Fst K.lt) (bindings m).
 
   (** Remark: since [fold] is specified via [bindings], this stronger
    specification of [bindings] has an indirect impact on [fold],
@@ -259,30 +256,6 @@ Module Type S (K : OrderedType).
   Parameter compare_spec :
     forall {elt} (cmp : elt -> elt -> comparison) (m m':t elt),
       compare cmp m m' =
-      list_compare (pair_compare K.compare cmp)
-         (bindings m) (bindings m').
+      list_compare (pair_compare K.compare cmp) (bindings m) (bindings m').
 
 End S.
-
-
-(** ** Maps with orderings both on keys and datas *)
-
-Module Type Sord (K : OrderedType) (D : OrderedType).
-
-  Declare Module MapS : S K.
-  Import MapS.
-
-  Definition t := MapS.t D.t.
-
-  Include HasEq <+ HasLt <+ IsEq <+ IsStrOrder.
-
-  Definition cmp e e' :=
-    match D.compare e e' with Eq => true | _ => false end.
-
-  Parameter eq_spec : forall m m', eq m m' <-> Equivb cmp m m'.
-
-  Parameter compare : t -> t -> comparison.
-
-  Parameter compare_spec : forall m1 m2, CompSpec eq lt m1 m2 (compare m1 m2).
-
-End Sord.
