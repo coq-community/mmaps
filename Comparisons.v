@@ -6,14 +6,12 @@ Import ListNotations.
 
 Set Implicit Arguments.
 
-(** A notation for lexicographic comparison.
-    Note that [c2] might not need to be evaluated (lazyness). *)
+(** lexicographic product, defined using a notation to keep things lazy *)
 
-Module ComparisonNotation.
-Notation "c1 >>= c2" :=
-  (match c1 with Lt => Lt | Gt => Gt | Eq => c2 end) (at level 70).
-End ComparisonNotation.
-Import ComparisonNotation.
+Notation lex u v := match u with Eq => v | Lt => Lt | Gt => Gt end.
+
+Lemma lex_Eq u v : lex u v = Eq <-> u=Eq /\ v=Eq.
+Proof. now destruct u. Qed.
 
 (** The comparison function in OrderedType are symmetric and
     transitive in the following sense: *)
@@ -71,7 +69,7 @@ Section PairComp.
 Variable A B : Type.
 Variable cmpA : A -> A -> comparison.
 Variable cmpB : B -> B -> comparison.
-Definition pair_compare '(a,b) '(a',b') := cmpA a a' >>= cmpB b b'.
+Definition pair_compare '(a,b) '(a',b') := lex (cmpA a a') (cmpB b b').
 
 Lemma pair_compare_sym : Sym cmpA -> Sym cmpB -> Sym pair_compare.
 Proof.
@@ -107,7 +105,7 @@ Qed.
 Lemma pair_compare_eq a a' b b' :
   pair_compare (a,b) (a',b') = Eq <-> cmpA a a' = Eq /\ cmpB b b' = Eq.
 Proof.
- simpl. destruct cmpA; split; try easy.
+ apply lex_Eq.
 Qed.
 
 End PairComp.
@@ -122,7 +120,7 @@ Fixpoint list_compare (l1 l2 : list A) :=
   | [], [] => Eq
   | [], _ => Lt
   | _, [] => Gt
-  | x1::l1', x2::l2' => cmp x1 x2 >>= list_compare l1' l2'
+  | x1::l1', x2::l2' => lex (cmp x1 x2) (list_compare l1' l2')
   end.
 
 Lemma list_compare_sym : Sym cmp -> Sym list_compare.
@@ -158,8 +156,8 @@ Proof.
  split.
  - revert l'.
    induction l as [|a l IH]; destruct l' as [|b l']; simpl; try easy.
-   destruct (cmp a b) eqn:E; auto; try easy.
- - induction 1; simpl; auto. now rewrite H.
+    rewrite lex_Eq; intuition.
+ - induction 1; simpl; now rewrite ?lex_Eq.
 Qed.
 
 End ListComp.

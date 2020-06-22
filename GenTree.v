@@ -21,7 +21,6 @@
 From Coq Require Import Bool PeanoNat BinInt FunInd.
 From Coq Require Import Orders OrdersFacts OrdersLists.
 From MMaps Require Import Comparisons Interface OrdList.
-Import ComparisonNotation.
 
 Local Open Scope list_scope.
 Local Open Scope lazy_bool_scope.
@@ -185,8 +184,6 @@ end.
 
 (** * Comparison *)
 
-Variable eqb : elt->elt->bool.
-
 (** Enumeration of the elements of a tree. This corresponds
     to the "samefringe" notion in the litterature. *)
 
@@ -204,6 +201,8 @@ Fixpoint cons s e : enumeration :=
  end.
 
 (** One step of comparison of elements *)
+
+Variable eqb : elt->elt->bool.
 
 Definition equal_more x1 v1 (cont:enumeration->bool) e2 :=
  match e2 with
@@ -242,7 +241,7 @@ Definition compare_more x1 d1 (cont:enumeration -> comparison) e2 :=
   match e2 with
   | End => Gt
   | More x2 d2 r2 e2 =>
-    K.compare x1 x2 >>= (cmp d1 d2 >>= cont (cons r2 e2))
+    lex (K.compare x1 x2) (lex (cmp d1 d2) (cont (cons r2 e2)))
   end.
 
 (** Comparison of left tree, middle element, then right tree *)
