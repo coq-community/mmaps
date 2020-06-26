@@ -32,7 +32,7 @@
 
 * DONE : dilute Sord inside S, with a compare taking a elt_compare as argument ?
 ** DONE improve generic implem in AVL, RBT
-** TODO improve generic implem in Positive
+** DONE improve generic implem in Positive
 ** DONE args order in equal_spec vs. compare_spec
 ** DONE facts : from compare_spec to compare_sym, compare_trans, StrictOrder, etc
 ** DONE Maps as OrderedTypes ?
