@@ -507,18 +507,20 @@ Module PositiveMap <: S PositiveOrderedTypeBits.
     intros. exact (H m i 1 nil).
   Qed.
 
+  Definition equal_opt (A:Type)(cmp : A -> A -> bool) o1 o2 : bool :=
+    match o1, o2 with
+    | None, None => true
+    | Some v1, Some v2 => cmp v1 v2
+    | _, _ => false
+    end.
+
   Fixpoint equal (A:Type)(cmp : A -> A -> bool)(m1 m2 : t A) : bool :=
     match m1, m2 with
       | Leaf, _ => is_empty m2
       | _, Leaf => is_empty m1
       | Node l1 o1 r1, Node l2 o2 r2 =>
-           (match o1, o2 with
-             | None, None => true
-             | Some v1, Some v2 => cmp v1 v2
-             | _, _ => false
-            end)
-           &&& equal cmp l1 l2 &&& equal cmp r1 r2
-     end.
+        equal_opt cmp o1 o2 &&& equal cmp l1 l2 &&& equal cmp r1 r2
+    end.
 
   Definition Equal A (m m':t A) := forall y, find y m = find y m'.
   Definition Eqdom A (m m':t A) := forall k, In k m <-> In k m'.
@@ -634,14 +636,155 @@ Module PositiveMap <: S PositiveOrderedTypeBits.
     split. apply equal_2. apply equal_1.
   Qed.
 
-  (* TODO : improve this (by deforestation, continuation, etc) *)
-  Definition compare (A:Type)(cmp : A -> A -> comparison)(m m':t A) :=
-   list_compare (pair_compare E.compare cmp) (bindings m) (bindings m').
+  (** Some complements about [bindings] that will be used
+      in correctness of [compare] below. *)
 
-  Lemma compare_spec A cmp (m m':t A) :
-    compare cmp m m' =
-    list_compare (pair_compare E.compare cmp) (bindings m) (bindings m').
-  Proof. reflexivity. Qed.
+  Lemma xbindings_nil A (m:t A) p l :
+    xbindings m p l = nil <-> is_empty m = true /\ l = nil.
+  Proof.
+  revert p l.
+  induction m; simpl; intros; try easy.
+  destruct o; now rewrite <- ?andb_lazy_alt, ?andb_true_iff, IHm1, ?IHm2.
+  Qed.
+
+  Lemma bindings_nil A (m:t A) :
+    bindings m = nil <-> is_empty m = true.
+  Proof.
+  unfold bindings. now rewrite xbindings_nil.
+  Qed.
+
+  Definition fstmap A (f:key->key) '(k, e) : key*A := (f k, e).
+
+  Lemma xbindings_alt A (m:t A) j l :
+   xbindings m j l = List.map (fstmap (rev_append j)) (bindings m) ++ l.
+  Proof.
+  revert j l.
+  induction m; simpl; intros; auto.
+  destruct o; unfold bindings; simpl;
+   rewrite !IHm1, !IHm2, map_app, map_map, app_ass, app_nil_r; simpl;
+   f_equal; try (apply map_ext; now intros (?,?)); f_equal.
+  - f_equal. rewrite map_map. apply map_ext. now intros (?,?).
+  - rewrite map_map. apply map_ext. now intros (?,?).
+  Qed.
+
+  Lemma bindings_node A (r l:t A) o :
+   bindings (Node l o r) =
+   (List.map (fstmap xO) (bindings l)) ++
+   (match o with Some e => (1,e)::nil | None => nil end) ++
+   (List.map (fstmap xI) (bindings r)).
+  Proof.
+  unfold bindings at 1. simpl.
+  rewrite !xbindings_alt, !app_nil_r.
+  destruct o; simpl; try f_equal.
+  rewrite xbindings_alt; simpl. f_equal.
+  Qed.
+
+  (** Note: For once, the [compare] below is not a mere adaptation
+      of the one of [MSetPositive]. Doing so would lead to a [compare]
+      function which is indeed a comparison (ie refl sym trans), but
+      different from [list_compare ... (bindings ...) (bindings ...)],
+      hence not satisfying the required [Interface.S] specification. *)
+
+  Section Compare.
+  Variable A : Type.
+  Variable cmp : A -> A -> comparison.
+
+  Definition is_empty2 A (o:option A) (r:t A) :=
+   match o with None => is_empty r | _ => false end.
+
+  Fixpoint ecompare (m1 m2: t A) : (comparison * flag) :=
+   match m1, m2 with
+   | Leaf, _ => if is_empty m2 then (Eq,EOL) else (Lt,EOL)
+   | _, Leaf => if is_empty m1 then (Eq,EOL) else (Gt,EOL)
+   | Node l1 o1 r1, Node l2 o2 r2 =>
+     match ecompare l1 l2 with
+     | (Eq,_) =>
+       match o1, o2 with
+       | None, None => ecompare r1 r2
+       | Some d1, Some d2 => elex (cmp d1 d2) (ecompare r1 r2)
+       | None, Some _ => if is_empty r1 then (Lt,EOL) else (Gt,Early)
+       | Some _, None => if is_empty r2 then (Gt,EOL) else (Lt,Early)
+       end
+     | (c,Early) => (c,Early)
+     | (Lt,EOL) => if is_empty2 o1 r1 then (Lt,EOL) else (Gt,Early)
+     | (Gt,EOL) => if is_empty2 o2 r2 then (Gt,EOL) else (Lt,Early)
+     end
+   end.
+
+  Definition compare (m1 m2: t A) := fst (ecompare m1 m2).
+
+  Local Notation Lcmp := (list_compare (pair_compare E.compare cmp)).
+  Local Notation eLcmp := (list_ecompare (pair_compare E.compare cmp)).
+
+  Lemma eLcmp_fstmap l1 l2 f :
+   (forall k k', E.compare (f k) (f k') = E.compare k k') ->
+   eLcmp (List.map (fstmap f) l1) (List.map (fstmap f) l2) = eLcmp l1 l2.
+  Proof.
+  revert l2.
+  induction l1 as [|(x1,d1) l1 IH]; destruct l2 as [|(x2,d2) l2];
+   intros E; simpl; auto.
+  rewrite E. case E.compare_spec; try easy. unfold E.eq. intros <-.
+  destruct (cmp d1 d2); auto.
+  Qed.
+
+  Lemma ecompare_spec m1 m2 :
+   ecompare m1 m2 = eLcmp (bindings m1) (bindings m2).
+  Proof.
+  revert m2.
+  induction m1 as [|l1 IHl1 o1 r1 IHr1]; intros m2.
+  - simpl. generalize (bindings_nil m2).
+    destruct bindings, is_empty; simpl; intuition easy.
+  - generalize (bindings_nil (Node l1 o1 r1)).
+    destruct m2 as [|l2 o2 r2].
+    + cbn - [is_empty bindings].
+      destruct (bindings (Node l1 o1 r1)), is_empty; intuition easy.
+    + simpl.
+      intros _.
+      rewrite !bindings_node.
+      rewrite IHl1, ?IHr1; clear IHl1 IHr1.
+      rewrite list_ecompare_app.
+      * rewrite eLcmp_fstmap by auto.
+        destruct (eLcmp (bindings l1) (bindings l2)) as ([ ],b).
+        { destruct o1 as [d1| ], o2 as [d2| ]; simpl.
+          - destruct (cmp d1 d2) eqn:Eo; auto.
+            rewrite eLcmp_fstmap; auto.
+          - generalize (bindings_nil r2).
+            destruct is_empty, (bindings r2); simpl; intuition; try easy.
+            now destruct p.
+          - generalize (bindings_nil r1).
+            destruct is_empty, (bindings r1); simpl; intuition; try easy.
+            now destruct p.
+          - rewrite eLcmp_fstmap; auto. }
+        { destruct b; auto.
+          destruct o1; simpl; auto.
+          generalize (bindings_nil r1).
+          destruct bindings, is_empty; simpl; intuition easy. }
+        { destruct b; auto.
+          destruct o2; simpl; auto.
+          generalize (bindings_nil r2).
+          destruct bindings, is_empty; simpl; intuition easy. }
+      * intros (x,d) (y,d').
+        rewrite !in_app_iff, !in_map_iff.
+        intros ((k,e) & [= <- <-] & _) [H|((k',e') & [= <- <-] & _)];
+          simpl; auto.
+        destruct o1; try easy. simpl in H.
+        now destruct H as [[= <- <-]|[ ]].
+      * intros (x,d) (y,d').
+        rewrite !in_app_iff, !in_map_iff.
+        intros ((k,e) & [= <- <-] & _) [H|((k',e') & [= <- <-] & _)];
+          simpl; auto.
+        destruct o2; try easy. simpl in H.
+        now destruct H as [[= <- <-]|[ ]].
+  Qed.
+
+  Lemma compare_spec m1 m2 :
+   compare m1 m2 = Lcmp (bindings m1) (bindings m2).
+  Proof.
+  unfold compare. rewrite <- list_ecompare_fst. f_equal.
+  apply ecompare_spec.
+  Qed.
+
+  End Compare.
 
 End PositiveMap.
 

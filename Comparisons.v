@@ -161,3 +161,71 @@ Proof.
 Qed.
 
 End ListComp.
+
+(** Extended comparisons on lists (used in [MMaps.Positive.compare]).
+    An extra flag indicates whether the comparison between two lists
+    ended :
+    - because (at least) one list was emptied (EOL).
+    - or because disequal elements where found (Early).
+    In the second case, extending the lists on the right will not
+    change the result of the comparison, while the first case is more
+    delicate. *)
+
+Inductive flag := EOL | Early.
+
+Notation elex u v :=
+  match u with Eq => v | Lt => (Lt,Early) | Gt => (Gt,Early) end.
+
+Section ListExtComp.
+Variable A : Type.
+Variable cmp : A -> A -> comparison.
+Fixpoint list_ecompare (l1 l2 : list A) : comparison*flag :=
+  match l1, l2 with
+  | [], [] => (Eq,EOL)
+  | [], _ => (Lt,EOL)
+  | _, [] => (Gt,EOL)
+  | x1::l1', x2::l2' => elex (cmp x1 x2) (list_ecompare l1' l2')
+  end.
+
+ Lemma list_ecompare_fst l1 l2 :
+   fst (list_ecompare l1 l2) = list_compare cmp l1 l2.
+ Proof.
+  revert l2.
+  induction l1; destruct l2; simpl; auto. case cmp; auto.
+ Qed.
+
+ Lemma list_ecompare_eq_snd l1 l2 b :
+   list_ecompare l1 l2 = (Eq,b) -> b = EOL.
+ Proof.
+  revert l2.
+  induction l1; destruct l2; simpl; auto; try congruence.
+  case cmp; try easy. eauto.
+ Qed.
+
+ Lemma list_ecompare_eq_app u v u' v' b :
+   list_ecompare u u' = (Eq,b) ->
+   list_ecompare (u++v) (u'++v') = list_ecompare v v'.
+ Proof.
+  revert u'; induction u; destruct u'; simpl; try easy.
+  destruct cmp; now auto.
+ Qed.
+
+ Lemma list_ecompare_app u v u' v' :
+   (forall x y, List.In x u' -> List.In y v -> cmp y x = Gt) ->
+   (forall x y, List.In x u -> List.In y v' -> cmp x y = Lt) ->
+   list_ecompare (u++v) (u'++v') =
+   match list_ecompare u u' with
+   | (Eq,_) => list_ecompare v v'
+   | (c,Early) => (c,Early)
+   | (Lt,EOL) => if v then (Lt,EOL) else (Gt,Early)
+   | (Gt,EOL) => if v' then (Gt,EOL) else (Lt,Early)
+   end.
+ Proof.
+ revert u'.
+ induction u; destruct u'; intros GT LT; cbn; auto.
+ - destruct v; simpl in *; auto. rewrite GT; auto.
+ - destruct v'; simpl in *; auto. rewrite LT; auto.
+ - case cmp; intuition.
+ Qed.
+
+End ListExtComp.
