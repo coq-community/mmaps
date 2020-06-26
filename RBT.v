@@ -363,6 +363,17 @@ Proof.
  unfold singleton; intuition_m. subst; autok.
 Qed.
 
+Lemma singleton_spec1 x vx : find x (singleton x vx) = Some vx.
+Proof.
+ simpl. now rewrite F.compare_refl.
+Qed.
+
+Lemma singleton_spec2 x y vx : ~ x == y ->
+ find y (singleton x vx) = None.
+Proof.
+ simpl. case K.compare_spec; trivial; order.
+Qed.
+
 Global Instance singleton_ok x vx : Ok (singleton x vx).
 Proof.
  unfold singleton. ok.

@@ -109,6 +109,8 @@ Module PositiveMap <: S PositiveOrderedTypeBits.
         end
     end.
 
+  Definition singleton x e := add x e Leaf.
+
   (** helper function to avoid creating empty trees that are not leaves *)
 
   Definition node (l : t A) (o: option A) (r : t A) : t A :=
@@ -212,6 +214,18 @@ Module PositiveMap <: S PositiveOrderedTypeBits.
     intros m i j; revert m i.
     induction j; destruct i, m; simpl; intros;
      rewrite ?IHj, ?gleaf; auto; try congruence.
+  Qed.
+
+  Theorem singleton_spec1:
+    forall (i: key) (x: A), find i (singleton i x) = Some x.
+  Proof.
+    intros. apply add_spec1.
+  Qed.
+
+  Theorem singleton_spec2:
+    forall (i j: key) (x: A), i <> j -> find j (singleton i x) = None.
+  Proof.
+    intros. unfold singleton. rewrite add_spec2; auto. apply empty_spec.
   Qed.
 
   Lemma rleaf : forall (i : key), remove i Leaf = Leaf.

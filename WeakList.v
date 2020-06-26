@@ -152,6 +152,25 @@ Proof.
  elim E. now transitivity x'.
 Qed.
 
+(** * [singleton] *)
+
+Definition singleton k (e:elt) : t elt := (k,e)::nil.
+
+Lemma singleton_spec1 x e : find x (singleton x e) = Some e.
+Proof.
+ simpl. now dec.
+Qed.
+
+Lemma singleton_spec2 x y e : ~K.eq x y -> find y (singleton x e) = None.
+Proof.
+ simpl. dec; auto. intro N. now destruct N.
+Qed.
+
+Global Instance singleton_ok x e : Ok (singleton x e).
+Proof.
+ constructor; auto. inversion 1.
+Qed.
+
 (** * [add] *)
 
 Fixpoint add (k : key) (x : elt) (s : t elt) : t elt :=

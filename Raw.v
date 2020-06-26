@@ -72,8 +72,9 @@ Module Type WS (K : DecidableType).
   Parameter empty : forall {elt}, t elt.
   Variable elt:Type.
   Parameter is_empty : t elt -> bool.
-  Parameter add : key -> elt -> t elt -> t elt.
   Parameter find : key -> t elt -> option elt.
+  Parameter singleton : key -> elt -> t elt.
+  Parameter add : key -> elt -> t elt -> t elt.
   Parameter remove : key -> t elt -> t elt.
   Parameter mem : key -> t elt -> bool.
   Parameter bindings : t elt -> list (key*elt).
@@ -88,6 +89,7 @@ Module Type WS (K : DecidableType).
   End Ops.
 
   Declare Instance empty_ok {elt} : Ok (@empty elt).
+  Declare Instance singleton_ok {elt} x (e:elt) : Ok (singleton x e).
   Declare Instance add_ok {elt} (m:t elt) x e `(!Ok m) :
     Ok (add x e m).
   Declare Instance remove_ok {elt} (m:t elt) x `(!Ok m) :
@@ -118,6 +120,8 @@ Module Type WS (K : DecidableType).
   Parameter empty_spec : find x (@empty elt) = None.
   Parameter is_empty_spec :
      is_empty m = true <-> forall x, find x m = None.
+  Parameter singleton_spec1 : find x (singleton x e) = Some e.
+  Parameter singleton_spec2 : ~K.eq x y -> find y (singleton x e) = None.
   Parameter add_spec1 : forall `{!Ok m}, find x (add x e m) = Some e.
   Parameter add_spec2 : forall `{!Ok m},
     ~K.eq x y -> find y (add x e m) = find y m.
@@ -222,6 +226,7 @@ Module WPack (K : DecidableType) (R : WS K) <: Interface.WS K.
 
  Definition empty : t elt := Mkt (@empty elt).
  Definition is_empty m : bool := is_empty m.
+ Definition singleton x e : t elt := Mkt (singleton x e).
  Definition add x e m : t elt := Mkt (add x e m).
  Definition remove x m : t elt := Mkt (remove x m).
  Definition mem x m : bool := mem x m.
@@ -259,6 +264,11 @@ Module WPack (K : DecidableType) (R : WS K) <: Interface.WS K.
 
  Lemma is_empty_spec m : is_empty m = true <-> forall x, find x m = None.
  Proof. apply is_empty_spec. Qed.
+
+ Lemma singleton_spec1 x e : find x (singleton x e) = Some e.
+ Proof. apply singleton_spec1. Qed.
+ Lemma singleton_spec2 x y e : ~ K.eq x y -> find y (singleton x e) = None.
+ Proof. apply singleton_spec2. Qed.
 
  Lemma add_spec1 m x e : find x (add x e m) = Some e.
  Proof. apply add_spec1, ok. Qed.

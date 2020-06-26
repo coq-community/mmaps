@@ -399,6 +399,24 @@ Proof.
  repeat case K.compare_spec; intuition; order.
 Qed.
 
+(** singleton *)
+
+Lemma singleton_spec1 x (e:elt) : find x (singleton x e) = Some e.
+Proof.
+ simpl. now rewrite F.compare_refl.
+Qed.
+
+Lemma singleton_spec2 x y (e:elt) : ~ x == y ->
+ find y (singleton x e) = None.
+Proof.
+ simpl. case K.compare_spec; trivial; order.
+Qed.
+
+Global Instance singleton_ok x (e:elt) : Ok (singleton x e).
+Proof.
+ unfold singleton. autok.
+Qed.
+
 (** * Insertion *)
 
 Lemma add_in m x y e :

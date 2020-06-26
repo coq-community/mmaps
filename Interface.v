@@ -11,7 +11,7 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 
 (** When compared with Ocaml Map, this signature has been split in
-    several parts :
+    two parts :
 
  - The first part [WS] propose signatures for weak maps,
    which are maps with no ordering on the key type nor the
@@ -99,6 +99,10 @@ Module Type WS (K : DecidableType).
     Parameter is_empty : t elt -> bool.
     (** Test whether a map is empty or not. *)
 
+    Parameter singleton : key -> elt -> t elt.
+    (** [singleton x y] returns the one-element map that contains
+        a binding of [x] to [y]. *)
+
     Parameter add : key -> elt -> t elt -> t elt.
     (** [add x y m] returns a map containing the same bindings as [m],
 	plus a binding of [x] to [y]. If [x] was already bound in [m],
@@ -177,6 +181,8 @@ Module Type WS (K : DecidableType).
     Parameter mem_spec : mem x m = true <-> In x m.
     Parameter empty_spec : find x (@empty elt) = None.
     Parameter is_empty_spec : is_empty m = true <-> forall x, find x m = None.
+    Parameter singleton_spec1 : find x (singleton x e) = Some e.
+    Parameter singleton_spec2 : ~K.eq x y -> find y (singleton x e) = None.
     Parameter add_spec1 : find x (add x e m) = Some e.
     Parameter add_spec2 : ~K.eq x y -> find y (add x e m) = find y m.
     Parameter remove_spec1 : find x (remove x m) = None.

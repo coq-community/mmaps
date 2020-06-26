@@ -178,6 +178,25 @@ Proof.
  intros H. specialize (H k). now rewrite compare_refl in H.
 Qed.
 
+(** * [singleton] *)
+
+Definition singleton k (e:elt) : t elt := (k,e)::nil.
+
+Lemma singleton_spec1 x e : find x (singleton x e) = Some e.
+Proof.
+ simpl. now rewrite compare_refl.
+Qed.
+
+Lemma singleton_spec2 x y e : ~X.eq x y -> find y (singleton x e) = None.
+Proof.
+ simpl. case X.compare_spec; auto. intros EQ NE. now destruct NE.
+Qed.
+
+Global Instance singleton_ok x e : Ok (singleton x e).
+Proof.
+ constructor; auto.
+Qed.
+
 (** * [add] *)
 
 Fixpoint add (k : key) (x : elt) (s : t elt) : t elt :=

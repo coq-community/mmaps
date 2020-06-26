@@ -5,7 +5,7 @@
 
 * TODO extra ops 
 ** filter + partition ? Or just leave the emulation in Facts based on fold (hence O(nlogn)).
-** singleton ?
+** DONE singleton
 ** split ?
 ** min_binding, max_binding, choose ?
 ** remove_min, remove_max ?
