@@ -221,6 +221,29 @@ Definition concat m1 m2 :=
             join m1 xd#1 xd#2 m2'
    end.
 
+(** Filter and partition *)
+
+Fixpoint filter (f:key->elt->bool) m :=
+  match m with
+  | Leaf _ => Leaf _
+  | Node _ l x e r =>
+    let l' := filter f l in
+    let r' := filter f r in
+    if f x e then join l' x e r' else concat l' r'
+  end.
+
+Fixpoint partition (f:key->elt->bool) m :=
+  match m with
+  | Leaf _ => (Leaf _, Leaf _)
+  | Node _ l x e r =>
+    let '(l1,l2) := partition f l in
+    let '(r1,r2) := partition f r in
+    if f x e then
+      (join l1 x e r1, concat l2 r2)
+    else
+      (concat l1 r1, join l2 x e r2)
+  end.
+
 End Elt.
 Local Notation "t #l" := (t_left t) (at level 9, format "t '#l'").
 Local Notation "t #o" := (t_opt t) (at level 9, format "t '#o'").
@@ -818,6 +841,50 @@ Proof.
      destruct (find y m2'); trivial.
      simpl. symmetry. apply not_find_iff; eautom.
    + apply create_ok; eauto with *. now apply (remove_min_gt R).
+Qed.
+
+(** Filter and partition *)
+
+Lemma filter_in_inv f (m:t elt) x : x ∈ filter f m -> x ∈ m.
+Proof.
+ induction m as [|h l IHl y d r IHr]; simpl; auto.
+ case (f y d); rewrite ?join_in, ?concat_in; intuition_in.
+Qed.
+
+Global Instance filter_ok f (m:t elt) `(!Ok m) : Ok (filter f m).
+Proof.
+ induction m as [|h l IHl x e r IHr]; simpl; autok.
+ invok. case (f x e).
+ - apply join_ok, create_ok; autok;
+   intros y Hy; apply filter_in_inv in Hy; eauto.
+ - apply concat_ok; autok. intros y Hy z Hz.
+   apply filter_in_inv in Hy; apply filter_in_inv in Hz.
+   transitivity x; eauto.
+Qed.
+
+Lemma partition_fst f (m:t elt) : fst (partition f m) = filter f m.
+Proof.
+ induction m as [|h l IHl x e r IHr]; simpl; auto.
+ rewrite <- IHl, <-IHr.
+ now destruct (partition f l), (partition f r), f.
+Qed.
+
+Lemma partition_snd f (m:t elt) :
+  snd (partition f m) = filter (fun k e => negb (f k e)) m.
+Proof.
+ induction m as [|h l IHl x e r IHr]; simpl; auto.
+ rewrite <- IHl, <-IHr.
+ now destruct (partition f l), (partition f r), f.
+Qed.
+
+Instance partition_ok1 f (m:t elt) : Ok m -> Ok (fst (partition f m)).
+Proof.
+ rewrite partition_fst; eauto with *.
+Qed.
+
+Instance partition_ok2 f (m:t elt) : Ok m -> Ok (snd (partition f m)).
+Proof.
+ rewrite partition_snd; eauto with *.
 Qed.
 
 End Elt.

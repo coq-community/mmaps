@@ -1677,7 +1677,16 @@ Section Elt.
     Disjoint m1 m2 /\
     (forall k e, MapsTo k e m <-> MapsTo k e m1 \/ MapsTo k e m2).
 
+  End Elt.
+
   (** * Emulation of some functions lacking in the interface *)
+
+  Module ViaFold.
+
+  Section Elt.
+  Variable elt:Type.
+  Implicit Types m : t elt.
+  Implicit Types e : elt.
 
   Definition filter (f : key -> elt -> bool) m :=
    fold (fun k e m => if f k e then add k e m else m) m empty.
@@ -2189,7 +2198,8 @@ Section Elt.
  Qed.
 
  Instance exists_m {elt} :
-   Proper ((K.eq==>Logic.eq==>Logic.eq)==>Equal==>Logic.eq) (@exists_ elt).
+   Proper ((K.eq==>Logic.eq==>Logic.eq)==>Equal==>Logic.eq)
+          (@ViaFold.exists_ elt).
  Proof.
  intros f f' Hf m m' Hm. rewrite 2 exists_filter.
  f_equal. f_equiv. apply Equal_Eqdom. apply filter_m; auto.
@@ -2227,6 +2237,7 @@ Section Elt.
   clear. intros x x' Hx e e' He. now rewrite Hx.
  Qed.
 
+ End ViaFold.
 End Properties.
 
 (** * Properties specific to maps with ordered keys *)

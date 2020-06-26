@@ -1619,6 +1619,116 @@ Proof.
 Qed.
 
 End Merge.
+
+(** ** Filtering *)
+
+Lemma filter_app {A} f (l l':list A) :
+ List.filter f (l ++ l') = List.filter f l ++ List.filter f l'.
+Proof.
+ induction l as [|x l IH]; simpl; trivial.
+ destruct (f x); simpl; now f_equal.
+Qed.
+
+Section Filter.
+Variable elt : Type.
+Implicit Types f : key -> elt -> bool.
+
+Fixpoint filter_aux f m acc :=
+ match m with
+ | Leaf => acc
+ | Node _ l k v r =>
+   let acc := filter_aux f r acc in
+   if f k v then filter_aux f l ((k,v)::acc)
+   else filter_aux f l acc
+ end.
+
+Definition filter f m := treeify (filter_aux f m nil).
+
+Fixpoint partition_aux f m acc1 acc2 :=
+ match m with
+ | Leaf => (acc1,acc2)
+ | Node _ l k v r =>
+   let (acc1, acc2) := partition_aux f r acc1 acc2 in
+   if f k v then partition_aux f l ((k,v)::acc1) acc2
+   else partition_aux f l acc1 ((k,v)::acc2)
+ end.
+
+Definition partition f m :=
+  let (l1,l2) := partition_aux f m nil nil in
+  (treeify l1, treeify l2).
+
+(** ** Filter *)
+
+Lemma filter_aux_bindings f m acc :
+ filter_aux f m acc = List.filter (fun '(k,e) => f k e) (bindings m) ++ acc.
+Proof.
+ revert acc.
+ induction m as [|c l IHl x v r IHr]; trivial.
+ intros acc.
+ rewrite <- (List.app_nil_r (bindings _)).
+ rewrite bindings_node, !filter_app. simpl. rewrite List.app_nil_r.
+ destruct (f x v); now rewrite IHl, IHr, app_ass.
+Qed.
+
+Lemma filter_bindings f m :
+ bindings (filter f m) = List.filter (fun '(k,e) => f k e) (bindings m).
+Proof.
+ unfold filter.
+ now rewrite treeify_bindings, filter_aux_bindings, app_nil_r.
+Qed.
+
+Global Instance filter_ok f m `(!Ok m) : Ok (filter f m).
+Proof.
+ apply bindings_sort.
+ rewrite filter_bindings.
+ apply filter_sort with O.eqk; ok. now apply bindings_sort.
+Qed.
+
+Lemma filter_mapsto f m (Hf : Proper (K.eq==>eq==>eq) f) k v :
+ MapsTo k v (filter f m) <-> MapsTo k v m /\ f k v = true.
+Proof.
+ rewrite <- bindings_spec1, filter_bindings, filter_InA, bindings_spec1.
+ easy.
+ intros (?,?) (?,?) (?,?); now apply Hf.
+Qed.
+
+
+(** ** Partition *)
+
+Lemma partition_aux_spec f m acc1 acc2 :
+ partition_aux f m acc1 acc2 =
+  (filter_aux f m acc1, filter_aux (fun k e => negb (f k e)) m acc2).
+Proof.
+ revert acc1 acc2.
+ induction m as [ | c l Hl x e r Hr ]; simpl.
+ - trivial.
+ - intros acc1 acc2.
+   destruct (f x e); simpl; now rewrite Hr, Hl.
+Qed.
+
+Lemma partition_spec f m :
+ partition f m = (filter f m, filter (fun k e => negb (f k e)) m).
+Proof.
+ unfold partition, filter. now rewrite partition_aux_spec.
+Qed.
+
+Lemma partition_spec1 f m :
+ Proper (K.eq==>eq==>eq) f ->
+ Equal (fst (partition f m)) (filter f m).
+Proof. now rewrite partition_spec. Qed.
+
+Lemma partition_spec2 f m :
+ Proper (K.eq==>eq==>eq) f ->
+ Equal (snd (partition f m)) (filter (fun k e => negb (f k e)) m).
+Proof. now rewrite partition_spec. Qed.
+
+Instance partition_ok1 f m `(!Ok m) : Ok (fst (partition f m)).
+Proof. rewrite partition_spec; now apply filter_ok. Qed.
+
+Instance partition_ok2 f m `(!Ok m) : Ok (snd (partition f m)).
+Proof. rewrite partition_spec; now apply filter_ok. Qed.
+
+End Filter.
 End MakeRaw.
 
 (** * Encapsulation

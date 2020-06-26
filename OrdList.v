@@ -892,6 +892,46 @@ Definition compare_spec {elt} cmp (m m':t elt) {Hm : Ok m}{Hm' : Ok m'}:
  list_compare (pair_compare X.compare cmp) m m'.
 Proof. reflexivity. Qed.
 
+Definition filter {elt} (f:key->elt->bool) :=
+  List.filter (fun '(k,e) => f k e).
+
+Definition partition {elt} (f:key->elt->bool) :=
+  List.partition (fun '(k,e) => f k e).
+
+Definition for_all {elt} (f:key->elt->bool) :=
+  List.forallb (fun '(k,e) => f k e).
+
+Definition exists_ {elt} (f:key->elt->bool) :=
+  List.existsb (fun '(k,e) => f k e).
+
+Instance filter_ok {elt} f (m:t elt) : Ok m -> Ok (filter f m).
+Proof.
+ eapply filter_sort with (eqA:=eqke); eauto with *.
+Qed.
+
+Lemma partition_fst {elt} f (m:t elt) : fst (partition f m) = filter f m.
+Proof.
+ induction m; simpl; auto.
+ rewrite <- IHm. now destruct (partition f m), a, f.
+Qed.
+
+Lemma partition_snd {elt} f (m:t elt) :
+  snd (partition f m) = filter (fun k e => negb (f k e)) m.
+Proof.
+ induction m; simpl; auto.
+ rewrite <- IHm. now destruct (partition f m), a, f.
+Qed.
+
+Instance partition_ok1 {elt} f (m:t elt) : Ok m -> Ok (fst (partition f m)).
+Proof.
+ rewrite partition_fst; eauto with *.
+Qed.
+
+Instance partition_ok2 {elt} f (m:t elt) : Ok m -> Ok (snd (partition f m)).
+Proof.
+ rewrite partition_snd; eauto with *.
+Qed.
+
 End MakeRaw.
 
 Module Make (X: OrderedType) <: S X.

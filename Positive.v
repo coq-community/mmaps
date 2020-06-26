@@ -800,6 +800,44 @@ Module PositiveMap <: S PositiveOrderedTypeBits.
 
   End Compare.
 
+  Definition option_filter A (f:A->bool) (o:option A) :=
+    match o with
+    | Some a => if f a then o else None
+    | None => o
+    end.
+
+  Fixpoint xfilter A (f:key->A->bool) m j :=
+    match m with
+    | Leaf => Leaf
+    | Node l o r =>
+      let o' := option_filter (f (rev j)) o in
+      node (xfilter f l (j~0)) o' (xfilter f r (j~1))
+    end.
+
+  Definition filter A (f:key->A->bool) m := xfilter f m 1.
+  Definition partition A (f:key->A->bool) m :=
+    (filter f m, filter (fun k e => negb (f k e)) m).
+
+  Fixpoint xforall A (f:key->A->bool) m j :=
+    match m with
+    | Leaf => true
+    | Node l None r => xforall f l (j~0) &&& xforall f r (j~1)
+    | Node l (Some e) r =>
+      f (rev j) e &&& xforall f l (j~0) &&& xforall f r (j~1)
+    end.
+
+  Definition for_all A (f:key->A->bool) m := xforall f m 1.
+
+  Fixpoint xexists A (f:key->A->bool) m j :=
+    match m with
+    | Leaf => false
+    | Node l None r => xexists f l (j~0) ||| xexists f r (j~1)
+    | Node l (Some e) r =>
+      f (rev j) e ||| xexists f l (j~0) ||| xexists f r (j~1)
+    end.
+
+  Definition exists_ A (f:key->A->bool) m := xexists f m 1.
+
 End PositiveMap.
 
 (** Here come some additional facts about this implementation.

@@ -486,7 +486,7 @@ Proof.
    + rewrite mapfst_InA. contradict H0. now apply In_alt'.
 Qed.
 
-Lemma filter_ok f (m:list key) :
+Lemma list_filter_ok f (m:list key) :
  NoDupA K.eq m -> NoDupA K.eq (List.filter f m).
 Proof.
  induction 1; simpl.
@@ -539,7 +539,7 @@ Proof.
  intros Hm Hm'. unfold domains.
  apply NoDupA_app; auto with *.
  - now apply mapfst_ok.
- - now apply filter_ok, mapfst_ok.
+ - now apply list_filter_ok, mapfst_ok.
  - intros x.
    rewrite mapfst_InA. intros (e,H).
    apply find_spec in H; trivial.
@@ -640,6 +640,52 @@ Instance MapsTo_compat {elt} :
   Proper (K.eq==>Logic.eq==>Logic.eq==>iff) (@MapsTo elt).
 Proof.
  intros x x' Hx e e' <- m m' <-. unfold MapsTo. now rewrite Hx.
+Qed.
+
+Definition filter {elt} (f:key->elt->bool) :=
+  List.filter (fun '(k,e) => f k e).
+
+Definition partition {elt} (f:key->elt->bool) :=
+  List.partition (fun '(k,e) => f k e).
+
+Definition for_all {elt} (f:key->elt->bool) :=
+  List.forallb (fun '(k,e) => f k e).
+
+Definition exists_ {elt} (f:key->elt->bool) :=
+  List.existsb (fun '(k,e) => f k e).
+
+Instance filter_ok {elt} f (m:t elt) : Ok m -> Ok (filter f m).
+Proof.
+ induction 1; simpl.
+ - constructor.
+ - destruct x as (k,e).
+   destruct (f k e); trivial. constructor; trivial.
+   contradict H. rewrite InA_alt in *. destruct H as (y,(Hy,H)).
+   exists y; split; trivial. unfold filter in *.
+   now rewrite filter_In in H.
+Qed.
+
+Lemma partition_fst {elt} f (m:t elt) : fst (partition f m) = filter f m.
+Proof.
+ induction m; simpl; auto.
+ rewrite <- IHm. now destruct (partition f m), a, f.
+Qed.
+
+Lemma partition_snd {elt} f (m:t elt) :
+  snd (partition f m) = filter (fun k e => negb (f k e)) m.
+Proof.
+ induction m; simpl; auto.
+ rewrite <- IHm. now destruct (partition f m), a, f.
+Qed.
+
+Instance partition_ok1 {elt} f (m:t elt) : Ok m -> Ok (fst (partition f m)).
+Proof.
+ rewrite partition_fst; eauto with *.
+Qed.
+
+Instance partition_ok2 {elt} f (m:t elt) : Ok m -> Ok (snd (partition f m)).
+Proof.
+ rewrite partition_snd; eauto with *.
 Qed.
 
 End MakeRaw.

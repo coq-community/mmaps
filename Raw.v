@@ -81,6 +81,10 @@ Module Type WS (K : DecidableType).
   Parameter cardinal : t elt -> nat.
   Parameter fold : forall A: Type, (key -> elt -> A -> A) -> t elt -> A -> A.
   Parameter equal : (elt -> elt -> bool) -> t elt -> t elt -> bool.
+  Parameter filter : (key -> elt -> bool) -> t elt -> t elt.
+  Parameter partition : (key -> elt -> bool) -> t elt -> t elt * t elt.
+  Parameter for_all : (key -> elt -> bool) -> t elt -> bool.
+  Parameter exists_ : (key -> elt -> bool) -> t elt -> bool.
   Variable elt' elt'' : Type.
   Parameter map : (elt -> elt') -> t elt -> t elt'.
   Parameter mapi : (key -> elt -> elt') -> t elt -> t elt'.
@@ -94,6 +98,12 @@ Module Type WS (K : DecidableType).
     Ok (add x e m).
   Declare Instance remove_ok {elt} (m:t elt) x `(!Ok m) :
     Ok (remove x m).
+  Declare Instance filter_ok {elt} f (m:t elt) `(!Ok m) :
+    Ok (filter f m).
+  Declare Instance partition_ok1 {elt} f (m:t elt) `(!Ok m) :
+    Ok (fst (partition f m)).
+  Declare Instance partition_ok2 {elt} f (m:t elt) `(!Ok m) :
+    Ok (snd (partition f m)).
   Declare Instance map_ok {elt elt'}(f:elt->elt') m `(!Ok m) :
     Ok (map f m).
   Declare Instance mapi_ok {elt elt'}(f:key->elt->elt') m `(!Ok m) :
@@ -238,6 +248,11 @@ Module WPack (K : DecidableType) (R : WS K) <: Interface.WS K.
  Definition cardinal m := cardinal m.
  Definition fold {A} (f:key->elt->A->A) m i := fold f m i.
  Definition equal cmp m m' : bool := equal cmp m m'.
+ Definition filter (f:key->elt->bool) m := Mkt (filter f m).
+ Definition partition (f:key->elt->bool) m :=
+   let p := partition f m in (Mkt (fst p), Mkt (snd p)).
+ Definition for_all (f:key->elt->bool) m : bool := for_all f m.
+ Definition exists_ (f:key->elt->bool) m : bool := exists_ f m.
 
  Definition MapsTo x e m : Prop := MapsTo x e m.
  Definition In x m : Prop := In x m.

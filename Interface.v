@@ -138,6 +138,22 @@ Module Type WS (K : DecidableType).
       [cmp] is the equality predicate used to compare the data associated
       with the keys. *)
 
+    Parameter filter : (key -> elt -> bool) -> t elt -> t elt.
+    (** [filter f m] returns the map with all the bindings in [m] that
+        satisfy [f]. *)
+
+    Parameter partition : (key -> elt -> bool) -> t elt -> t elt * t elt.
+    (** [partition f m] returns a pair of maps [(m1, m2)], where [m1] contains
+        all the bindings of [m] that satisfy [f], and [m2] is the map
+        with all the bindings of [m] that do not satisfy [f]. *)
+
+    Parameter for_all : (key -> elt -> bool) -> t elt -> bool.
+    (** [for_all f m] checks if all the bindings of the map satisfy [f]. *)
+
+    Parameter exists_ : (key -> elt -> bool) -> t elt -> bool.
+    (** [exists_ f m] checks if at least one binding of the map
+        satisfies [f]. *)
+
     Variable elt' elt'' : Type.
 
     Parameter map : (elt -> elt') -> t elt -> t elt'.
