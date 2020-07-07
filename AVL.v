@@ -20,7 +20,7 @@
 
 From Coq Require Import Bool PeanoNat BinInt FunInd Int.
 From Coq Require Import Orders OrdersFacts OrdersLists.
-From MMaps Require Import Interface OrdList GenTree.
+From MMaps Require Import MoreList Interface OrdList GenTree.
 
 Local Set Implicit Arguments.
 Local Unset Strict Implicit.
@@ -392,6 +392,12 @@ Proof.
  unfold create. intuition_in.
 Qed.
 
+Lemma create_bindings l x e r :
+ bindings (create l x e r) = bindings l ++ (x,e) :: bindings r.
+Proof.
+ apply bindings_node.
+Qed.
+
 Global Instance bal_ok l x e r `{!Ok l, !Ok r} :
  l < x -> x < r -> Ok (bal l x e r).
 Proof.
@@ -420,6 +426,12 @@ Proof.
  functional induction (bal l x e r); intros; cleanf; trivial;
  invok; invlt; simpl;
  repeat case K.compare_spec; intuition; order.
+Qed.
+
+Lemma bal_bindings l x e r :
+ bindings (bal l x e r) = bindings (create l x e r).
+Proof.
+ functional induction (bal l x e r); intros; cleanf; auto.
 Qed.
 
 (** singleton *)
@@ -494,6 +506,26 @@ Proof.
    now apply add_spec1.
  - apply add_spec2; trivial; order.
  - apply add_spec2; trivial; order.
+Qed.
+
+Lemma add_below_bindings x e m :
+  x < m ->
+  bindings (add x e m) = (x, e) :: bindings m.
+Proof.
+ functional induction (add x e m); simpl; intros; cleanf; trivial;
+ invlt; try (intuition; order).
+ rewrite bal_bindings. unfold create. rewrite !bindings_node.
+ now rewrite IHt0.
+Qed.
+
+Lemma add_above_bindings x e m :
+  m < x ->
+  bindings (add x e m) = bindings m ++ (x,e) :: nil.
+Proof.
+ functional induction (add x e m); simpl; intros; cleanf; trivial;
+ invlt; try (intuition; order).
+ rewrite bal_bindings. unfold create. rewrite !bindings_node.
+ rewrite app_ass. f_equal. simpl. f_equal. intuition.
 Qed.
 
 (** * Extraction of minimum binding *)
@@ -583,6 +615,18 @@ Proof.
  simpl in *.
  rewrite (IH _ _ R), bal_find by trivial. clear IH. simpl.
  do 2 case K.compare_spec; trivial; order.
+Qed.
+
+Lemma remove_min_bindings m m' p : RemoveMin m (m',p) ->
+ bindings m = p :: bindings m'.
+Proof.
+ revert m'.
+ induction m as [|h l IH x e r _]; [destruct 1|].
+ intros m' R.
+ apply RemoveMin_step in R.
+ destruct R as [(->,(->,->))|[m0 (R,->)]]; auto.
+ rewrite bal_bindings, create_bindings, bindings_node.
+ now rewrite (IH _ R).
 Qed.
 
 (** * Merging two trees *)
@@ -716,6 +760,25 @@ Proof.
    + intro. rewrite join_in. intuition; order.
 Qed.
 
+Lemma join_bindings l x d r :
+ Ok (create l x d r) ->
+ bindings (join l x d r) = bindings (create l x d r).
+Proof.
+ unfold create at 1.
+ join_tac l x d r; trivial.
+ - simpl in *. invok.
+   rewrite create_bindings. now apply add_below_bindings.
+ - clear Hlr. factornode l. invok.
+   rewrite create_bindings. now apply add_above_bindings.
+ - clear Hrl LT. factornode r. invok; invlt.
+   rewrite bal_bindings, !create_bindings, bindings_node.
+   rewrite app_ass; simpl. f_equal. f_equal.
+   now rewrite Hlr, create_bindings by (ok; intuition).
+ - clear Hlr LT LT'. factornode l. invok; invlt.
+   rewrite bal_bindings, !create_bindings, bindings_node.
+   now rewrite Hrl, create_bindings, app_ass by (ok; intuition).
+Qed.
+
 (** * split *)
 
 Lemma split_in_l0 m x y : y ∈ (split x m)#l -> y ∈ m.
@@ -843,6 +906,20 @@ Proof.
    + apply create_ok; eauto with *. now apply (remove_min_gt R).
 Qed.
 
+Lemma concat_bindings m1 m2 `{!Ok m1, !Ok m2} : m1 < m2 ->
+ bindings (concat m1 m2) = bindings m1 ++ bindings m2.
+Proof.
+ functional induction (concat m1 m2); intros B; auto; try factornode m1.
+ - symmetry. apply app_nil_r.
+ - factor_remove_min m2 R.
+   assert (m1 < xd#1).
+   { intros z Hz. apply B; trivial.
+     rewrite (remove_min_in R). now left. }
+   rewrite join_bindings, create_bindings.
+   + f_equal. rewrite (remove_min_bindings R). f_equal. now destruct xd.
+   + apply create_ok; eauto with *. now apply (remove_min_gt R).
+Qed.
+
 (** Filter and partition *)
 
 Lemma filter_in_inv f (m:t elt) x : x ∈ filter f m -> x ∈ m.
@@ -860,6 +937,19 @@ Proof.
  - apply concat_ok; autok. intros y Hy z Hz.
    apply filter_in_inv in Hy; apply filter_in_inv in Hz.
    transitivity x; eauto.
+Qed.
+
+Lemma filter_spec f m `(!Ok m) :
+ bindings (filter f m) = List.filter (fun '(k,e) => f k e) (bindings m).
+Proof.
+ induction m; simpl; auto; invok.
+ rewrite bindings_node, !filter_app. simpl. destruct f.
+ - rewrite join_bindings, create_bindings. f_equal; auto. f_equal; auto.
+   apply create_ok; autok;
+    intros y Hy; apply filter_in_inv in Hy; eauto.
+ - rewrite concat_bindings; autok. f_equal; auto.
+   intros y Hy z Hz. apply filter_in_inv in Hy; apply filter_in_inv in Hz.
+   transitivity t1; eauto.
 Qed.
 
 Lemma partition_fst f (m:t elt) : fst (partition f m) = filter f m.
@@ -885,6 +975,18 @@ Qed.
 Instance partition_ok2 f (m:t elt) : Ok m -> Ok (snd (partition f m)).
 Proof.
  rewrite partition_snd; eauto with *.
+Qed.
+
+Lemma partition_spec f m `(!Ok m) :
+ prodmap (@bindings _) (partition f m) =
+  List.partition (fun '(k,e) => f k e) (bindings m).
+Proof.
+ rewrite partition_filter.
+ rewrite (surjective_pairing (partition f m)).
+ rewrite partition_fst, partition_snd. unfold prodmap. f_equal.
+ - apply filter_spec; auto.
+ - rewrite filter_spec; auto.
+   f_equiv. now intros (k,e) ? <-.
 Qed.
 
 End Elt.

@@ -6,7 +6,7 @@
     Licence : LGPL 2.1, see file LICENSE. *)
 
 From Coq Require Import Bool PeanoNat BinPos Orders OrdersEx OrdersLists.
-From MMaps Require Import Comparisons Interface.
+From MMaps Require Import MoreList Comparisons Interface.
 
 Set Implicit Arguments.
 Local Open Scope lazy_bool_scope.
@@ -436,23 +436,31 @@ Module PositiveMap <: S PositiveOrderedTypeBits.
 
   End A.
 
-  Lemma xmapi_spec A B (f: key -> A -> B) (i : key) (m : t A) :
-    bindings (xmapi (fun k => option_map (f k)) m i) =
-    List.map (fun '(k,e) => (k, f (i@k) e)) (bindings m).
+  Lemma xmapi_spec A B (f: key -> option A -> option B) (i : key) (m : t A) :
+    (forall x, f x None = None) ->
+    bindings (xmapi f m i) =
+    mapfilter (fun '(k,e) => option_map (pair k) (f (i@k) (Some e)))
+              (bindings m).
   Proof.
   revert i.
   induction m; simpl; intros. easy.
-  rewrite !bindings_node, !map_app.
-  rewrite IHm1, IHm2, !map_map. f_equal.
-  - apply map_ext; now intros (x,e).
-  - f_equal. now destruct o. apply map_ext; now intros (x,e).
+  rewrite !bindings_node, !mapfilter_app. f_equal.
+  - rewrite IHm1; auto. rewrite map_mapfilter, mapfilter_map; f_equiv.
+    intros a a' <-. destruct a. simpl. now destruct f.
+  - f_equal.
+    + destruct o; simpl.
+      * unfold rev. now destruct f.
+      * now rewrite H.
+    + rewrite IHm2; auto. rewrite map_mapfilter, mapfilter_map; f_equiv.
+      intros a a' <-. destruct a. simpl. now destruct f.
   Qed.
 
   Lemma mapi_spec A B (f:key -> A -> B) (m : t A) :
     bindings (mapi f m) =
      List.map (fun '(k,e) => (k, f k e)) (bindings m).
   Proof.
-  unfold mapi; now rewrite xmapi_spec.
+  unfold mapi. rewrite xmapi_spec; simpl; auto.
+  rewrite map_as_mapfilter. f_equiv. now intros (k,e) ? <-.
   Qed.
 
   Lemma map_spec A B (f:A -> B)(m : t A) :
@@ -804,21 +812,13 @@ Module PositiveMap <: S PositiveOrderedTypeBits.
 
   End Compare.
 
-  Definition option_filter A (f:A->bool) (o:option A) :=
+  Definition option_filter A (f:key->A->bool) k (o:option A) :=
     match o with
-    | Some a => if f a then o else None
+    | Some a => if f k a then o else None
     | None => o
     end.
 
-  Fixpoint xfilter A (f:key->A->bool) m j :=
-    match m with
-    | Leaf => Leaf
-    | Node l o r =>
-      let o' := option_filter (f (rev j)) o in
-      node (xfilter f l (j~0)) o' (xfilter f r (j~1))
-    end.
-
-  Definition filter A (f:key->A->bool) m := xfilter f m 1.
+  Definition filter A (f:key->A->bool) m := xmapi (option_filter f) m 1.
   Definition partition A (f:key->A->bool) m :=
     (filter f m, filter (fun k e => negb (f k e)) m).
 
@@ -841,6 +841,65 @@ Module PositiveMap <: S PositiveOrderedTypeBits.
     end.
 
   Definition exists_ A (f:key->A->bool) m := xexists f m 1.
+
+  Lemma filter_spec A (f:key->A->bool) m :
+   bindings (filter f m) = List.filter (fun '(k,e) => f k e) (bindings m).
+  Proof.
+  unfold filter. rewrite xmapi_spec; simpl; auto.
+  rewrite filter_as_mapfilter. f_equiv. intros (k,e) ? <-.
+  now destruct f.
+  Qed.
+
+  Lemma partition_spec A (f:key->A->bool) m :
+   prodmap (@bindings _) (partition f m) =
+    List.partition (fun '(k,e) => f k e) (bindings m).
+  Proof.
+  unfold partition, prodmap. rewrite partition_filter. f_equiv.
+  apply filter_spec.
+  rewrite filter_spec. f_equiv. now intros (k,e) ? <-.
+  Qed.
+
+  Lemma xforall_spec A (f:key->A->bool) m i :
+   xforall f m i = List.forallb (fun '(k,e) => f (i@k) e) (bindings m).
+  Proof.
+  revert i.
+  induction m; simpl; intros; auto.
+  rewrite bindings_node, !forallb_app, IHm1, IHm2.
+  destruct o; simpl.
+  - unfold rev. destruct f; simpl.
+    + rewrite <- andb_lazy_alt.
+      f_equal; rewrite forallb_map; f_equiv; now intros (k,e) ? <-.
+    + now rewrite andb_false_r.
+  - rewrite <- andb_lazy_alt.
+    f_equal; rewrite forallb_map; f_equiv; now intros (k,e) ? <-.
+  Qed.
+
+  Lemma for_all_spec A (f:key->A->bool) m :
+   for_all f m = List.forallb (fun '(k,e) => f k e) (bindings m).
+  Proof.
+  apply xforall_spec.
+  Qed.
+
+  Lemma xexists_spec A (f:key->A->bool) m i :
+   xexists f m i = List.existsb (fun '(k,e) => f (i@k) e) (bindings m).
+  Proof.
+  revert i.
+  induction m; simpl; intros; auto.
+  rewrite bindings_node, !existsb_app, IHm1, IHm2.
+  destruct o; simpl.
+  - unfold rev. destruct f; simpl.
+    + now rewrite orb_true_r.
+    + rewrite <- orb_lazy_alt.
+      f_equal; rewrite existsb_map; f_equiv; now intros (k,e) ? <-.
+  - rewrite <- orb_lazy_alt.
+    f_equal; rewrite existsb_map; f_equiv; now intros (k,e) ? <-.
+  Qed.
+
+  Lemma exists_spec A (f:key->A->bool) m :
+   exists_ f m = List.existsb (fun '(k,e) => f k e) (bindings m).
+  Proof.
+  apply xexists_spec.
+  Qed.
 
 End PositiveMap.
 

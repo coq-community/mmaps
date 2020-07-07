@@ -77,6 +77,8 @@ Definition Fst {A B}(R:relation A) : relation (A*B) :=
 Definition Duo {A B}(RA:relation A)(RB:relation B) : relation (A*B) :=
  fun p p' => RA (fst p) (fst p') /\ RB (snd p) (snd p').
 
+Definition prodmap {A B} (f:A->B) '(a1,a2) := (f a1, f a2).
+
 (** ** Weak signature for maps
 
     No requirements for an ordering on keys nor elements, only decidability
@@ -178,7 +180,7 @@ Module Type WS (K : DecidableType).
         [None]. *)
 
   End Ops.
-  Section Specs.
+  Section FirstSpecs.
 
     Variable elt:Type.
 
@@ -218,27 +220,47 @@ Module Type WS (K : DecidableType).
     Parameter fold_spec :
       forall {A} (i : A) (f : key -> elt -> A -> A),
       fold f m i = fold_left (fun a p => f (fst p) (snd p) a) (bindings m) i.
-  End Specs.
 
-  Definition Equal {elt} (m m':t elt) := forall y, find y m = find y m'.
-  Definition Eqdom {elt} (m m':t elt) := forall y, In y m <-> In y m'.
-  Definition Equiv {elt} (R:elt->elt->Prop) m m' :=
+  End FirstSpecs.
+
+  Section FilterSpecs.
+    Variable elt : Type.
+    Variable f : key -> elt -> bool.
+    Variable m : t elt.
+    Local Notation f' := (fun '(k,e) => f k e).
+
+    Parameter filter_spec : bindings (filter f m) = List.filter f' (bindings m).
+    Parameter partition_spec :
+     prodmap (@bindings _) (partition f m) = List.partition f' (bindings m).
+    Parameter for_all_spec : for_all f m = List.forallb f' (bindings m).
+    Parameter exists_spec : exists_ f m = List.existsb f' (bindings m).
+  End FilterSpecs.
+  Section EqualSpec.
+  Variable elt : Type.
+
+  Definition Equal (m m':t elt) := forall y, find y m = find y m'.
+  Definition Eqdom (m m':t elt) := forall y, In y m <-> In y m'.
+  Definition Equiv (R:elt->elt->Prop) m m' :=
     Eqdom m m' /\ (forall k e e', MapsTo k e m -> MapsTo k e' m' -> R e e').
-  Definition Equivb {elt} (cmp: elt->elt->bool) := Equiv (Cmp cmp).
+  Definition Equivb (cmp: elt->elt->bool) := Equiv (Cmp cmp).
 
   (** Specification of [equal] *)
-  Parameter equal_spec : forall {elt} (cmp : elt -> elt -> bool)(m m':t elt),
+  Parameter equal_spec : forall (cmp : elt -> elt -> bool)(m m':t elt),
     equal cmp m m' = true <-> Equivb cmp m m'.
+
+  End EqualSpec.
+  Section MapsSpecs.
+  Variable elt elt' elt'' : Type.
 
   (** Specifications of [map] and [mapi], now via [bindings]. In the case
       of [mapi], the function [f] need not be a morphism w.r.t. [K.eq].
       Earlier weaker specs via [find] could be found in the [Properties]
       functor, see for instance [map_find] and [mapi_find]. *)
 
-  Parameter map_spec : forall {elt elt'}(f:elt->elt') m,
+  Parameter map_spec : forall (f:elt->elt') m,
     bindings (map f m) = List.map (fun '(k,e) => (k,f e)) (bindings m).
 
-  Parameter mapi_spec : forall {elt elt'}(f:key->elt->elt') m,
+  Parameter mapi_spec : forall (f:key->elt->elt') m,
     bindings (mapi f m) = List.map (fun '(k,e) => (k,f k e)) (bindings m).
 
   (** Note : the specifications for [merge] below are
@@ -249,14 +271,15 @@ Module Type WS (K : DecidableType).
       for instance [merge_spec1mn]. *)
 
   Parameter merge_spec1 :
-   forall {elt elt' elt''}(f:key->option elt->option elt'->option elt'') m m' x,
+   forall (f:key->option elt->option elt'->option elt'') m m' x,
    In x m \/ In x m' ->
    exists y:key, K.eq y x /\ find x (merge f m m') = f y (find x m) (find x m').
 
   Parameter merge_spec2 :
-   forall {elt elt' elt''}(f:key->option elt->option elt'->option elt'') m m' x,
+   forall (f:key->option elt->option elt'->option elt'') m m' x,
    In x (merge f m m') -> In x m \/ In x m'.
 
+  End MapsSpecs.
 End WS.
 
 

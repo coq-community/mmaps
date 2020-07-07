@@ -989,6 +989,26 @@ Proof.
  rewrite fold_equiv. unfold fold'. now rewrite L.fold_spec.
 Qed.
 
+(** * For_all / exists *)
+
+Lemma for_all_spec (f:key->elt->bool) m :
+  for_all f m = List.forallb (fun '(k,e) => f k e) (bindings m).
+Proof.
+induction m; simpl; auto.
+rewrite bindings_node, forallb_app; simpl.
+rewrite <- !andb_lazy_alt, andb_assoc, (andb_comm (f _ _)).
+f_equal; auto. f_equal; auto.
+Qed.
+
+Lemma exists_spec (f:key->elt->bool) m :
+  exists_ f m = List.existsb (fun '(k,e) => f k e) (bindings m).
+Proof.
+induction m; simpl; auto.
+rewrite bindings_node, existsb_app; simpl.
+rewrite <- !orb_lazy_alt, orb_assoc, (orb_comm (f _ _)).
+f_equal; auto. f_equal; auto.
+Qed.
+
 (** * Comparison *)
 
 (** [flatten_e e] returns the list of bindings of the enumeration [e]

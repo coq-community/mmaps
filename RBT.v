@@ -21,7 +21,7 @@
 From Coq Require Rtauto.
 From Coq Require Import Bool BinPos Pnat Setoid SetoidList PeanoNat.
 From Coq Require Import Orders OrdersFacts OrdersLists.
-From MMaps Require Import Interface OrdList GenTree.
+From MMaps Require Import MoreList Interface OrdList GenTree.
 
 Local Set Implicit Arguments.
 Local Unset Strict Implicit.
@@ -1017,36 +1017,6 @@ Proof.
  intros. now rewrite <- bindings_spec1, treeify_bindings.
 Qed.
 
-(* Todo : migrate this section elsewhere someday... *)
-
-Section MoreOnSortA.
-Context {A} eqA `{Equivalence A eqA}.
-Context ltA `{StrictOrder A ltA} `{!Proper (eqA==>eqA==>iff) ltA}.
-
-Lemma SortA_app (l1 l2 : list A) :
- sort ltA (l1++l2) <->
- sort ltA l1 /\ sort ltA l2 /\
-  forall a1 a2, List.In a1 l1 -> List.In a2 l2 -> ltA a1 a2.
-Proof.
- split.
- { induction l1 as [|a1 l1 IHl1].
-   - easy.
-   - simpl. inversion_clear 1 as [ | ? ? Hs Hhd ].
-     destruct (IHl1 Hs) as (H1 & H2 & H3); clear IHl1.
-     repeat split.
-     * constructor; auto.
-       destruct l1; simpl in *; auto; inversion_clear Hhd; auto.
-     * trivial.
-     * intros b1 b2 [->|Hb1] Hb2; eauto.
-       eapply SortA_InfA_InA with (eqA:=eqA)(l:=l1++l2); auto.
-       rewrite InA_app_iff. right. apply In_InA; ok. }
- { intros (U & V & W); eapply SortA_app; eauto.
-   intros x y. rewrite !InA_alt.
-   intros (x' & -> & Hx) (y' & -> & Hy); auto. }
-Qed.
-
-End MoreOnSortA.
-
 (** Apart predicate on lists *)
 
 Global Instance lt_klist A B : LessThan (klist A) (klist B)
@@ -1622,13 +1592,6 @@ End Merge.
 
 (** ** Filtering *)
 
-Lemma filter_app {A} f (l l':list A) :
- List.filter f (l ++ l') = List.filter f l ++ List.filter f l'.
-Proof.
- induction l as [|x l IH]; simpl; trivial.
- destruct (f x); simpl; now f_equal.
-Qed.
-
 Section Filter.
 Variable elt : Type.
 Implicit Types f : key -> elt -> bool.
@@ -1670,7 +1633,14 @@ Proof.
  destruct (f x v); now rewrite IHl, IHr, app_ass.
 Qed.
 
-Lemma filter_bindings f m :
+Lemma filter_spec0 f m :
+ bindings (filter f m) = List.filter (fun '(k,e) => f k e) (bindings m).
+Proof.
+ unfold filter.
+ now rewrite treeify_bindings, filter_aux_bindings, app_nil_r.
+Qed.
+
+Lemma filter_spec f m `{!Ok m} :
  bindings (filter f m) = List.filter (fun '(k,e) => f k e) (bindings m).
 Proof.
  unfold filter.
@@ -1680,14 +1650,14 @@ Qed.
 Global Instance filter_ok f m `(!Ok m) : Ok (filter f m).
 Proof.
  apply bindings_sort.
- rewrite filter_bindings.
+ rewrite filter_spec0.
  apply filter_sort with O.eqk; ok. now apply bindings_sort.
 Qed.
 
 Lemma filter_mapsto f m (Hf : Proper (K.eq==>eq==>eq) f) k v :
  MapsTo k v (filter f m) <-> MapsTo k v m /\ f k v = true.
 Proof.
- rewrite <- bindings_spec1, filter_bindings, filter_InA, bindings_spec1.
+ rewrite <- bindings_spec1, filter_spec0, filter_InA, bindings_spec1.
  easy.
  intros (?,?) (?,?) (?,?); now apply Hf.
 Qed.
@@ -1706,7 +1676,7 @@ Proof.
    destruct (f x e); simpl; now rewrite Hr, Hl.
 Qed.
 
-Lemma partition_spec f m :
+Lemma partition_alt f m :
  partition f m = (filter f m, filter (fun k e => negb (f k e)) m).
 Proof.
  unfold partition, filter. now rewrite partition_aux_spec.
@@ -1715,18 +1685,27 @@ Qed.
 Lemma partition_spec1 f m :
  Proper (K.eq==>eq==>eq) f ->
  Equal (fst (partition f m)) (filter f m).
-Proof. now rewrite partition_spec. Qed.
+Proof. now rewrite partition_alt. Qed.
 
 Lemma partition_spec2 f m :
  Proper (K.eq==>eq==>eq) f ->
  Equal (snd (partition f m)) (filter (fun k e => negb (f k e)) m).
-Proof. now rewrite partition_spec. Qed.
+Proof. now rewrite partition_alt. Qed.
 
 Instance partition_ok1 f m `(!Ok m) : Ok (fst (partition f m)).
-Proof. rewrite partition_spec; now apply filter_ok. Qed.
+Proof. rewrite partition_alt; now apply filter_ok. Qed.
 
 Instance partition_ok2 f m `(!Ok m) : Ok (snd (partition f m)).
-Proof. rewrite partition_spec; now apply filter_ok. Qed.
+Proof. rewrite partition_alt; now apply filter_ok. Qed.
+
+Lemma partition_spec f m `{!Ok m} :
+ prodmap (@bindings _) (partition f m) =
+ List.partition (fun '(k,e) => f k e) (bindings m).
+Proof.
+ rewrite partition_alt, partition_filter. unfold prodmap. f_equal.
+ - now apply filter_spec.
+ - rewrite filter_spec; auto. f_equiv. now intros (k,e) ? <-.
+Qed.
 
 End Filter.
 End MakeRaw.

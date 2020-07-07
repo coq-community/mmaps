@@ -4,7 +4,9 @@
 ** https://github.com/coq-community/manifesto
 
 * TODO extra ops 
-** filter + partition ? Or just leave the emulation in Facts based on fold (hence O(nlogn)).
+** DONE filter + partition + for_all + exists
+*** TODO update Facts accordingly
+*** TODO update AVLproofs and RBTproofs
 ** DONE singleton
 ** split ?
 ** min_binding, max_binding, choose ?

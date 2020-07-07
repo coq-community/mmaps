@@ -635,6 +635,10 @@ Definition for_all {elt} (f:key->elt->bool) :=
 Definition exists_ {elt} (f:key->elt->bool) :=
   List.existsb (fun '(k,e) => f k e).
 
+Lemma filter_spec {elt} (f:key->elt->bool) m `{!Ok m} :
+ bindings (filter f m) = List.filter (fun '(k,e) => f k e) (bindings m).
+Proof. reflexivity. Qed.
+
 Instance filter_ok {elt} f (m:t elt) : Ok m -> Ok (filter f m).
 Proof.
  induction 1; simpl.
@@ -645,6 +649,11 @@ Proof.
    exists y; split; trivial. unfold filter in *.
    now rewrite filter_In in H.
 Qed.
+
+Lemma partition_spec {elt} (f:key->elt->bool) m `{!Ok m} :
+ prodmap (@bindings _) (partition f m) =
+  List.partition (fun '(k,e) => f k e) (bindings m).
+Proof. unfold bindings, partition. now destruct List.partition. Qed.
 
 Lemma partition_fst {elt} f (m:t elt) : fst (partition f m) = filter f m.
 Proof.
@@ -668,6 +677,14 @@ Instance partition_ok2 {elt} f (m:t elt) : Ok m -> Ok (snd (partition f m)).
 Proof.
  rewrite partition_snd; eauto with *.
 Qed.
+
+Lemma for_all_spec {elt}(f:key->elt->bool) m :
+ for_all f m = List.forallb (fun '(k,e) => f k e) (bindings m).
+Proof. reflexivity. Qed.
+
+Lemma exists_spec {elt}(f:key->elt->bool) m :
+ exists_ f m = List.existsb (fun '(k,e) => f k e) (bindings m).
+Proof. reflexivity. Qed.
 
 End MakeRaw.
 

@@ -147,6 +147,16 @@ Module Type WS (K : DecidableType).
     forall {A} (i : A) (f : key -> elt -> A -> A),
     fold f m i = fold_left (fun a p => f (fst p) (snd p) a) (bindings m) i.
 
+  Parameter filter_spec : forall (f:key->elt->bool) m `{!Ok m},
+   bindings (filter f m) = List.filter (fun '(k,e) => f k e) (bindings m).
+  Parameter partition_spec : forall (f:key->elt->bool) m `{!Ok m},
+   prodmap (@bindings _) (partition f m) =
+    List.partition (fun '(k,e) => f k e) (bindings m).
+  Parameter for_all_spec : forall (f:key->elt->bool) m,
+   for_all f m = List.forallb (fun '(k,e) => f k e) (bindings m).
+  Parameter exists_spec : forall (f:key->elt->bool) m,
+   exists_ f m = List.existsb (fun '(k,e) => f k e) (bindings m).
+
   Definition Equal (m m':t elt) := forall y, find y m = find y m'.
   Definition Eqdom (m m':t elt) := forall y, In y m <-> In y m'.
   Definition Equiv (R:elt->elt->Prop) m m' :=
@@ -305,6 +315,23 @@ Module WPack (K : DecidableType) (R : WS K) <: Interface.WS K.
  Lemma fold_spec m {A} (i : A) (f : key -> elt -> A -> A) :
    fold f m i = fold_left (fun a p => f (fst p) (snd p) a) (bindings m) i.
  Proof. apply fold_spec. Qed.
+
+ Lemma filter_spec (f:key->elt->bool) m :
+   bindings (filter f m) = List.filter (fun '(k,e) => f k e) (bindings m).
+ Proof. apply filter_spec, ok. Qed.
+ Lemma partition_spec (f:key->elt->bool) m :
+   prodmap bindings (partition f m) =
+    List.partition (fun '(k,e) => f k e) (bindings m).
+ Proof.
+ unfold bindings. rewrite <- partition_spec by apply ok.
+ unfold partition; simpl. now destruct R.partition.
+ Qed.
+ Lemma for_all_spec (f:key->elt->bool) m :
+   for_all f m = List.forallb (fun '(k,e) => f k e) (bindings m).
+ Proof. apply for_all_spec. Qed.
+ Lemma exists_spec (f:key->elt->bool) m :
+   exists_ f m = List.existsb (fun '(k,e) => f k e) (bindings m).
+ Proof. apply exists_spec. Qed.
 
  Lemma cardinal_spec m : cardinal m = length (bindings m).
  Proof. apply cardinal_spec. Qed.

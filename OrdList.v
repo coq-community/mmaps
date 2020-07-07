@@ -884,6 +884,23 @@ Definition for_all {elt} (f:key->elt->bool) :=
 Definition exists_ {elt} (f:key->elt->bool) :=
   List.existsb (fun '(k,e) => f k e).
 
+Lemma filter_spec {elt} (f:key->elt->bool) m `{!Ok m} :
+ bindings (filter f m) = List.filter (fun '(k,e) => f k e) (bindings m).
+Proof. reflexivity. Qed.
+
+Lemma partition_spec {elt} (f:key->elt->bool) m `{!Ok m} :
+ prodmap (@bindings _) (partition f m) =
+  List.partition (fun '(k,e) => f k e) (bindings m).
+Proof. unfold bindings, partition. now destruct List.partition. Qed.
+
+Lemma for_all_spec {elt}(f:key->elt->bool) m :
+ for_all f m = List.forallb (fun '(k,e) => f k e) (bindings m).
+Proof. reflexivity. Qed.
+
+Lemma exists_spec {elt}(f:key->elt->bool) m :
+ exists_ f m = List.existsb (fun '(k,e) => f k e) (bindings m).
+Proof. reflexivity. Qed.
+
 Instance filter_ok {elt} f (m:t elt) : Ok m -> Ok (filter f m).
 Proof.
  eapply filter_sort with (eqA:=eqke); eauto with *.
