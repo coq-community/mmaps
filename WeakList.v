@@ -403,30 +403,19 @@ Variable elt elt' : Type.
 
 (** * [map] and [mapi] *)
 
-Fixpoint map (f:elt -> elt') (m:t elt) : t elt' :=
-  match m with
-   | nil => nil
-   | (k,e)::m' => (k,f e) :: map f m'
-  end.
+Definition map (f:elt -> elt') (m:t elt) : t elt' :=
+  List.map (fun '(k,e) => (k,f e)) m.
 
-Fixpoint mapi (f: key -> elt -> elt') (m:t elt) : t elt' :=
-  match m with
-   | nil => nil
-   | (k,e)::m' => (k,f k e) :: mapi f m'
-  end.
+Definition mapi (f: key -> elt -> elt') (m:t elt) : t elt' :=
+  List.map (fun '(k,e) => (k,f k e)) m.
 
 (** Specification of [map] *)
 
-Lemma map_spec' (f:elt->elt')(m:t elt)(x:key) :
-  find x (map f m) = option_map f (find x m).
+Lemma map_spec (f:elt->elt')(m:t elt) :
+  bindings (map f m) = List.map (fun '(k,e) => (k,f e)) (bindings m).
 Proof.
- induction m as [ | (k,e) m IH]; simpl; trivial.
- dec; simpl; trivial.
+ reflexivity.
 Qed.
-
-Lemma map_spec (f:elt->elt')(m:t elt)(x:key)`{!Ok m} :
-  find x (map f m) = option_map f (find x m).
-Proof. apply map_spec'. Qed.
 
 Lemma map_InA (f:elt->elt')(m:t elt) x e :
  InA eqk (x,f e) (map f m) <-> InA eqk (x,e) m.
@@ -443,19 +432,11 @@ Qed.
 
 (** Specification of [mapi] *)
 
-Lemma mapi_spec' (f:key->elt->elt')(m:t elt)(x:key) :
-  exists y, K.eq y x /\ find x (mapi f m) = option_map (f y) (find x m).
+Lemma mapi_spec (f:key->elt->elt')(m:t elt) :
+  bindings (mapi f m) = List.map (fun '(k,e) => (k,f k e)) (bindings m).
 Proof.
- induction m as [ | (k,e) m IH]; simpl; trivial.
- - now exists x.
- - dec; simpl.
-   + now exists k.
-   + destruct IH as (y,(Hy,H)). now exists y.
+ reflexivity.
 Qed.
-
-Lemma mapi_spec (f:key->elt->elt')(m:t elt)(x:key) `{!Ok m} :
-  exists y, K.eq y x /\ find x (mapi f m) = option_map (f y) (find x m).
-Proof. apply mapi_spec'. Qed.
 
 Global Instance mapi_ok (f: key->elt->elt') m (Hm:Ok m) : Ok (mapi f m).
 Proof.

@@ -352,6 +352,50 @@ Module PositiveMap <: S PositiveOrderedTypeBits.
     apply bindings_spec2.
   Qed.
 
+  (** Some complements about [bindings] that will be used
+      in other correctness proofs below. *)
+
+  Lemma xbindings_nil m p l :
+    xbindings m p l = nil <-> is_empty m = true /\ l = nil.
+  Proof.
+  revert p l.
+  induction m; simpl; intros; try easy.
+  destruct o; now rewrite <- ?andb_lazy_alt, ?andb_true_iff, IHm1, ?IHm2.
+  Qed.
+
+  Lemma bindings_nil m : bindings m = nil <-> is_empty m = true.
+  Proof.
+  unfold bindings. now rewrite xbindings_nil.
+  Qed.
+
+  Definition fstmap (f:key->key) '(k, e) : key*A := (f k, e).
+
+  Lemma xbindings_alt m j l :
+   xbindings m j l = List.map (fstmap (rev_append j)) (bindings m) ++ l.
+  Proof.
+  revert j l.
+  induction m; simpl; intros; auto.
+  destruct o; unfold bindings; simpl;
+   rewrite !IHm1, !IHm2, map_app, map_map, app_ass, app_nil_r; simpl;
+   f_equal; try (apply map_ext; now intros (?,?)); f_equal.
+  - f_equal. rewrite map_map. apply map_ext. now intros (?,?).
+  - rewrite map_map. apply map_ext. now intros (?,?).
+  Qed.
+
+  Lemma bindings_node r l o :
+   bindings (Node l o r) =
+   (List.map (fstmap xO) (bindings l)) ++
+   (match o with Some e => (1,e)::nil | None => nil end) ++
+   (List.map (fstmap xI) (bindings r)).
+  Proof.
+  unfold bindings at 1. simpl.
+  rewrite !xbindings_alt, !app_nil_r.
+  destruct o; simpl; try f_equal.
+  rewrite xbindings_alt; simpl. f_equal.
+  Qed.
+
+  (** [cardinal] *)
+
   Lemma xbindings_length m j acc :
     length (xbindings m j acc) = (cardinal m + length acc)%nat.
   Proof.
@@ -392,35 +436,38 @@ Module PositiveMap <: S PositiveOrderedTypeBits.
 
   End A.
 
+  Lemma xmapi_spec A B (f: key -> A -> B) (i : key) (m : t A) :
+    bindings (xmapi (fun k => option_map (f k)) m i) =
+    List.map (fun '(k,e) => (k, f (i@k) e)) (bindings m).
+  Proof.
+  revert i.
+  induction m; simpl; intros. easy.
+  rewrite !bindings_node, !map_app.
+  rewrite IHm1, IHm2, !map_map. f_equal.
+  - apply map_ext; now intros (x,e).
+  - f_equal. now destruct o. apply map_ext; now intros (x,e).
+  Qed.
+
+  Lemma mapi_spec A B (f:key -> A -> B) (m : t A) :
+    bindings (mapi f m) =
+     List.map (fun '(k,e) => (k, f k e)) (bindings m).
+  Proof.
+  unfold mapi; now rewrite xmapi_spec.
+  Qed.
+
+  Lemma map_spec A B (f:A -> B)(m : t A) :
+    bindings (map f m) =
+     List.map (fun '(k,e) => (k, f e)) (bindings m).
+  Proof.
+  unfold map. now rewrite mapi_spec.
+  Qed.
+
   Lemma xgmapi:
     forall (A B: Type) (f: key -> option A -> option B) (i j : key) (m: t A),
       (forall k, f k None = None) ->
       find i (xmapi f m j) = f (j@i) (find i m).
   Proof.
   induction i; intros; destruct m; simpl; rewrite ?IHi; auto.
-  Qed.
-
-  Theorem mapi_spec0 :
-    forall (A B: Type) (f: key -> A -> B) (i: key) (m: t A),
-    find i (mapi f m) = option_map (f i) (find i m).
-  Proof.
-  intros. unfold mapi. rewrite xgmapi; simpl; auto.
-  Qed.
-
-  Lemma mapi_spec :
-    forall (A B: Type) (f: key -> A -> B) (m: t A) (i:key),
-    exists j, E.eq j i /\
-     find i (mapi f m) = option_map (f j) (find i m).
-  Proof.
-   intros.
-   exists i. split. reflexivity. apply mapi_spec0.
-  Qed.
-
-  Lemma map_spec :
-    forall (elt elt':Type)(f:elt->elt')(m: t elt)(x:key),
-    find x (map f m) = option_map f (find x m).
-  Proof.
-  intros; unfold map. apply mapi_spec0.
   Qed.
 
   Section merge.
@@ -648,49 +695,6 @@ Module PositiveMap <: S PositiveOrderedTypeBits.
     equal cmp m m' = true <-> Equivb cmp m m'.
   Proof.
     split. apply equal_2. apply equal_1.
-  Qed.
-
-  (** Some complements about [bindings] that will be used
-      in correctness of [compare] below. *)
-
-  Lemma xbindings_nil A (m:t A) p l :
-    xbindings m p l = nil <-> is_empty m = true /\ l = nil.
-  Proof.
-  revert p l.
-  induction m; simpl; intros; try easy.
-  destruct o; now rewrite <- ?andb_lazy_alt, ?andb_true_iff, IHm1, ?IHm2.
-  Qed.
-
-  Lemma bindings_nil A (m:t A) :
-    bindings m = nil <-> is_empty m = true.
-  Proof.
-  unfold bindings. now rewrite xbindings_nil.
-  Qed.
-
-  Definition fstmap A (f:key->key) '(k, e) : key*A := (f k, e).
-
-  Lemma xbindings_alt A (m:t A) j l :
-   xbindings m j l = List.map (fstmap (rev_append j)) (bindings m) ++ l.
-  Proof.
-  revert j l.
-  induction m; simpl; intros; auto.
-  destruct o; unfold bindings; simpl;
-   rewrite !IHm1, !IHm2, map_app, map_map, app_ass, app_nil_r; simpl;
-   f_equal; try (apply map_ext; now intros (?,?)); f_equal.
-  - f_equal. rewrite map_map. apply map_ext. now intros (?,?).
-  - rewrite map_map. apply map_ext. now intros (?,?).
-  Qed.
-
-  Lemma bindings_node A (r l:t A) o :
-   bindings (Node l o r) =
-   (List.map (fstmap xO) (bindings l)) ++
-   (match o with Some e => (1,e)::nil | None => nil end) ++
-   (List.map (fstmap xI) (bindings r)).
-  Proof.
-  unfold bindings at 1. simpl.
-  rewrite !xbindings_alt, !app_nil_r.
-  destruct o; simpl; try f_equal.
-  rewrite xbindings_alt; simpl. f_equal.
   Qed.
 
   (** Note: For once, the [compare] below is not a mere adaptation

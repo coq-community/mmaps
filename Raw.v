@@ -157,10 +157,10 @@ Module Type WS (K : DecidableType).
    forall (cmp : elt -> elt -> bool) m m' `{!Ok m, !Ok m'},
     equal cmp m m' = true <-> Equivb cmp m m'.
 
-  Parameter map_spec : forall (f:elt->elt') m x `{!Ok m},
-    find x (map f m) = option_map f (find x m).
-  Parameter mapi_spec : forall (f:key->elt->elt') m x `{!Ok m},
-    exists y:key, K.eq y x /\ find x (mapi f m) = option_map (f y) (find x m).
+  Parameter map_spec : forall (f:elt->elt') m,
+    bindings (map f m) = List.map (fun '(k,e) => (k,f e)) (bindings m).
+  Parameter mapi_spec : forall (f:key->elt->elt') m,
+    bindings (mapi f m) = List.map (fun '(k,e) => (k,f k e)) (bindings m).
 
   Implicit Types f : key->option elt->option elt'->option elt''.
 
@@ -327,13 +327,13 @@ Module WPack (K : DecidableType) (R : WS K) <: Interface.WS K.
 
  End Elt.
 
- Lemma map_spec {elt elt'} (f:elt->elt') m x :
-   find x (map f m) = option_map f (find x m).
- Proof. apply map_spec, ok. Qed.
+ Lemma map_spec {elt elt'} (f:elt->elt') m :
+   bindings (map f m) = List.map (fun '(k,e) => (k,f e)) (bindings m).
+ Proof. apply map_spec. Qed.
 
- Lemma mapi_spec {elt elt'} (f:key->elt->elt') m x :
-   exists y:key, K.eq y x /\ find x (mapi f m) = option_map (f y) (find x m).
- Proof. apply mapi_spec, ok. Qed.
+ Lemma mapi_spec {elt elt'} (f:key->elt->elt') m :
+   bindings (mapi f m) = List.map (fun '(k,e) => (k,f k e)) (bindings m).
+ Proof. apply mapi_spec. Qed.
 
  Lemma merge_spec1 {elt elt' elt''}
        (f:key->option elt->option elt'->option elt'') m m' x :

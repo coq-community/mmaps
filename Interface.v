@@ -230,18 +230,23 @@ Module Type WS (K : DecidableType).
   Parameter equal_spec : forall {elt} (cmp : elt -> elt -> bool)(m m':t elt),
     equal cmp m m' = true <-> Equivb cmp m m'.
 
-  Parameter map_spec : forall {elt elt'}(f:elt->elt') m x,
-    find x (map f m) = option_map f (find x m).
+  (** Specifications of [map] and [mapi], now via [bindings]. In the case
+      of [mapi], the function [f] need not be a morphism w.r.t. [K.eq].
+      Earlier weaker specs via [find] could be found in the [Properties]
+      functor, see for instance [map_find] and [mapi_find]. *)
 
-  (** Note : the specifications for [mapi] and [merge] below are
+  Parameter map_spec : forall {elt elt'}(f:elt->elt') m,
+    bindings (map f m) = List.map (fun '(k,e) => (k,f e)) (bindings m).
+
+  Parameter mapi_spec : forall {elt elt'}(f:key->elt->elt') m,
+    bindings (mapi f m) = List.map (fun '(k,e) => (k,f k e)) (bindings m).
+
+  (** Note : the specifications for [merge] below are
       general enough to work even when [f] is not a morphism w.r.t.
       [K.eq]. For [merge], we could also have [f k None None <> None].
       Alas, this leads to relatively awkward statements.
       See the [Properties] functor for more usual and pratical statements,
       for instance [merge_spec1mn]. *)
-
-  Parameter mapi_spec : forall {elt elt'}(f:key->elt->elt') m x,
-   exists y:key, K.eq y x /\ find x (mapi f m) = option_map (f y) (find x m).
 
   Parameter merge_spec1 :
    forall {elt elt' elt''}(f:key->option elt->option elt'->option elt'') m m' x,

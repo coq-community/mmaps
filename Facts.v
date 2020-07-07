@@ -182,23 +182,6 @@ destruct (K.eq_dec k y) as [H|H].
 - rewrite !remove_spec2; trivial. now rewrite <- Hk.
 Qed.
 
-Instance map_m {elt elt'} :
-  Proper ((Logic.eq==>Logic.eq)==>Equal==>Equal) (@map elt elt').
-Proof.
-intros f f' Hf m m' Hm y. rewrite !map_spec, Hm.
-destruct (find y m'); simpl; trivial. f_equal. now apply Hf.
-Qed.
-
-Instance mapi_m {elt elt'} :
-  Proper ((K.eq==>Logic.eq==>Logic.eq)==>Equal==>Equal) (@mapi elt elt').
-Proof.
-intros f f' Hf m m' Hm y.
-destruct (mapi_spec f m y) as (x,(Hx,->)).
-destruct (mapi_spec f' m' y) as (x',(Hx',->)).
-rewrite <- Hm. destruct (find y m); trivial. simpl.
-f_equal. apply Hf; trivial. now rewrite Hx, Hx'.
-Qed.
-
 Instance merge_m {elt elt' elt''} :
  Proper ((K.eq==>Logic.eq==>Logic.eq==>Logic.eq)==>Equal==>Equal==>Equal)
   (@merge elt elt' elt'').
@@ -227,7 +210,7 @@ destruct (find y m1) as [e1|] eqn:H1.
     intuition.
 Qed.
 
-(* Later: compatibility for cardinal, fold, ... *)
+(* Later: compatibility for cardinal, fold, map, mapi... *)
 
 (** ** Earlier specifications (cf. FMaps) *)
 
@@ -339,23 +322,82 @@ Proof. apply equal_spec. Qed.
 
 End OldSpecs.
 
+(** Earlier spec about [map], now subsumed by a more precise one
+    via [bindings] *)
+
+Lemma map_find {elt elt'}(f:elt->elt') m x :
+ find x (map f m) = option_map f (find x m).
+Proof.
+ destruct (find x m) eqn:E; simpl.
+ - rewrite find_spec, <- bindings_spec1 in *.
+   rewrite InA_alt in *.
+   destruct E as ((y,e') & (E1,E2) & IN). simpl in *. subst e'.
+   exists (y,f e). split; [easy| ].
+   rewrite map_spec, in_map_iff. now exists (y,e).
+ - rewrite <- not_in_find in *. rewrite <- not_in_find in E.
+   contradict E. destruct E as (e,M).
+   rewrite <- bindings_spec1, map_spec, InA_alt in M.
+   destruct M as ((y,e') & (E1,E2) & IN). simpl in *; subst e'.
+   rewrite in_map_iff in IN. destruct IN as ((z,e0) & [= <- _] & IN).
+   exists e0. rewrite <- bindings_spec1, InA_alt. firstorder.
+Qed.
+
+(** Same for [mapi] *)
+
+Lemma mapi_find {elt elt'}(f:key->elt->elt') m x :
+ exists y, K.eq y x /\ find x (mapi f m) = option_map (f y) (find x m).
+Proof.
+ destruct (find x m) eqn:E; simpl.
+ - rewrite find_spec, <- bindings_spec1 in *.
+   rewrite InA_alt in *.
+   destruct E as ((y,e') & (E1,E2) & IN). simpl in *. subst e'.
+   exists y. split; [easy| ].
+   rewrite find_spec, <- bindings_spec1, InA_alt.
+   exists (y,f y e). split; [easy| ].
+   rewrite mapi_spec, in_map_iff. now exists (y,e).
+ - exists x. split; [easy| ].
+   rewrite <- not_in_find in *. rewrite <- not_in_find in E.
+   contradict E. destruct E as (e,M).
+   rewrite <- bindings_spec1, mapi_spec, InA_alt in M.
+   destruct M as ((y,e') & (E1,E2) & IN). simpl in *; subst e'.
+   rewrite in_map_iff in IN. destruct IN as ((z,e0) & [= <- _] & IN).
+   exists e0. rewrite <- bindings_spec1, InA_alt. firstorder.
+Qed.
+
+Instance map_m {elt elt'} :
+  Proper ((Logic.eq==>Logic.eq)==>Equal==>Equal) (@map elt elt').
+Proof.
+intros f f' Hf m m' Hm y. rewrite !map_find, Hm.
+destruct (find y m'); simpl; trivial. f_equal. now apply Hf.
+Qed.
+
+Instance mapi_m {elt elt'} :
+  Proper ((K.eq==>Logic.eq==>Logic.eq)==>Equal==>Equal) (@mapi elt elt').
+Proof.
+intros f f' Hf m m' Hm y.
+destruct (mapi_find f m y) as (x,(Hx,->)).
+destruct (mapi_find f' m' y) as (x',(Hx',->)).
+rewrite <- Hm. destruct (find y m); trivial. simpl.
+f_equal. apply Hf; trivial. now rewrite Hx, Hx'.
+Qed.
+
 Lemma map_1 {elt elt'}(m: t elt)(x:key)(e:elt)(f:elt->elt') :
   MapsTo x e m -> MapsTo x (f e) (map f m).
 Proof.
- rewrite <- !find_spec, map_spec. now intros ->.
+ rewrite <- !find_spec, map_find. now intros ->.
 Qed.
 
 Lemma map_2 {elt elt'}(m: t elt)(x:key)(f:elt->elt') :
   In x (map f m) -> In x m.
 Proof.
- rewrite !in_find, map_spec. apply option_map_some.
+ rewrite !in_find, map_find. apply option_map_some.
 Qed.
 
 Lemma mapi_1 {elt elt'}(m: t elt)(x:key)(e:elt)(f:key->elt->elt') :
   MapsTo x e m ->
   exists y, K.eq y x /\ MapsTo x (f y e) (mapi f m).
 Proof.
- destruct (mapi_spec f m x) as (y,(Hy,Eq)).
+ destruct (mapi_find f m x) as (y,(Hy,Eq)).
  intro H. exists y; split; trivial.
  rewrite <-find_spec in *. now rewrite Eq, H.
 Qed.
@@ -363,7 +405,7 @@ Qed.
 Lemma mapi_2 {elt elt'}(m: t elt)(x:key)(f:key->elt->elt') :
   In x (mapi f m) -> In x m.
 Proof.
- destruct (mapi_spec f m x) as (y,(Hy,Eq)).
+ destruct (mapi_find f m x) as (y,(Hy,Eq)).
  rewrite !in_find. intro H; contradict H. now rewrite Eq, H.
 Qed.
 
@@ -551,7 +593,7 @@ End IffSpec.
 Lemma map_mapsto_iff {elt elt'} m x b (f : elt -> elt') :
  MapsTo x b (map f m) <-> exists a, b = f a /\ MapsTo x a m.
 Proof.
-rewrite <-find_spec, map_spec. setoid_rewrite <- find_spec.
+rewrite <-find_spec, map_find. setoid_rewrite <- find_spec.
 destruct (find x m); simpl; split.
 - injection 1. now exists e.
 - intros (a,(->,H)). now injection H as ->.
@@ -562,13 +604,13 @@ Qed.
 Lemma map_in_iff {elt elt'} m x (f : elt -> elt') :
  In x (map f m) <-> In x m.
 Proof.
-rewrite !in_find, map_spec. apply option_map_some.
+rewrite !in_find, map_find. apply option_map_some.
 Qed.
 
 Lemma mapi_in_iff {elt elt'} m x (f:key->elt->elt') :
  In x (mapi f m) <-> In x m.
 Proof.
-rewrite !in_find. destruct (mapi_spec f m x) as (y,(_,->)).
+rewrite !in_find. destruct (mapi_find f m x) as (y,(_,->)).
 apply option_map_some.
 Qed.
 
@@ -580,18 +622,18 @@ Lemma mapi_inv {elt elt'} m x b (f : key -> elt -> elt') :
  exists a y, K.eq y x /\ b = f y a /\ MapsTo x a m.
 Proof.
 rewrite <- find_spec. setoid_rewrite <- find_spec.
-destruct (mapi_spec f m x) as (y,(E,->)).
+destruct (mapi_find f m x) as (y,(E,->)).
 destruct (find x m); simpl.
 - injection 1 as <-. now exists e, y.
 - discriminate.
 Qed.
 
-Lemma mapi_spec' {elt elt'} (f:key->elt->elt') :
+Lemma mapi_find' {elt elt'} (f:key->elt->elt') :
  Proper (K.eq==>Logic.eq==>Logic.eq) f ->
  forall m x,
    find x (mapi f m) = option_map (f x) (find x m).
 Proof.
- intros. destruct (mapi_spec f m x) as (y,(Hy,->)).
+ intros. destruct (mapi_find f m x) as (y,(Hy,->)).
  destruct (find x m); simpl; trivial.
  now rewrite Hy.
 Qed.
@@ -608,7 +650,7 @@ Lemma mapi_mapsto_iff {elt elt'} m x b (f:key->elt->elt') :
  (MapsTo x b (mapi f m) <-> exists a, b = f x a /\ MapsTo x a m).
 Proof.
 rewrite <-find_spec. setoid_rewrite <-find_spec.
-intros Pr. rewrite mapi_spec' by trivial.
+intros Pr. rewrite mapi_find' by trivial.
 destruct (find x m); simpl; split.
 - injection 1 as <-. now exists e.
 - intros (a,(->,H)). now injection H as <-.
@@ -775,7 +817,7 @@ Qed.
 
 Lemma map_o m x (f:elt->elt') :
  find x (map f m) = option_map f (find x m).
-Proof. apply map_spec. Qed.
+Proof. apply map_find. Qed.
 
 Lemma map_b m x (f:elt->elt') :
  mem x (map f m) = mem x m.
@@ -792,7 +834,7 @@ Qed.
 Lemma mapi_o m x (f:key->elt->elt') :
  Proper (K.eq==>Logic.eq==>Logic.eq) f ->
  find x (mapi f m) = option_map (f x) (find x m).
-Proof. intros; now apply mapi_spec'. Qed.
+Proof. intros; now apply mapi_find'. Qed.
 
 (** Specification of [merge] when more is known on [f]. *)
 

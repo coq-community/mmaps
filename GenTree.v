@@ -1098,15 +1098,12 @@ Section Map.
 Variable elt elt' : Type.
 Variable f : elt -> elt'.
 
-Lemma map_spec' m x :
- find x (map f m) = option_map f (find x m).
+Lemma map_spec m :
+ bindings (map f m) = List.map (fun '(k,e) => (k,f e)) (bindings m).
 Proof.
-induction m; simpl; trivial. case K.compare_spec; auto.
+induction m; simpl; auto.
+now rewrite !bindings_node, !map_app, IHm1, IHm2.
 Qed.
-
-Lemma map_spec m x `{!Ok m} :
- find x (map f m) = option_map f (find x m).
-Proof. apply map_spec'. Qed.
 
 Lemma map_in m x : x ∈ (map f m) <-> x ∈ m.
 Proof.
@@ -1123,19 +1120,12 @@ Section Mapi.
 Variable elt elt' : Type.
 Variable f : key -> elt -> elt'.
 
-Lemma mapi_spec' m x :
-  exists y:key,
-    y == x /\ find x (mapi f m) = option_map (f y) (find x m).
+Lemma mapi_spec m :
+ bindings (mapi f m) = List.map (fun '(k,e) => (k,f k e)) (bindings m).
 Proof.
-  induction m; simpl.
-  - now exists x.
-  - case K.compare_spec; simpl; auto. intros. now exists t1.
+induction m; simpl; auto.
+now rewrite !bindings_node, !map_app, IHm1, IHm2.
 Qed.
-
-Lemma mapi_spec m x `{!Ok m} :
-  exists y:key,
-    y == x /\ find x (mapi f m) = option_map (f y) (find x m).
-Proof. apply mapi_spec'. Qed.
 
 Lemma mapi_in m x : x ∈ (mapi f m) <-> x ∈ m.
 Proof.
