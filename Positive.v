@@ -957,4 +957,41 @@ Module PositiveMapAdditionalFacts.
     intros k [x1|] [x2|]; trivial.
   Qed.
 
+  Lemma Equal_node_iff A (l r l' r' : t A) o o' :
+   Equal (Node l o r) (Node l' o' r') <->
+    Equal l l' /\ o = o' /\ Equal r r'.
+  Proof.
+  split.
+  - intros E. repeat split.
+    + intros k. apply (E (k~0)).
+    + apply (E 1).
+    + intros k. apply (E (k~1)).
+  - intros (El & <- & Er) [ | | ]; simpl; auto.
+  Qed.
+
+  (** For normal maps (i.e. ones where empty parts are exactly Leaf),
+      we can prove that Equal is the same than Logic.eq *)
+
+  Fixpoint Normal {A} (m : t A) :=
+   match m with
+   | Leaf => True
+   | Node l o r => Normal l /\ Normal r /\ is_empty m = false
+   end.
+
+  Lemma Normal_Equal_eq A (m m' : t A) :
+    Normal m -> Normal m' -> Equal m m' -> m = m'.
+  Proof.
+  revert m'.
+  induction m as [|l IHl o r IHr]; destruct m' as [|l' o' r'];
+   cbn - [is_empty]; auto.
+  - intros _ (Nl' & Nr' & EY) E.
+    rewrite <- not_true_iff_false in EY. destruct EY.
+    apply is_empty_spec. intros k. now rewrite <- (E k), gleaf.
+  - intros (Nl & Nr & EY) _ E.
+    rewrite <- not_true_iff_false in EY. destruct EY.
+    apply is_empty_spec. intros k. now rewrite (E k), gleaf.
+  - intros (Nl & Nr & EY) (Nl' & Nr' & EY') E.
+    rewrite Equal_node_iff in E. f_equal; intuition.
+  Qed.
+
 End PositiveMapAdditionalFacts.
