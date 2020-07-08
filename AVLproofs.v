@@ -538,6 +538,30 @@ Proof.
  - mysubst; simpl in *; inversion_clear 1; intuition.
 Qed.
 
+(** filter *)
+
+Instance filter_avl (f:key->elt->bool) m `{!Avl m} : Avl (filter f m).
+Proof.
+ induction m; simpl; auto. inv_avl.
+ destruct f; auto using join_avl, concat_avl.
+Qed.
+
+Instance partition_avl1 (f:key->elt->bool) m `{!Avl m} :
+ Avl (fst (partition f m)).
+Proof.
+ induction m; simpl; auto. inv_avl.
+ destruct partition, partition, f; simpl in *;
+  auto using join_avl, concat_avl.
+Qed.
+
+Instance partition_avl2 (f:key->elt->bool) m `{!Avl m} :
+ Avl (fst (partition f m)).
+Proof.
+ induction m; simpl; auto. inv_avl.
+ destruct partition, partition, f; simpl in *;
+  auto using join_avl, concat_avl.
+Qed.
+
 End Elt.
 
 Lemma map_height {elt elt'}(f:elt->elt') m : height (map f m) = height m.

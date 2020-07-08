@@ -6,7 +6,7 @@
 * TODO extra ops 
 ** DONE filter + partition + for_all + exists
 *** TODO update Facts accordingly
-*** TODO update AVLproofs and RBTproofs
+*** DONE update AVLproofs and RBTproofs
 ** DONE singleton
 ** split ?
 ** min_binding, max_binding, choose ?
@@ -15,6 +15,7 @@
 ** gmerge (as already in AVL) ? unsure
 ** common merge instance, such as diff, inter, union ? Cf Facts
 ** of_list = fold add, of_sorted_list (cf treeify in RBT) ?
+
 
 * DONE add_cardinal_2 (cf PR Coq)
 ** DONE SameKeys another equivalence on maps (on keys only) --> here named Eqdom

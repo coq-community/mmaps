@@ -480,6 +480,23 @@ Proof.
  now rewrite plength_spec.
 Qed.
 
+Instance filter_rb (f:key->elt->bool) m : Rbt m -> Rbt (filter f m).
+Proof.
+ unfold filter. intros. apply treeify_rb.
+Qed.
+
+Instance partition_rb1 (f:key->elt->bool) m :
+ Rbt m -> Rbt (fst (partition f m)).
+Proof.
+ unfold partition. intros. destruct partition_aux. apply treeify_rb.
+Qed.
+
+Instance partition_rb2 (f:key->elt->bool) m :
+ Rbt m -> Rbt (snd (partition f m)).
+Proof.
+ unfold partition. intros. destruct partition_aux. apply treeify_rb.
+Qed.
+
 End Elt.
 
 Instance map_rb {elt elt'}(f:elt->elt') m : Rbt m -> Rbt (map f m).
