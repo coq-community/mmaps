@@ -216,18 +216,6 @@ Module PositiveMap <: S PositiveOrderedTypeBits.
      rewrite ?IHj, ?gleaf; auto; try congruence.
   Qed.
 
-  Theorem singleton_spec1:
-    forall (i: key) (x: A), find i (singleton i x) = Some x.
-  Proof.
-    intros. apply add_spec1.
-  Qed.
-
-  Theorem singleton_spec2:
-    forall (i j: key) (x: A), i <> j -> find j (singleton i x) = None.
-  Proof.
-    intros. unfold singleton. rewrite add_spec2; auto. apply empty_spec.
-  Qed.
-
   Lemma rleaf : forall (i : key), remove i Leaf = Leaf.
   Proof. destruct i; simpl; auto. Qed.
 
@@ -392,6 +380,16 @@ Module PositiveMap <: S PositiveOrderedTypeBits.
   rewrite !xbindings_alt, !app_nil_r.
   destruct o; simpl; try f_equal.
   rewrite xbindings_alt; simpl. f_equal.
+  Qed.
+
+  (** [singleton] *)
+
+  Theorem singleton_spec i x : bindings (singleton i x) = (i,x)::nil.
+  Proof.
+   unfold singleton.
+   induction i; simpl; auto.
+   - now rewrite bindings_node; simpl; rewrite IHi.
+   - now rewrite bindings_node; simpl; rewrite IHi.
   Qed.
 
   (** [cardinal] *)

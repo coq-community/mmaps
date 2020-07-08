@@ -166,8 +166,6 @@ Module Type WS (K : DecidableType).
  Parameter mem_spec : mem x m = true <-> In x m.
  Parameter empty_spec : find x (@empty elt) = None.
  Parameter is_empty_spec : is_empty m = true <-> forall x, find x m = None.
- Parameter singleton_spec1 : find x (singleton x e) = Some e.
- Parameter singleton_spec2 : ~K.eq x y -> find y (singleton x e) = None.
  Parameter add_spec1 : find x (add x e m) = Some e.
  Parameter add_spec2 : ~K.eq x y -> find y (add x e m) = find y m.
  Parameter remove_spec1 : find x (remove x m) = None.
@@ -179,6 +177,11 @@ Module Type WS (K : DecidableType).
      property that is really weaker: *)
  Parameter bindings_spec2w : NoDupA (Fst K.eq) (bindings m).
 
+ (* A few functions are now specified in term of [bindings].
+    If [K.eq] is setoid, this is slightly stronger than using [find]
+    or [MapsTo]. See functor [Facts.Properties] for other statements. *)
+
+ Parameter singleton_spec : bindings (singleton x e) = (x,e)::nil.
  Parameter cardinal_spec : cardinal m = length (bindings m).
 
  Parameter fold_spec :

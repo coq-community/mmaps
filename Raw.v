@@ -129,8 +129,6 @@ Module Type WS (K : DecidableType).
   Parameter empty_spec : find x (@empty elt) = None.
   Parameter is_empty_spec :
      is_empty m = true <-> forall x, find x m = None.
-  Parameter singleton_spec1 : find x (singleton x e) = Some e.
-  Parameter singleton_spec2 : ~K.eq x y -> find y (singleton x e) = None.
   Parameter add_spec1 : forall `{!Ok m}, find x (add x e m) = Some e.
   Parameter add_spec2 : forall `{!Ok m},
     ~K.eq x y -> find y (add x e m) = find y m.
@@ -141,6 +139,7 @@ Module Type WS (K : DecidableType).
     InA eq_key_elt (x,e) (bindings m) <-> MapsTo x e m.
   Parameter bindings_spec2w : forall `{!Ok m},
     NoDupA eq_key (bindings m).
+  Parameter singleton_spec : bindings (singleton x e) = (x,e)::nil.
   Parameter cardinal_spec : cardinal m = length (bindings m).
   Parameter fold_spec :
     forall {A} (i : A) (f : key -> elt -> A -> A),
@@ -289,11 +288,6 @@ Module WPack (K : DecidableType) (R : WS K) <: Interface.WS K.
  Lemma is_empty_spec m : is_empty m = true <-> forall x, find x m = None.
  Proof. apply is_empty_spec. Qed.
 
- Lemma singleton_spec1 x e : find x (singleton x e) = Some e.
- Proof. apply singleton_spec1. Qed.
- Lemma singleton_spec2 x y e : ~ K.eq x y -> find y (singleton x e) = None.
- Proof. apply singleton_spec2. Qed.
-
  Lemma add_spec1 m x e : find x (add x e m) = Some e.
  Proof. apply add_spec1, ok. Qed.
  Lemma add_spec2 m x y e : ~ K.eq x y -> find y (add x e m) = find y m.
@@ -310,6 +304,12 @@ Module WPack (K : DecidableType) (R : WS K) <: Interface.WS K.
 
  Lemma bindings_spec2w m : NoDupA eq_key (bindings m).
  Proof. apply bindings_spec2w, ok. Qed.
+
+ Lemma cardinal_spec m : cardinal m = length (bindings m).
+ Proof. apply cardinal_spec. Qed.
+
+ Lemma singleton_spec x e : bindings (singleton x e) = (x,e)::nil.
+ Proof. apply singleton_spec. Qed.
 
  Lemma fold_spec m {A} (i : A) (f : key -> elt -> A -> A) :
    fold f m i = fold_left (fun a p => f (fst p) (snd p) a) (bindings m) i.
@@ -331,9 +331,6 @@ Module WPack (K : DecidableType) (R : WS K) <: Interface.WS K.
  Lemma exists_spec (f:key->elt->bool) m :
    exists_ f m = List.existsb (fun '(k,e) => f k e) (bindings m).
  Proof. apply exists_spec. Qed.
-
- Lemma cardinal_spec m : cardinal m = length (bindings m).
- Proof. apply cardinal_spec. Qed.
 
  Definition Equal m m' := forall y, find y m = find y m'.
  Definition Eqdom (m m':t elt) := forall y, In y m <-> In y m'.

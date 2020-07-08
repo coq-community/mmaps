@@ -436,15 +436,9 @@ Qed.
 
 (** singleton *)
 
-Lemma singleton_spec1 x (e:elt) : find x (singleton x e) = Some e.
+Lemma singleton_spec x (e:elt) : bindings (singleton x e) = (x,e)::nil.
 Proof.
- simpl. now rewrite F.compare_refl.
-Qed.
-
-Lemma singleton_spec2 x y (e:elt) : ~ x == y ->
- find y (singleton x e) = None.
-Proof.
- simpl. case K.compare_spec; trivial; order.
+ unfold singleton. now rewrite bindings_node.
 Qed.
 
 Global Instance singleton_ok x (e:elt) : Ok (singleton x e).

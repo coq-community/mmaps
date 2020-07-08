@@ -568,6 +568,13 @@ Proof.
 unfold In; split; intros (e,H); exists e; now apply bindings_spec1.
 Qed.
 
+Lemma singleton_mapsto_iff x y e e' :
+ MapsTo y e' (singleton x e) <-> K.eq x y /\ e = e'.
+Proof.
+rewrite <- bindings_spec1, singleton_spec, InA_cons, InA_nil.
+unfold Duo; simpl. intuition.
+Qed.
+
 End IffSpec.
 
 Lemma map_mapsto_iff {elt elt'} m x b (f : elt -> elt') :
@@ -795,6 +802,26 @@ rewrite !mem_find_b, remove_o; unfold eqb.
 now destruct (K.eq_dec x y).
 Qed.
 
+Lemma singleton_o1 x e :
+ find x (singleton x e) = Some e.
+Proof.
+ now rewrite find_spec, singleton_mapsto_iff.
+Qed.
+
+Lemma singleton_o2 x y e :
+ ~K.eq x y -> find y (singleton x e) = None.
+Proof.
+ intros H. rewrite <- not_in_find. contradict H.
+ destruct H as (e' & H). now rewrite singleton_mapsto_iff in H.
+Qed.
+
+Lemma singleton_o x y e :
+ find y (singleton x e) = if K.eq_dec x y then Some e else None.
+Proof.
+destruct (K.eq_dec x y) as [<-|NE];
+ auto using singleton_o1, singleton_o2.
+Qed.
+
 Lemma map_o m x (f:elt->elt') :
  find x (map f m) = option_map f (find x m).
 Proof. apply map_find. Qed.
@@ -896,6 +923,17 @@ Section Equalities.
 Variable elt:Type.
 
 (** A few basic equalities *)
+
+Lemma singleton_add x (e:elt) : singleton x e == add x e empty.
+Proof.
+ intros y. now rewrite singleton_o, add_o, empty_o.
+Qed.
+
+Global Instance singleton_m :
+ Proper (K.eq ==> eq ==> Equal) (@singleton elt).
+Proof.
+ intros x x' Hx e e' <-. rewrite !singleton_add. now f_equiv.
+Qed.
 
 Lemma eq_empty (m: t elt) : m == empty <-> is_empty m = true.
 Proof.
