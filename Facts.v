@@ -2134,11 +2134,11 @@ Section Elt.
 
   (** * Emulation of some functions lacking in the interface *)
 
-  (** [update] adds to [m1] all the bindings of [m2]. It can be seen as
+  (** [extend] adds to [m1] all the bindings of [m2]. It can be seen as
      an [union] operator which gives priority to its 2nd argument
      in case of binding conflit. *)
 
-  Definition update m1 m2 := fold (@add _) m2 m1.
+  Definition extend m1 m2 := fold (@add _) m2 m1.
 
   (** [restrict] keeps from [m1] only the bindings whose key is in [m2].
       It can be seen as an [inter] operator, with priority to its 1st argument
@@ -2152,11 +2152,11 @@ Section Elt.
 
   (** Properties of these abbreviations *)
 
-  Lemma update_mapsto_iff : forall m m' k e,
-   MapsTo k e (update m m') <->
+  Lemma extend_mapsto_iff : forall m m' k e,
+   MapsTo k e (extend m m') <->
     (MapsTo k e m' \/ (MapsTo k e m /\ ~In k m')).
   Proof.
-  unfold update.
+  unfold extend.
   intros m m'.
   pattern m', (fold (@add _) m' m). apply fold_rec.
 
@@ -2170,26 +2170,26 @@ Section Elt.
     rewrite Hadd, 2 add_mapsto_iff, IH, add_in_iff. clear IH. intuition.
   Qed.
 
-  Lemma update_dec : forall m m' k e, MapsTo k e (update m m') ->
+  Lemma extend_dec : forall m m' k e, MapsTo k e (extend m m') ->
    { MapsTo k e m' } + { MapsTo k e m /\ ~In k m'}.
   Proof.
-  intros m m' k e H. rewrite update_mapsto_iff in H.
+  intros m m' k e H. rewrite extend_mapsto_iff in H.
   destruct (In_dec m' k) as [H'|H']; [left|right]; intuition.
   elim H'; exists e; auto.
   Defined.
 
-  Lemma update_in_iff : forall m m' k,
-   In k (update m m') <-> In k m \/ In k m'.
+  Lemma extend_in_iff : forall m m' k,
+   In k (extend m m') <-> In k m \/ In k m'.
   Proof.
   intros m m' k. split.
-  intros (e,H); rewrite update_mapsto_iff in H.
+  intros (e,H); rewrite extend_mapsto_iff in H.
   destruct H; [right|left]; exists e; intuition.
   destruct (In_dec m' k) as [H|H].
   destruct H as (e,H). intros _; exists e.
-  rewrite update_mapsto_iff; left; auto.
+  rewrite extend_mapsto_iff; left; auto.
   destruct 1 as [H'|H']; [|elim H; auto].
   destruct H' as (e,H'). exists e.
-  rewrite update_mapsto_iff; right; auto.
+  rewrite extend_mapsto_iff; right; auto.
   Qed.
 
   Lemma diff_mapsto_iff : forall m m' k e,
@@ -2238,10 +2238,10 @@ Section Elt.
   intros k k' e e' a b b' Hk <- <-. now apply add_add_2.
  Qed.
 
- Instance update_m {elt} : Proper (Equal ==> Equal ==> Equal) (@update elt).
+ Instance extend_m {elt} : Proper (Equal ==> Equal ==> Equal) (@extend elt).
  Proof.
   intros m1 m1' Hm1 m2 m2' Hm2.
-  unfold update.
+  unfold extend.
   apply fold_Proper; auto using diamond_add with *.
  Qed.
 
