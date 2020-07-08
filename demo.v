@@ -180,6 +180,6 @@ Module W := MMaps.WeakList.Make(Z).
 
 Compute W.bindings (W.add 1 "yes" (W.add 3 "no" (W.add 2 "foo" W.empty))).
 
-(* For now, [Interface.WS] provides the same operations as [Interface.S],
-   and the only different specification concerns [bindings], which isn't
-   sorted, but only without redundancies. *)
+(* For now, [Interface.WS] provides the same operations as [Interface.S]
+   (minus [compare]), and the only different specification concerns [bindings],
+   which isn't sorted, but only without redundancies. *)
