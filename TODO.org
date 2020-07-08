@@ -5,8 +5,6 @@
 
 * TODO extra ops 
 ** DONE filter + partition + for_all + exists
-*** TODO update Facts accordingly
-*** DONE update AVLproofs and RBTproofs
 ** DONE singleton
 ** split ?
 ** min_binding, max_binding, choose ?

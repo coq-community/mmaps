@@ -21,7 +21,7 @@
 From Coq Require Rtauto.
 From Coq Require Import Bool BinPos Pnat Setoid SetoidList PeanoNat.
 From Coq Require Import Orders OrdersFacts OrdersLists.
-From MMaps Require Import MoreList Interface OrdList GenTree.
+From MMaps Require Import Utils Interface OrdList GenTree.
 
 Local Set Implicit Arguments.
 Local Unset Strict Implicit.
@@ -1090,7 +1090,7 @@ Qed.
 Lemma sort_app_key (l l' : klist elt) :
  sort O.ltk (l++l') <-> sort O.ltk l /\ sort O.ltk l' /\ l < l'.
 Proof.
- apply SortA_app with (eqA:=O.eqk)(ltA:=O.ltk); ok.
+ apply SortA_app_iff with (eqA:=O.eqk)(ltA:=O.ltk); ok.
 Qed.
 
 Lemma sort_cons_key p (l : klist elt) :

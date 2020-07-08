@@ -20,7 +20,7 @@
 
 From Coq Require Import Bool PeanoNat BinInt FunInd Int.
 From Coq Require Import Orders OrdersFacts OrdersLists.
-From MMaps Require Import MoreList Interface OrdList GenTree.
+From MMaps Require Import Utils Interface OrdList GenTree.
 
 Local Set Implicit Arguments.
 Local Unset Strict Implicit.

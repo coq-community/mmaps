@@ -3,7 +3,27 @@ Import ListNotations.
 
 Set Implicit Arguments.
 
-(** * Some complements on lists *)
+(** * Some complements on bool and lists *)
+
+Lemma eq_bool_alt b b' : b=b' <-> (b=true <-> b'=true).
+Proof.
+ destruct b, b'; intuition.
+Qed.
+
+Lemma eq_option_alt {A}(o o':option A) :
+ o=o' <-> (forall x, o=Some x <-> o'=Some x).
+Proof.
+split; intros.
+- now subst.
+- destruct o, o'; rewrite ?H; auto.
+  symmetry; now apply H.
+Qed.
+
+Lemma option_map_some {A B}(f:A->B) o :
+ option_map f o <> None <-> o <> None.
+Proof.
+ destruct o; simpl. now split. split; now destruct 1.
+Qed.
 
 Definition option_bind {A B} o (f:A->option B) :=
  match o with
@@ -89,6 +109,22 @@ induction l; simpl; auto. rewrite <- (E a); auto.
 destruct f; simpl; auto. f_equal; auto.
 Qed.
 
+Lemma filter_rev {A} (f:A->bool) l :
+ rev (filter f l) = filter f (rev l).
+Proof.
+induction l; simpl; auto.
+rewrite filter_app, <- IHl. simpl.
+destruct (f a); simpl; auto using app_nil_r.
+Qed.
+
+Lemma NoDupA_filter {A} (eq:relation A) (f:A->bool) l :
+ NoDupA eq l -> NoDupA eq (filter f l).
+Proof.
+ induction 1; simpl; auto.
+ destruct f; auto. constructor; auto.
+ rewrite InA_alt in *. setoid_rewrite filter_In. firstorder.
+Qed.
+
 (** [List.partition] via [List.filter] *)
 
 Lemma partition_filter {A} (f:A->bool) l :
@@ -125,6 +161,19 @@ induction l; simpl; auto. rewrite <- (E a); auto.
 destruct f; simpl; auto.
 Qed.
 
+Lemma forallb_rev {A} (f:A->bool) l :
+ forallb f (rev l) = forallb f l.
+Proof.
+ apply eq_bool_alt. rewrite !forallb_forall.
+ now setoid_rewrite <- in_rev.
+Qed.
+
+Lemma existsb_rev {A} (f:A->bool) l :
+ existsb f (rev l) = existsb f l.
+Proof.
+ apply eq_bool_alt. rewrite !existsb_exists.
+ now setoid_rewrite <- in_rev.
+Qed.
 
 (** [SetoidList.SortA_app] written via a [iff] *)
 
@@ -132,7 +181,7 @@ Section MoreOnSortA.
 Context {A} eqA `{Equivalence A eqA}.
 Context ltA `{StrictOrder A ltA} `{!Proper (eqA==>eqA==>iff) ltA}.
 
-Lemma SortA_app (l1 l2 : list A) :
+Lemma SortA_app_iff (l1 l2 : list A) :
  sort ltA (l1++l2) <->
  sort ltA l1 /\ sort ltA l2 /\
   forall a1 a2, In a1 l1 -> In a2 l2 -> ltA a1 a2.

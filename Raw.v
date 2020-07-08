@@ -35,7 +35,6 @@
     See [Interface] for the documentation of all these operations and
     extra explanations. *)
 
-From Coq Require Export Bool Equalities Orders SetoidList.
 From MMaps Require Export Comparisons Interface.
 Set Implicit Arguments.
 Unset Strict Implicit.

@@ -13,29 +13,9 @@
 From Coq Require Import Bool Equalities Orders OrdersFacts OrdersLists.
 From Coq Require OrdersAlt.
 From Coq Require Import Morphisms Permutation SetoidPermutation.
-From MMaps Require Export Comparisons Interface.
+From MMaps Require Import Utils Comparisons Interface.
 Set Implicit Arguments.
 Unset Strict Implicit.
-
-Lemma eq_bool_alt b b' : b=b' <-> (b=true <-> b'=true).
-Proof.
- destruct b, b'; intuition.
-Qed.
-
-Lemma eq_option_alt {elt}(o o':option elt) :
- o=o' <-> (forall e, o=Some e <-> o'=Some e).
-Proof.
-split; intros.
-- now subst.
-- destruct o, o'; rewrite ?H; auto.
-  symmetry; now apply H.
-Qed.
-
-Lemma option_map_some {A B}(f:A->B) o :
- option_map f o <> None <-> o <> None.
-Proof.
- destruct o; simpl. now split. split; now destruct 1.
-Qed.
 
 (** * Properties that are common to weak maps and ordered maps.
 
@@ -1711,7 +1691,234 @@ Section Elt.
   now exists k.
   Qed.
 
-  (** * Additional notions over maps *)
+  Lemma is_empty_bindings m : is_empty m = true <-> bindings m = nil.
+  Proof.
+  rewrite <- is_empty_iff, cardinal_Empty, cardinal_spec.
+  now destruct bindings.
+  Qed.
+
+  Lemma is_empty_no_binding m :
+    is_empty m = true <-> (forall x e, ~List.In (x,e) (bindings m)).
+  Proof.
+  rewrite is_empty_bindings.
+  destruct (bindings m) as [|(x,e) l]; simpl; firstorder. easy.
+  destruct (H x e). now left.
+  Qed.
+
+  Lemma not_empty_has_binding m :
+    is_empty m = false <-> (exists x e, List.In (x,e) (bindings m)).
+  Proof.
+  rewrite <- not_true_iff_false, is_empty_bindings.
+  destruct (bindings m) as [|(x,e) l]; simpl; firstorder.
+  exists x, e. now left.
+  Qed.
+
+  (** * Properties about filter, partition, for_all, exists_ *)
+
+  (** First, alternative formulations, e.g. based on fold,
+      or on filter for the other operations *)
+
+  Lemma filter_alt (f:key->elt->bool) m :
+    filter f m == fold (fun k e m => if f k e then add k e m else m) m empty.
+  Proof.
+  intros x.
+  rewrite fold_spec_right, bindings_o, filter_spec.
+  rewrite findA_rev, filter_rev by apply NoDupA_filter, bindings_spec2w.
+  change K.t with key in *.
+  induction (rev (bindings m)) as [|(y,e) l IH]; simpl.
+  - now rewrite empty_o.
+  - unfold uncurry at 1; simpl.
+    destruct (f y e) eqn:E; simpl; auto.
+    unfold eqb at 1. destruct K.eq_dec as [->|NE].
+    + now rewrite add_spec1.
+    + rewrite add_spec2; auto. now contradict NE.
+  Qed.
+
+  Lemma for_all_alt (f:key->elt->bool) m :
+   for_all f m = is_empty (filter (fun k e => negb (f k e)) m).
+  Proof.
+   apply eq_bool_alt.
+   rewrite for_all_spec, forallb_forall, is_empty_no_binding.
+   setoid_rewrite filter_spec. setoid_rewrite filter_In. split.
+   - intros H x e (IN,E). now rewrite (H (x,e)) in E.
+   - intros H (x,e) IN. specialize (H x e). destruct (f x e) eqn:F; auto.
+  Qed.
+
+  Lemma for_all_alt2 (f : key -> elt -> bool) m :
+    for_all f m = fold (fun k e b => if f k e then b else false) m true.
+  Proof.
+  rewrite for_all_spec, fold_spec_right, <- forallb_rev.
+  induction (rev (bindings m)) as [|(x,e) l IH]; simpl; auto.
+  unfold uncurry at 1; simpl. destruct f; simpl; auto.
+  Qed.
+
+  Lemma exists_alt (f:key->elt->bool) m :
+   exists_ f m = negb (is_empty (filter f m)).
+  Proof.
+   apply eq_bool_alt.
+   rewrite exists_spec, existsb_exists, negb_true_iff, not_empty_has_binding.
+   setoid_rewrite filter_spec. setoid_rewrite filter_In. split.
+   - intros ((x,e) & IN & E). firstorder.
+   - intros (x & e & IN & E). now exists (x,e).
+  Qed.
+
+  Lemma exists_alt2 (f : key -> elt -> bool) m :
+    exists_ f m = fold (fun k e b => if f k e then true else b) m false.
+  Proof.
+  rewrite exists_spec, fold_spec_right, <- existsb_rev.
+  induction (rev (bindings m)) as [|(x,e) l IH]; simpl; auto.
+  unfold uncurry at 1; simpl. destruct f; simpl; auto.
+  Qed.
+
+  Lemma partition_alt1 (f:key->elt->bool) m :
+   fst (partition f m) == filter f m.
+  Proof.
+   intros k. rewrite !bindings_o. f_equal.
+   replace (bindings (fst _)) with
+          (fst (prodmap (@bindings _) (partition f m)))
+     by now destruct partition.
+   now rewrite partition_spec, filter_spec, partition_filter.
+  Qed.
+
+  Lemma partition_alt2 (f:key->elt->bool) m :
+   snd (partition f m) == filter (fun k e => negb (f k e)) m.
+  Proof.
+   intros k. rewrite !bindings_o. f_equal.
+   replace (bindings (snd _)) with
+          (snd (prodmap (@bindings _) (partition f m)))
+     by now destruct partition.
+   rewrite partition_spec, filter_spec, partition_filter.
+   simpl. apply filter_ext; auto. now intros (x,e) ? <-.
+  Qed.
+
+  (** Morphisms *)
+
+  Global Instance filter_m :
+   Proper ((K.eq==>eq==>eq)==>Equal==>Equal) (@filter elt).
+  Proof.
+  intros f f' Hf m m' Hm k.
+  apply eq_option_alt. intros e.
+  rewrite !find_spec, <- !bindings_spec1, !filter_spec, !InA_alt.
+  setoid_rewrite filter_In. split.
+  - intros ((x,e') & (H,H') & IN & F). simpl in *. subst e'.
+    assert (FD : find x m = Some e).
+    { apply find_spec, bindings_spec1, InA_alt. now exists (x,e). }
+    rewrite Hm in FD.
+    apply find_spec, bindings_spec1, InA_alt in FD.
+    destruct FD as ((x',e') & (H',H2) & IN'). simpl in *; subst e'.
+    exists (x',e). repeat split; auto. simpl; eauto with *.
+    rewrite <- F. symmetry. now apply Hf.
+  - intros ((x,e') & (H,H') & IN & F). simpl in *. subst e'.
+    assert (FD : find x m' = Some e).
+    { apply find_spec, bindings_spec1, InA_alt. now exists (x,e). }
+    rewrite <- Hm in FD.
+    apply find_spec, bindings_spec1, InA_alt in FD.
+    destruct FD as ((x',e') & (H',H2) & IN'). simpl in *; subst e'.
+    exists (x',e). repeat split; auto. simpl; eauto with *.
+    rewrite <- F. now apply Hf.
+  Qed.
+
+  Global Instance for_all_m :
+   Proper ((K.eq==>Logic.eq==>Logic.eq)==>Equal==>Logic.eq) (@for_all elt).
+  Proof.
+  intros f f' Hf m m' Hm.
+  rewrite !for_all_alt. apply is_empty_m, Equal_Eqdom, filter_m; auto.
+  intros x x' Hx e e' <-. f_equal. now apply Hf.
+  Qed.
+
+  Global Instance exists_m :
+   Proper ((K.eq==>Logic.eq==>Logic.eq)==>Equal==>Logic.eq) (@exists_ elt).
+  Proof.
+  intros f f' Hf m m' Hm.
+  rewrite !exists_alt. f_equal.
+  apply is_empty_m, Equal_Eqdom, filter_m; auto.
+  Qed.
+
+  (** Statements in terms of MapsTo or find. *)
+
+  Lemma filter_iff (f : key -> elt -> bool) :
+    Proper (K.eq==>eq==>eq) f ->
+    forall m k e,
+      MapsTo k e (filter f m) <-> MapsTo k e m /\ f k e = true.
+  Proof.
+  intros E m k e. rewrite <- !bindings_spec1, filter_spec, !InA_alt.
+  setoid_rewrite filter_In. firstorder.
+  - destruct x as (k',e'); simpl in *; subst. rewrite E; eauto.
+  - destruct x as (k',e'); simpl in *; subst. exists (k',e').
+    split. easy. split; auto. rewrite <- E; eauto.
+  Qed.
+
+  Lemma filter_find (f : key -> elt -> bool) :
+    Proper (K.eq==>eq==>eq) f ->
+    forall m x,
+      find x (filter f m) =
+      option_bind (find x m) (fun e => if f x e then Some e else None).
+  Proof.
+  intros E m x. apply eq_option_alt. intros e.
+  rewrite find_spec, filter_iff, <- find_spec; auto.
+  split.
+  - intros (-> & H'). simpl. now rewrite H'.
+  - destruct (find x m); simpl; try easy.
+    destruct f eqn:F; simpl; try easy. now intros [= ->].
+  Qed.
+
+  Lemma partition_iff1 (f:key->elt->bool) :
+    Proper (K.eq==>eq==>eq) f ->
+    forall m k e,
+    MapsTo k e (fst (partition f m)) <-> MapsTo k e m /\ f k e = true.
+  Proof.
+  intros. rewrite partition_alt1. now apply filter_iff.
+  Qed.
+
+  Lemma partition_iff2 (f:key->elt->bool) :
+    Proper (K.eq==>eq==>eq) f ->
+    forall m k e,
+    MapsTo k e (snd (partition f m)) <-> MapsTo k e m /\ f k e = false.
+  Proof.
+  intros. rewrite partition_alt2. rewrite filter_iff.
+  now rewrite negb_true_iff.
+  clear -H. intros x x' Hx e e' <-. f_equal. now apply H.
+  Qed.
+
+  Lemma for_all_iff (f:key->elt->bool) :
+    Proper (K.eq==>eq==>eq) f ->
+    forall m,
+      for_all f m = true <-> (forall x e, MapsTo x e m -> f x e = true).
+  Proof.
+  intros Hf m. rewrite for_all_spec, forallb_forall. split.
+  - intros H x e. rewrite <- bindings_spec1, InA_alt.
+    intros ((y,e') & (H1,H2) & IN). simpl in *; subst e'.
+    specialize (H (y,e) IN). simpl in *. rewrite <- Hf; eauto with *.
+  - intros H (x,e) IN. apply H. rewrite <- bindings_spec1, InA_alt.
+    now exists (x,e).
+  Qed.
+
+  Lemma exists_iff (f:key->elt->bool) :
+    Proper (K.eq==>eq==>eq) f ->
+    forall m,
+      exists_ f m = true <-> (exists x e, MapsTo x e m /\ f x e = true).
+  Proof.
+  intros Hf m. rewrite exists_spec, existsb_exists. split.
+  - intros ((x,e) & IN & E). exists x, e; split; auto.
+    rewrite <- bindings_spec1, InA_alt; now exists (x,e).
+  - intros (x & e & IN & E).
+    rewrite <- bindings_spec1, InA_alt in IN.
+    destruct IN as ((y,e') & (H1,H2) & IN). simpl in *; subst e'.
+    exists (y,e). split; auto. rewrite <- Hf; eauto with *.
+  Qed.
+
+  (** specialized versions analyzing only keys (resp. bindings) *)
+
+  Definition filter_dom (f : key -> bool) := filter (fun k e => f k).
+  Definition filter_range (f : elt -> bool) := filter (fun k => f).
+  Definition for_all_dom (f : key -> bool) := for_all (fun k e => f k).
+  Definition for_all_range (f : elt -> bool) := for_all (fun k => f).
+  Definition exists_dom (f : key -> bool) := exists_ (fun k e => f k).
+  Definition exists_range (f : elt -> bool) := exists_ (fun k => f).
+  Definition partition_dom (f : key -> bool) := partition (fun k e => f k).
+  Definition partition_range (f : elt -> bool) := partition (fun k => f).
+
+  (** * Extra predicates on maps : Disjoint and Partition *)
 
   Definition Disjoint m m' := forall k, ~(In k m /\ In k m').
 
@@ -1719,117 +1926,21 @@ Section Elt.
     Disjoint m1 m2 /\
     (forall k e, MapsTo k e m <-> MapsTo k e m1 \/ MapsTo k e m2).
 
-  End Elt.
-
-  (** * Emulation of some functions lacking in the interface *)
-
-  Module ViaFold.
-
-  Section Elt.
-  Variable elt:Type.
-  Implicit Types m : t elt.
-  Implicit Types e : elt.
-
-  Definition filter (f : key -> elt -> bool) m :=
-   fold (fun k e m => if f k e then add k e m else m) m empty.
-
-  Definition for_all (f : key -> elt -> bool) m :=
-   fold (fun k e b => if f k e then b else false) m true.
-
-  Definition exists_ (f : key -> elt -> bool) m :=
-   fold (fun k e b => if f k e then true else b) m false.
-
-  Definition partition (f : key -> elt -> bool) m :=
-   (filter f m, filter (fun k e => negb (f k e)) m).
-
-  (** [update] adds to [m1] all the bindings of [m2]. It can be seen as
-     an [union] operator which gives priority to its 2nd argument
-     in case of binding conflit. *)
-
-  Definition update m1 m2 := fold (@add _) m2 m1.
-
-  (** [restrict] keeps from [m1] only the bindings whose key is in [m2].
-      It can be seen as an [inter] operator, with priority to its 1st argument
-      in case of binding conflit. *)
-
-  Definition restrict m1 m2 := filter (fun k _ => mem k m2) m1.
-
-  (** [diff] erases from [m1] all bindings whose key is in [m2]. *)
-
-  Definition diff m1 m2 := filter (fun k _ => negb (mem k m2)) m1.
-
-  (** Properties of these abbreviations *)
-
-  Lemma filter_iff (f : key -> elt -> bool) :
-    Proper (K.eq==>eq==>eq) f ->
-    forall m k e,
-      MapsTo k e (filter f m) <-> MapsTo k e m /\ f k e = true.
+  Global Instance Disjoint_m : Proper (Eqdom ==> Eqdom ==> iff) Disjoint.
   Proof.
-  unfold filter.
-  set (f':=fun k e m => if f k e then add k e m else m).
-  intros Hf m. pattern m, (fold f' m empty). apply fold_rec.
-
-  - intros m' Hm' k e. rewrite empty_mapsto_iff. intuition.
-    elim (Hm' k e); auto.
-
-  - intros k e acc m1 m2 Hke Hn Hadd IH k' e'.
-    change (Equal m2 (add k e m1)) in Hadd; rewrite Hadd.
-    unfold f'; simpl.
-    rewrite add_mapsto_new by trivial.
-    case_eq (f k e); intros Hfke; simpl;
-     rewrite ?add_mapsto_iff, IH; clear IH; intuition.
-    + rewrite <- Hfke; apply Hf; auto with map.
-    + right. repeat split; trivial. contradict Hn. rewrite Hn. now exists e'.
-    + assert (f k e = f k' e') by (apply Hf; auto). congruence.
+  intros m1 m1' Hm1 m2 m2' Hm2. unfold Disjoint. split; intros.
+  rewrite <- Hm1, <- Hm2; auto.
+  rewrite Hm1, Hm2; auto.
   Qed.
 
-  Lemma for_all_filter f m :
-   for_all f m = is_empty (filter (fun k e => negb (f k e)) m).
+  Global Instance Partition_m :
+   Proper (Equal ==> Equal ==> Equal ==> iff) Partition.
   Proof.
-   unfold for_all, filter.
-   eapply fold_rel with (R:=fun x y => x = is_empty y).
-   - symmetry. apply is_empty_iff. apply empty_1.
-   - intros; subst. destruct (f k e); simpl; trivial.
-     symmetry. apply not_true_is_false. rewrite is_empty_spec.
-     intros H'. specialize (H' k). now rewrite add_spec1 in H'.
-  Qed.
-
-  Lemma exists_filter f m :
-   exists_ f m = negb (is_empty (filter f m)).
-  Proof.
-   unfold for_all, filter.
-   eapply fold_rel with (R:=fun x y => x = negb (is_empty y)).
-   - symmetry. rewrite negb_false_iff. apply is_empty_iff. apply empty_1.
-   - intros; subst. destruct (f k e); simpl; trivial.
-     symmetry. rewrite negb_true_iff. apply not_true_is_false.
-     rewrite is_empty_spec.
-     intros H'. specialize (H' k). now rewrite add_spec1 in H'.
-  Qed.
-
-  Lemma for_all_iff f m :
-   Proper (K.eq==>eq==>eq) f ->
-   (for_all f m = true <-> (forall k e, MapsTo k e m -> f k e = true)).
-  Proof.
-  intros Hf.
-  rewrite for_all_filter.
-  rewrite <- is_empty_iff. unfold Empty.
-  split; intros H k e; specialize (H k e);
-   rewrite filter_iff in * by solve_proper; intuition.
-  - destruct (f k e); auto.
-  - now rewrite H0 in H2.
-  Qed.
-
-  Lemma exists_iff f m :
-   Proper (K.eq==>eq==>eq) f ->
-   (exists_ f m = true <->
-     (exists k e, MapsTo k e m /\ f k e = true)).
-  Proof.
-  intros Hf.
-  rewrite exists_filter. rewrite negb_true_iff.
-  rewrite <- not_true_iff_false, <- is_empty_iff.
-  split.
-  - intros H. apply not_empty_mapsto in H. now setoid_rewrite filter_iff in H.
-  - unfold Empty. setoid_rewrite filter_iff; trivial. firstorder.
+  intros m1 m1' Hm1 m2 m2' Hm2 m3 m3' Hm3. unfold Partition.
+  rewrite <- Hm2, <- Hm3.
+  split; intros (H,H'); split; auto; intros.
+  rewrite <- Hm1, <- Hm2, <- Hm3; auto.
+  rewrite Hm1, Hm2, Hm3; auto.
   Qed.
 
   Lemma Disjoint_alt : forall m m',
@@ -1845,50 +1956,25 @@ Section Elt.
   eapply H; eauto.
   Qed.
 
-  Section Partition.
-  Variable f : key -> elt -> bool.
-  Hypothesis Hf : Proper (K.eq==>eq==>eq) f.
-
-  Lemma partition_iff_1 : forall m m1 k e,
-   m1 = fst (partition f m) ->
-   (MapsTo k e m1 <-> MapsTo k e m /\ f k e = true).
+  Lemma partition_Partition (f:key->elt->bool) :
+   (Proper (K.eq==>eq==>eq) f) ->
+   forall m m1 m2, partition f m = (m1,m2) -> Partition m m1 m2.
   Proof.
-  unfold partition; simpl; intros. subst m1.
-  apply filter_iff; auto.
+  intros Hf m m1 m2 E.
+  replace m1 with (fst (partition f m)) by now rewrite E.
+  replace m2 with (snd (partition f m)) by now rewrite E. clear E.
+  split.
+  - rewrite Disjoint_alt. intros k e e'.
+    rewrite partition_iff1, partition_iff2; auto.
+    intros (U,V) (W,Z). rewrite <- (mapsto_fun U W) in Z; congruence.
+  - intros k e. rewrite partition_iff1, partition_iff2; auto.
+    intuition. destruct (f k e); intuition.
   Qed.
 
-  Lemma partition_iff_2 : forall m m2 k e,
-   m2 = snd (partition f m) ->
-   (MapsTo k e m2 <-> MapsTo k e m /\ f k e = false).
-  Proof.
-  unfold partition; simpl; intros. subst m2.
-  rewrite filter_iff.
-  split; intros (H,H'); split; auto.
-  destruct (f k e); simpl in *; auto.
-  rewrite H'; auto.
-  repeat red; intros. f_equal. apply Hf; auto.
-  Qed.
-
-  Lemma partition_Partition : forall m m1 m2,
-   partition f m = (m1,m2) -> Partition m m1 m2.
-  Proof.
-  intros. split.
-  rewrite Disjoint_alt. intros k e e'.
-  rewrite (@partition_iff_1 m m1), (@partition_iff_2 m m2)
-   by (rewrite H; auto).
-  intros (U,V) (W,Z). rewrite <- (mapsto_fun U W) in Z; congruence.
-  intros k e.
-  rewrite (@partition_iff_1 m m1), (@partition_iff_2 m m2)
-   by (rewrite H; auto).
-  destruct (f k e); intuition.
-  Qed.
-
-  End Partition.
-
-  Lemma Partition_In : forall m m1 m2 k,
+  Lemma Partition_In m m1 m2 k :
    Partition m m1 m2 -> In k m -> {In k m1}+{In k m2}.
   Proof.
-  intros m m1 m2 k Hm Hk.
+  intros Hm Hk.
   destruct (In_dec m1 k) as [H|H]; [left|right]; auto.
   destruct Hm as (Hm,Hm').
   destruct Hk as (e,He); rewrite Hm' in He; destruct He.
@@ -1896,23 +1982,22 @@ Section Elt.
   exists e; auto.
   Defined.
 
-  Lemma Disjoint_sym : forall m1 m2, Disjoint m1 m2 -> Disjoint m2 m1.
+  Lemma Disjoint_sym m1 m2 : Disjoint m1 m2 -> Disjoint m2 m1.
   Proof.
-  intros m1 m2 H k (H1,H2). elim (H k); auto.
+  intros H k (H1,H2). elim (H k); auto.
   Qed.
 
-  Lemma Partition_sym : forall m m1 m2,
-   Partition m m1 m2 -> Partition m m2 m1.
+  Lemma Partition_sym m m1 m2 : Partition m m1 m2 -> Partition m m2 m1.
   Proof.
-  intros m m1 m2 (H,H'); split.
+  intros (H,H'); split.
   apply Disjoint_sym; auto.
   intros; rewrite H'; intuition.
   Qed.
 
-  Lemma Partition_Empty : forall m m1 m2, Partition m m1 m2 ->
-   (Empty m <-> (Empty m1 /\ Empty m2)).
+  Lemma Partition_Empty m m1 m2 : Partition m m1 m2 ->
+   (Empty m <-> Empty m1 /\ Empty m2).
   Proof.
-  intros m m1 m2 (Hdisj,Heq). split.
+  intros (Hdisj,Heq). split.
   intro He.
   split; intros k e Hke; elim (He k e); rewrite Heq; auto.
   intros (He1,He2) k e Hke. rewrite Heq in Hke. destruct Hke.
@@ -2021,7 +2106,7 @@ Section Elt.
       apply fold_Add with (eqA:=eqA); auto.
   Qed.
 
-  Lemma Partition_cardinal : forall m m1 m2, Partition m m1 m2 ->
+  Lemma Partition_cardinal m m1 m2 : Partition m m1 m2 ->
    cardinal m = cardinal m1 + cardinal m2.
   Proof.
   intros.
@@ -2033,33 +2118,39 @@ Section Elt.
   apply Partition_fold with (eqA:=eq); compute; auto with map. congruence.
   Qed.
 
-  Lemma Partition_partition : forall m m1 m2, Partition m m1 m2 ->
-    let f := fun k (_:elt) => mem k m1 in
+  Lemma Partition_partition m m1 m2 : Partition m m1 m2 ->
+    let f := fun k _ => mem k m1 in
    m1 == fst (partition f m) /\ m2 == snd (partition f m).
   Proof.
-  intros m m1 m2 Hm f.
+  intros Hm f.
   assert (Hf : Proper (K.eq==>eq==>eq) f).
-   intros k k' Hk e e' _; unfold f; rewrite Hk; auto.
-  set (m1':= fst (partition f m)).
-  set (m2':= snd (partition f m)).
+  { intros k k' Hk e e' _; unfold f; rewrite Hk; auto. }
   split; rewrite Equal_mapsto_iff; intros k e.
-  rewrite (@partition_iff_1 f Hf m m1') by auto.
-  unfold f.
-  rewrite <- mem_in_iff.
-  destruct Hm as (Hm,Hm').
-  rewrite Hm'.
-  intuition.
-  exists e; auto.
-  elim (Hm k); split; auto; exists e; auto.
-  rewrite (@partition_iff_2 f Hf m m2') by auto.
-  unfold f.
-  rewrite <- not_mem_in_iff.
-  destruct Hm as (Hm,Hm').
-  rewrite Hm'.
-  intuition.
-  elim (Hm k); split; auto; exists e; auto.
-  elim H1; exists e; auto.
+  - rewrite partition_iff1; auto. unfold f.
+    rewrite <- mem_in_iff. destruct Hm as (Hm,->). firstorder.
+  - rewrite partition_iff2; auto. unfold f.
+    rewrite <- not_mem_in_iff. destruct Hm as (Hm,->). firstorder.
   Qed.
+
+  (** * Emulation of some functions lacking in the interface *)
+
+  (** [update] adds to [m1] all the bindings of [m2]. It can be seen as
+     an [union] operator which gives priority to its 2nd argument
+     in case of binding conflit. *)
+
+  Definition update m1 m2 := fold (@add _) m2 m1.
+
+  (** [restrict] keeps from [m1] only the bindings whose key is in [m2].
+      It can be seen as an [inter] operator, with priority to its 1st argument
+      in case of binding conflit. *)
+
+  Definition restrict m1 m2 := filter (fun k _ => mem k m2) m1.
+
+  (** [diff] erases from [m1] all bindings whose key is in [m2]. *)
+
+  Definition diff m1 m2 := filter (fun k _ => negb (mem k m2)) m1.
+
+  (** Properties of these abbreviations *)
 
   Lemma update_mapsto_iff : forall m m' k e,
    MapsTo k e (update m m') <->
@@ -2140,112 +2231,7 @@ Section Elt.
   intros ((e,H),H'); exists e; rewrite restrict_mapsto_iff; auto.
   Qed.
 
-  (** specialized versions analyzing only keys (resp. bindings) *)
-
-  Definition filter_dom (f : key -> bool) := filter (fun k _ => f k).
-  Definition filter_range (f : elt -> bool) := filter (fun _ => f).
-  Definition for_all_dom (f : key -> bool) := for_all (fun k _ => f k).
-  Definition for_all_range (f : elt -> bool) := for_all (fun _ => f).
-  Definition exists_dom (f : key -> bool) := exists_ (fun k _ => f k).
-  Definition exists_range (f : elt -> bool) := exists_ (fun _ => f).
-  Definition partition_dom (f : key -> bool) := partition (fun k _ => f k).
-  Definition partition_range (f : elt -> bool) := partition (fun _ => f).
-
  End Elt.
-
- Instance Disjoint_m {elt} : Proper (Eqdom ==> Eqdom ==> iff) (@Disjoint elt).
- Proof.
-  intros m1 m1' Hm1 m2 m2' Hm2. unfold Disjoint. split; intros.
-  rewrite <- Hm1, <- Hm2; auto.
-  rewrite Hm1, Hm2; auto.
- Qed.
-
- Instance Partition_m {elt} :
-   Proper (Equal ==> Equal ==> Equal ==> iff) (@Partition elt).
- Proof.
-  intros m1 m1' Hm1 m2 m2' Hm2 m3 m3' Hm3. unfold Partition.
-  rewrite <- Hm2, <- Hm3.
-  split; intros (H,H'); split; auto; intros.
-  rewrite <- Hm1, <- Hm2, <- Hm3; auto.
-  rewrite Hm1, Hm2, Hm3; auto.
- Qed.
-
-(*
- Instance filter_m0 {elt} (f:key->elt->bool) :
-   Proper (K.eq==>Logic.eq==>Logic.eq) f ->
-   Proper (Equal==>Equal) (filter f).
- Proof.
-  intros Hf m m' Hm. apply Equal_mapsto_iff. intros.
-  now rewrite !filter_iff, Hm.
- Qed.
-*)
-
- Instance filter_m {elt} :
-   Proper ((K.eq==>Logic.eq==>Logic.eq)==>Equal==>Equal) (@filter elt).
- Proof.
-  intros f f' Hf m m' Hm. unfold filter.
-  rewrite 2 fold_spec_right.
-  set (l := rev (bindings m)).
-  set (l' := rev (bindings m')).
-  set (op := fun (f:key->elt->bool) =>
-             uncurry (fun k e acc => if f k e then add k e acc else acc)).
-  change (fold_right (op f) empty l == fold_right (op f') empty l').
-  assert (Hl : NoDupA eq_key l).
-  { apply NoDupA_rev. apply eqk_equiv. apply bindings_spec2w. }
-  assert (Hl' : NoDupA eq_key l').
-  { apply NoDupA_rev. apply eqk_equiv. apply bindings_spec2w. }
-  assert (H : PermutationA eq_key_elt l l').
-  { apply NoDupA_equivlistA_PermutationA.
-    - apply eqke_equiv.
-    - now apply NoDupA_eqk_eqke.
-    - now apply NoDupA_eqk_eqke.
-    - intros (k,e); unfold l, l'. rewrite 2 InA_rev, 2 bindings_spec1.
-      rewrite Equal_mapsto_iff in Hm. apply Hm. }
-  destruct (PermutationA_decompose (eqke_equiv _) H) as (l0,(P,E)).
-  transitivity (fold_right (op f) empty l0).
-  - apply fold_right_equivlistA_restr2
-     with (eqA:=Logic.eq)(R:=complement eq_key); auto with *.
-    + intros p p' <- acc acc' Hacc.
-      destruct p as (k,e); unfold op, uncurry; simpl.
-      destruct (f k e); now rewrite Hacc.
-    + apply complement_Symmetric, RelCompFun_Symmetric; auto with *.
-    + intros (k,e) (k',e') z z'.
-      unfold op, complement, uncurry, eq_key; simpl.
-      intros Hk Hz.
-      destruct (f k e), (f k' e'); rewrite <- Hz; try reflexivity.
-      now apply add_add_2.
-    + apply NoDupA_incl with eq_key; trivial. intros; subst; now compute.
-    + apply PermutationA_preserves_NoDupA with l; auto with *.
-      apply Permutation_PermutationA; auto with *.
-      apply NoDupA_incl with eq_key; trivial. intros; subst; now compute.
-    + apply NoDupA_altdef. apply NoDupA_rev. apply eqk_equiv.
-      apply bindings_spec2w.
-    + apply PermutationA_equivlistA; auto with *.
-      apply Permutation_PermutationA; auto with *.
-  - clearbody l'. clear l Hl Hl' H P m m' Hm.
-    induction E.
-    + reflexivity.
-    + simpl. destruct x as (k,e), x' as (k',e').
-      unfold op, uncurry at 1 3; simpl.
-      destruct H; simpl in *. rewrite <- (Hf _ _ H _ _ H0).
-      destruct (f k e); trivial. now f_equiv.
- Qed.
-
- Instance for_all_m {elt} :
-   Proper ((K.eq==>Logic.eq==>Logic.eq)==>Equal==>Logic.eq) (@for_all elt).
- Proof.
- intros f f' Hf m m' Hm. rewrite 2 for_all_filter.
- f_equiv. apply Equal_Eqdom. apply filter_m; auto.
- intros k k' Hk e e' He. f_equal. now apply Hf.
- Qed.
-
- Instance exists_m {elt} :
-   Proper ((K.eq==>Logic.eq==>Logic.eq)==>Equal==>Logic.eq)
-          (@ViaFold.exists_ elt).
- Proof.
- intros f f' Hf m m' Hm. rewrite 2 exists_filter.
- f_equal. f_equiv. apply Equal_Eqdom. apply filter_m; auto.
- Qed.
 
  Fact diamond_add {elt} : Diamond Equal (@add elt).
  Proof.
@@ -2279,7 +2265,6 @@ Section Elt.
   clear. intros x x' Hx e e' He. now rewrite Hx.
  Qed.
 
- End ViaFold.
 End Properties.
 
 (** * Properties specific to maps with ordered keys *)
@@ -2383,7 +2368,7 @@ Module OrdProperties (K:OrderedType)(M:S K).
       rewrite gtb_1 in H3.
       destruct y; destruct x0; klean.
       inversion_clear H2.
-      * red in H4; klean; destruct H4; simpl in *. F.order.
+      * red in H4. klean; destruct H4; simpl in *. F.order.
       * rewrite filter_InA in H4; auto with *; destruct H4.
         rewrite leb_1 in H4. klean; F.order.
   - intros (k,e').

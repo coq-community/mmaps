@@ -6,7 +6,7 @@
     Licence : LGPL 2.1, see file LICENSE. *)
 
 From Coq Require Import Bool PeanoNat BinPos Orders OrdersEx OrdersLists.
-From MMaps Require Import MoreList Comparisons Interface.
+From MMaps Require Import Utils Comparisons Interface.
 
 Set Implicit Arguments.
 Local Open Scope lazy_bool_scope.
