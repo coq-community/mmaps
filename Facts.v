@@ -2172,6 +2172,35 @@ Section Elt.
 
   (** * Emulation of some functions lacking in the interface *)
 
+  (** [update] now mimics the one of OCaml : [update x f m] returns a map
+      containing the same bindings as m, except for the binding of
+      x. Depending on the value of y where y is [f (find x m)], the
+      binding of x is added, removed or updated. If y is None, the
+      binding is removed if it exists; otherwise, if y is [Some z] then
+      x is associated to z in the resulting map.
+      Note : A direct implementation could do that in one tree traversal,
+      here we're doing that in two, without garantee on physical equality *)
+
+  Definition update (x:key)(f : option elt -> option elt) m :=
+   match f (find x m) with
+   | Some e => add x e m
+   | None => remove x m
+   end.
+
+  (** [union] mimics the OCaml operation : [union f m1 m2] computes a
+      map whose keys is the union of keys of m1 and of m2. When the same
+      binding is defined in both arguments, the function f is used to
+      combine them. This is a special case of merge. *)
+
+  Definition union (f : key -> elt -> elt -> option elt) :=
+    let f' := fun k o1 o2 =>
+                match o1,o2 with
+                | Some v1, Some v2 => f k v1 v2
+                | o,None | None,o => o
+                end
+    in
+    merge f'.
+
   (** [extend] adds to [m1] all the bindings of [m2]. It can be seen as
      an [union] operator which gives priority to its 2nd argument
      in case of binding conflit. *)
@@ -2190,6 +2219,48 @@ Section Elt.
 
   (** Properties of these abbreviations *)
 
+  Lemma update_spec1 (f:option elt->option elt) m x :
+   find x (update x f m) = f (find x m).
+  Proof.
+  unfold update. destruct f; [apply add_spec1 | apply remove_spec1].
+  Qed.
+
+  Lemma update_spec2 (f:option elt->option elt) m x y :
+   ~K.eq x y -> find y (update x f m) = find y m.
+  Proof.
+  intros NE. unfold update.
+  destruct f; [apply add_spec2 | apply remove_spec2]; auto.
+  Qed.
+
+  Global Instance update_m : Proper (K.eq==>(eq==>eq)==>Equal==>Equal) update.
+  Proof.
+  intros x x' Hx f f' Hf m m' Hm. unfold update.
+  rewrite <- Hx. rewrite <- Hm at 1. rewrite <- (Hf (find x m)) by auto.
+  destruct f; f_equiv; auto.
+  Qed.
+
+  Lemma union_spec (f:key->elt->elt->option elt) m1 m2 x :
+    Proper (K.eq==>eq==>eq==>eq) f ->
+    find x (union f m1 m2) =
+    match find x m1, find x m2 with
+    | Some e1, Some e2 => f x e1 e2
+    | o,None | None,o => o
+    end.
+  Proof.
+  intros Hf. unfold union. rewrite merge_spec1mn; auto.
+  - destruct find, find; auto.
+  - clear x. intros x x' Hx o1 o1' <- o2 o2' <-.
+    destruct o1, o2; auto. apply Hf; auto.
+  Qed.
+
+  Global Instance union_m :
+    Proper ((K.eq==>eq==>eq==>eq)==>Equal==>Equal==>Equal) union.
+  Proof.
+  intros f f' Hf m1 m1' Hm1 m2 m2' Hm2. unfold union.
+  f_equiv; auto. clear -Hf. intros x x' Hx o1 o1' <- o2 o2' <-.
+  destruct o1, o2; auto. apply Hf; auto.
+  Qed.
+
   Lemma extend_mapsto_iff : forall m m' k e,
    MapsTo k e (extend m m') <->
     (MapsTo k e m' \/ (MapsTo k e m /\ ~In k m')).
@@ -2197,12 +2268,10 @@ Section Elt.
   unfold extend.
   intros m m'.
   pattern m', (fold (@add _) m' m). apply fold_rec.
-
   - intros m0 Hm0 k e.
     assert (~In k m0) by (intros (e0,He0); apply (Hm0 k e0); auto).
     intuition.
     elim (Hm0 k e); auto.
-
   - intros k e m0 m1 m2 _ Hn Hadd IH k' e'.
     change (m2 == add k e m1) in Hadd.
     rewrite Hadd, 2 add_mapsto_iff, IH, add_in_iff. clear IH. intuition.
