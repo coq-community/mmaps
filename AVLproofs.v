@@ -543,7 +543,7 @@ Qed.
 Instance filter_avl (f:key->elt->bool) m `{!Avl m} : Avl (filter f m).
 Proof.
  induction m; simpl; auto. inv_avl.
- destruct f; auto using join_avl, concat_avl.
+ destruct f; [apply join_avl | apply concat_avl ]; auto.
 Qed.
 
 Instance partition_avl1 (f:key->elt->bool) m `{!Avl m} :
@@ -551,15 +551,15 @@ Instance partition_avl1 (f:key->elt->bool) m `{!Avl m} :
 Proof.
  induction m; simpl; auto. inv_avl.
  destruct partition, partition, f; simpl in *;
-  auto using join_avl, concat_avl.
+ [apply join_avl | apply concat_avl]; auto.
 Qed.
 
 Instance partition_avl2 (f:key->elt->bool) m `{!Avl m} :
- Avl (fst (partition f m)).
+ Avl (snd (partition f m)).
 Proof.
  induction m; simpl; auto. inv_avl.
  destruct partition, partition, f; simpl in *;
-  auto using join_avl, concat_avl.
+ [apply concat_avl | apply join_avl]; auto.
 Qed.
 
 End Elt.

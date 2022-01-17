@@ -526,7 +526,7 @@ Lemma allkeys_node {elt} P h l x (e:elt) r :
   Proper (K.eq ==> iff) P ->
   AllKeys P (Node h l x e r) <-> AllKeys P l /\ P x /\ AllKeys P r.
 Proof.
- unfold AllKeys. setoid_rewrite in_node. firstorder.
+ unfold AllKeys. setoid_rewrite in_node. firstorder. apply H0; autom.
 Qed.
 
 Global Instance allkeys_m {elt} :

@@ -1117,7 +1117,7 @@ Lemma bindings_sort (m:t elt) : sort O.ltk (bindings m) <-> Ok m.
 Proof.
  split; auto using bindings_spec2.
  induction m as [|c l IHl x v r IHr].
- - unfold bindings. simpl. firstorder.
+ - unfold bindings. simpl. constructor.
  - rewrite bindings_node; simpl.
    rewrite sort_app_key, sort_cons_key, (@ApartL_consr _ elt). (* TODO *)
    rewrite <- bindings_above, <- bindings_below. intuition; ok.
