@@ -24,7 +24,7 @@ Module Import II := MoreInt I.
 Local Open Scope Int_scope.
 Import GenTree.PairNotations. (* #1 and #2 for fst and snd *)
 
-Ltac omega_max := i2z_refl; lia.
+Ltac lia_max := i2z_refl; lia.
 Ltac mysubst :=
  match goal with
    | E : _=_ |- _ => rewrite E in *; clear E; mysubst
@@ -133,7 +133,7 @@ Proof.
  - rewrite mincard_eqn.
    apply -> Nat.succ_le_mono.
    apply Nat.add_le_mono; eauto.
-   apply mincard_le_mono; omega.
+   apply mincard_le_mono; lia.
 Qed.
 
 (** [mincard] has an exponential behavior *)
@@ -144,7 +144,7 @@ Proof.
  do 3 (destruct n; [simpl; auto with arith|]).
  change (2 + S (S (S n))) with (S (S (S (2+n)))).
  rewrite 2 mincard_eqn.
- generalize (IH n) (IH (2+n)). omega.
+ generalize (IH n) (IH (2+n)). lia.
 Qed.
 
 Lemma mincard_even n : n<>0 -> 2^n <= mincard (2*n).
@@ -166,7 +166,7 @@ Proof.
  - subst; auto.
  - transitivity (mincard (2*n)).
    * now apply mincard_even.
-   * apply mincard_le_mono. omega.
+   * apply mincard_le_mono. lia.
 Qed.
 
 Lemma mincard_log n : n <= 2 * Nat.log2 (mincard n) + 1.
@@ -179,10 +179,10 @@ Proof.
    apply (@mincard_lt_mono 0); auto with arith.
    apply mincard_odd.
  + destruct (Nat.eq_dec m 0); [subst; simpl; auto|].
-   transitivity (2*Nat.log2 (mincard (2*m))); [|omega].
+   transitivity (2*Nat.log2 (mincard (2*m))); [|lia].
    apply Nat.mul_le_mono_l.
    apply Nat.log2_le_pow2.
-   apply (@mincard_lt_mono 0); omega.
+   apply (@mincard_lt_mono 0); lia.
    now apply mincard_even.
 Qed.
 
@@ -193,9 +193,9 @@ Lemma maxdepth_heigth elt (s:t elt) : Avl s ->
  Z.of_nat (maxdepth s) = i2z (height s).
 Proof.
  induction 1.
- simpl. omega_max.
+ simpl. lia_max.
  simpl maxdepth. simpl height. subst h.
- rewrite Nat2Z.inj_succ, Nat2Z.inj_max. omega_max.
+ rewrite Nat2Z.inj_succ, Nat2Z.inj_max. lia_max.
 Qed.
 
 Lemma mincard_maxdepth elt (s:t elt) :
@@ -210,13 +210,13 @@ Proof.
      apply Nat.add_le_mono; eauto.
      apply Nat2Z.inj_le. rewrite Nat2Z.inj_add.
      rewrite 2 maxdepth_heigth by auto. simpl Z.of_nat.
-     i2z. omega.
+     i2z. lia.
    * rewrite Nat.add_comm, mincard_bound.
      apply -> Nat.succ_le_mono.
      apply Nat.add_le_mono; eauto.
      apply Nat2Z.inj_le. rewrite Nat2Z.inj_add.
      rewrite 2 maxdepth_heigth by auto. simpl Z.of_nat.
-     i2z. omega.
+     i2z. lia.
 Qed.
 
 (** We can now prove that the depth of an AVL tree is
@@ -250,7 +250,7 @@ Implicit Type e v : elt.
 Lemma height_non_negative : forall s `{!Avl s}, height s >= 0.
 Proof.
  induction s; simpl; intros; auto with zarith.
- inv_avl; intuition; omega_max.
+ inv_avl; intuition; lia_max.
 Qed.
 
 (** When [H:Avl r], typing [avl_nn H] adds [height r >= 0] *)
@@ -271,7 +271,7 @@ Ltac avl_nns :=
 Lemma height_0 : forall s `{!Avl s}, height s = 0 -> s = Leaf _.
 Proof.
  destruct 1; avl2Avl; intuition; simpl in *.
- avl_nns. simpl in *; exfalso; omega_max.
+ avl_nns. simpl in *; exfalso; lia_max.
 Qed.
 
 (** Results about [avl] *)
@@ -298,7 +298,7 @@ Qed.
 
 Instance singleton_avl x e : Avl (singleton x e).
 Proof.
- unfold singleton. constructor; autom; simpl; omega_max.
+ unfold singleton. constructor; autom; simpl; lia_max.
 Qed.
 
 (** create *)
@@ -331,7 +331,7 @@ Lemma bal_avl :
 Proof.
  intros l x e r; functional induction (bal l x e r); intros; clearf;
  inv_avl; simpl in *; try (when assert_false; avl_nns);
- repeat apply create_avl; simpl in *; auto; omega_max.
+ repeat apply create_avl; simpl in *; auto; lia_max.
 Qed.
 
 Lemma bal_height_1 :
@@ -340,7 +340,7 @@ Lemma bal_height_1 :
     0 <= height (bal l x e r) - max (height l) (height r) <= 1.
 Proof.
  intros l x e r; functional induction (bal l x e r); intros; clearf;
- inv_avl; avl_nns; simpl in *; omega_max.
+ inv_avl; avl_nns; simpl in *; lia_max.
 Qed.
 
 Lemma bal_height_2 :
@@ -349,13 +349,13 @@ Lemma bal_height_2 :
    height (bal l x e r) == max (height l) (height r) +1.
 Proof.
  intros l x e r; functional induction (bal l x e r); intros; clearf;
- inv_avl; simpl in *; omega_max.
+ inv_avl; simpl in *; lia_max.
 Qed.
 
-Ltac omega_bal := match goal with
+Ltac lia_bal := match goal with
   | Hl:Avl ?l, Hr:Avl ?r |- context [ bal ?l ?x ?e ?r ] =>
      generalize (@bal_height_1 l x e r Hl Hr) (@bal_height_2 l x e r Hl Hr);
-     omega_max
+     lia_max
   end.
 
 (** add *)
@@ -368,19 +368,19 @@ Lemma add_avl_1 : forall s x e `{!Avl s},
  Avl (add x e s) /\ 0 <= height (add x e s) - height s <= 1.
 Proof.
  induct s; inv_avl.
- - intuition; try constructor; simpl; autom; omega_max.
+ - intuition; try constructor; simpl; autom; lia_max.
  - (* Eq *)
-   simpl. intuition; omega_max.
+   simpl. intuition; lia_max.
  - (* Lt *)
    destruct (IHl x e); trivial.
    split.
-   * apply bal_avl; trivial; omega_max.
-   * omega_bal.
+   * apply bal_avl; trivial; lia_max.
+   * lia_bal.
  - (* Gt *)
    destruct (IHr x e); trivial.
    split.
-   * apply bal_avl; trivial; omega_max.
-   * omega_bal.
+   * apply bal_avl; trivial; lia_max.
+   * lia_bal.
 Qed.
 
 Instance add_avl s x e `{!Avl s} : Avl (add x e s).
@@ -403,40 +403,40 @@ Proof.
  join_tac l x e r; clearf.
 
  - simpl. destruct (@add_avl_1 r x e); auto. split; trivial.
-   avl_nns; omega_max.
+   avl_nns; lia_max.
 
  - remtree (Node lh ll lx ld lr) l.
    split; autok.
    destruct (@add_avl_1 l x e); auto.
-   simpl. avl_nns; omega_max.
+   simpl. avl_nns; lia_max.
 
  - remtree (Node rh rl rx rd rr) r.
    inv_avl.
    destruct (Hlr x e r); trivial; clear Hrl Hlr.
    set (j := join lr x e r) in *; clearbody j.
    simpl.
-   assert (-(3) <= height ll - height j <= 3) by omega_max.
+   assert (-(3) <= height ll - height j <= 3) by lia_max.
    split.
    * apply bal_avl; trivial.
-   * omega_bal.
+   * lia_bal.
 
  - remtree (Node lh ll lx ld lr) l.
    inv_avl.
    destruct Hrl; trivial; clear Hlr.
    set (j := join l x e rl) in *; clearbody j.
    simpl.
-   assert (-(3) <= height j - height rr <= 3) by omega_max.
+   assert (-(3) <= height j - height rr <= 3) by lia_max.
    split.
    * apply bal_avl; trivial.
-   * omega_bal.
+   * lia_bal.
 
  - clear Hrl Hlr.
    remtree (Node lh ll lx ld lr) l.
    remtree (Node rh rl rx rd rr) r.
-   assert (-(2) <= height l - height r <= 2) by omega_max.
+   assert (-(2) <= height l - height r <= 2) by lia_max.
    split.
    * apply create_avl; trivial.
-   * rewrite create_height; trivial; omega_max.
+   * rewrite create_height; trivial; lia_max.
 Qed.
 
 Instance join_avl l x e r `{!Avl l, !Avl r} : Avl (join l x e r).
@@ -452,12 +452,12 @@ Lemma remove_min_avl_1 : forall l x e r h `{!Avl (Node h l x e r)},
 Proof.
  intros l x e r; functional induction (remove_min l x e r);
  subst; simpl in *; intros.
- - inv_avl; simpl in *; split; auto. avl_nns; omega_max.
+ - inv_avl; simpl in *; split; auto. avl_nns; lia_max.
  - mysubst. inv_avl'; simpl in *.
    edestruct IHp; clear IHp; [eauto|].
    split.
-   * apply bal_avl; trivial; omega_max.
-   * omega_bal.
+   * apply bal_avl; trivial; lia_max.
+   * lia_bal.
 Qed.
 
 Instance remove_min_avl l x e r h `{!Avl (Node h l x e r)} :
@@ -475,13 +475,13 @@ Lemma append_avl_1 : forall s1 s2 `{!Avl s1, !Avl s2},
 Proof.
  intros s1 s2; functional induction (append s1 s2); intros;
  try (factornode s1).
- - simpl; split; auto; avl_nns; omega_max.
- - simpl; split; auto; avl_nns; simpl in *; omega_max.
+ - simpl; split; auto; avl_nns; lia_max.
+ - simpl; split; auto; avl_nns; simpl in *; lia_max.
  - generalize (@remove_min_avl_1 l2 x2 d2 r2 _ _).
    mysubst. destruct 1; simpl in *.
    split.
-   * apply bal_avl; trivial. simpl; omega_max.
-   * omega_bal.
+   * apply bal_avl; trivial. simpl; lia_max.
+   * lia_bal.
 Qed.
 
 Lemma append_avl s1 s2 `{!Avl s1, !Avl s2} :
@@ -497,20 +497,20 @@ Lemma remove_avl_1 : forall s x `{!Avl s},
  Avl (remove x s) /\ 0 <= height s - height (remove x s) <= 1.
 Proof.
  induct s; inv_avl.
- - intuition; omega_max.
+ - intuition; lia_max.
  - (* Eq *)
    generalize (@append_avl_1 l r).
-   intuition omega_max.
+   intuition lia_max.
  - (* Lt *)
    destruct (IHl x); trivial.
    split.
-   * apply bal_avl; trivial; omega_max.
-   * omega_bal.
+   * apply bal_avl; trivial; lia_max.
+   * lia_bal.
  - (* Gt *)
    destruct (IHr x); trivial.
    split.
-   * apply bal_avl; trivial; omega_max.
-   * omega_bal.
+   * apply bal_avl; trivial; lia_max.
+   * lia_bal.
 Qed.
 
 Instance remove_avl s x `{!Avl s} : Avl (remove x s).

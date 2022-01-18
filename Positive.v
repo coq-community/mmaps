@@ -789,16 +789,16 @@ Module PositiveMap <: S PositiveOrderedTypeBits.
           destruct bindings, is_empty; simpl; intuition easy. }
       * intros (x,d) (y,d').
         rewrite !in_app_iff, !in_map_iff.
-        intros ((k,e) & [= <- <-] & _) [H|((k',e') & [= <- <-] & _)];
+        intros ((k,e) & [= <- <-] & _) [P|((k',e') & [= <- <-] & _)];
           simpl; auto.
-        destruct o1; try easy. simpl in H.
-        now destruct H as [[= <- <-]|[ ]].
+        destruct o1; try easy. simpl in P.
+        now destruct P as [[= <- <-]|[ ]].
       * intros (x,d) (y,d').
         rewrite !in_app_iff, !in_map_iff.
-        intros ((k,e) & [= <- <-] & _) [H|((k',e') & [= <- <-] & _)];
+        intros ((k,e) & [= <- <-] & _) [P|((k',e') & [= <- <-] & _)];
           simpl; auto.
-        destruct o2; try easy. simpl in H.
-        now destruct H as [[= <- <-]|[ ]].
+        destruct o2; try easy. simpl in P.
+        now destruct P as [[= <- <-]|[ ]].
   Qed.
 
   Lemma compare_spec m1 m2 :
