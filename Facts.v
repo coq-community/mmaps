@@ -1335,7 +1335,7 @@ Section Elt.
      P i -> (forall k e a, MapsTo k e m -> P a -> P (f k e a)) ->
      P (fold f m i).
   Proof.
-  intros. apply fold_rec_bis with (P0:=fun _ => P); auto.
+  intros. eapply fold_rec_bis; auto.
   Qed.
 
   (** [fold_rec_weak] is a weaker principle than [fold_rec_bis] :
