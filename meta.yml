@@ -1,0 +1,78 @@
+---
+fullname: Modular Finite Maps over Ordered Types
+shortname: coq-mmaps
+organization: coq-community
+opam_name: coq-mmaps
+community: true
+action: true
+
+synopsis: Several implementations of finite maps over arbitrary ordered types using Coq functors
+
+description: |-
+  This project contains several implementations of finite maps
+  over arbitrary ordered types using Coq functors. This is an
+  updated version of Coq Stdlib's FMaps. It is meant to complement
+  the MSet library.
+
+authors:
+- name: Pierre Letouzey
+  initial: true
+
+maintainers:
+- name: Pierre Letouzey
+  nickname: letouzey
+- name: Karl Palmskog
+  nickname: palmskog
+
+opam-file-maintainer: palmskog@gmail.com
+
+opam-file-version: dev
+
+license:
+  fullname: GNU Lesser General Public License v2.1
+  identifier: LGPL-2.1-only
+
+supported_coq_versions:
+  text: 8.13 to 8.16
+  opam: '{>= "8.13" & < "8.17~"}'
+
+tested_coq_opam_versions:
+- version: '8.16'
+- version: '8.15'
+- version: '8.14'
+- version: '8.13'
+
+namespace: MMaps
+
+keywords:
+- name: finite maps
+- name: red-black trees
+- name: AVL trees
+- name: ordered types
+
+categories:
+- name: Computer Science/Data Types and Data Structures
+
+build: |-
+  ## Building and installation instructions
+
+  To build and install manually, do:
+
+  ``` shell
+  git clone https://github.com/coq-community/coq-mmaps.git
+  cd coq-mmaps
+  make   # or make -j <number-of-cores-on-your-machine> 
+  make install
+  ```
+
+documentation: |-
+  ## Documentation
+
+  As a starting point, you may consider [MMaps.Interface](Interface.v)
+  and [MMaps.demo](demo.v).
+
+  **Caveat** : This is work-in-progress, and might still change
+  in the future, including `MMaps.Interface`.
+
+  This is open source: patches, questions, comments are most welcome!
+---
