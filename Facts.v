@@ -1335,7 +1335,7 @@ Section Elt.
      P i -> (forall k e a, MapsTo k e m -> P a -> P (f k e a)) ->
      P (fold f m i).
   Proof.
-  intros. apply fold_rec_bis with (P0:=fun _ => P); auto.
+  intros. eapply fold_rec_bis; auto.
   Qed.
 
   (** [fold_rec_weak] is a weaker principle than [fold_rec_bis] :
@@ -1747,7 +1747,7 @@ Section Elt.
     is_empty m = false <-> (exists x e, List.In (x,e) (bindings m)).
   Proof.
   rewrite <- not_true_iff_false, is_empty_bindings.
-  destruct (bindings m) as [|(x,e) l]; simpl; firstorder.
+  destruct (bindings m) as [|(x,e) l]; simpl; firstorder; try congruence.
   exists x, e. now left.
   Qed.
 
@@ -1826,7 +1826,7 @@ Section Elt.
           (snd (prodmap (@bindings _) (partition f m)))
      by now destruct partition.
    rewrite partition_spec, filter_spec, partition_filter.
-   simpl. apply filter_ext; auto. now intros (x,e) ? <-.
+   simpl. apply filter_ext; auto. now intros (x,e).
   Qed.
 
   (** Morphisms *)

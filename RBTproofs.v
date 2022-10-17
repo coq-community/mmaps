@@ -9,7 +9,7 @@
 
     This is an adapation of Coq [MSetRBT.BalanceProps] to maps. *)
 
-From Coq Require Import Bool BinPos Pnat Setoid SetoidList PeanoNat.
+From Coq Require Import Bool BinPos Pnat Setoid SetoidList Arith.
 From Coq Require Import Orders OrdersFacts OrdersLists.
 From MMaps Require Import Interface GenTree RBT.
 
