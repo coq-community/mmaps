@@ -296,7 +296,7 @@ Local Infix "==" := K.eq (at level 70).
 Class LessThan (A B : Type) := lessthan : A -> B -> Prop.
 Local Infix "<" := lessthan.
 
-Instance lt_key_key : LessThan K.t K.t := K.lt.
+#[export] Instance lt_key_key : LessThan K.t K.t := K.lt.
 
 (** ** Occurrence in a tree *)
 
@@ -333,11 +333,11 @@ Definition AllKeys elt (P:key->Prop) (m : t elt) :=
     [m < x] when [x] is strictly greater than any key in [m].
     [m < m'] when all keys in [m] are lower than all keys in [m']. *)
 
-Instance lt_key_map elt : LessThan K.t (t elt) :=
+#[export] Instance lt_key_map elt : LessThan K.t (t elt) :=
  fun x => AllKeys (lessthan x).
-Instance lt_map_key elt : LessThan (t elt) K.t :=
+#[export] Instance lt_map_key elt : LessThan (t elt) K.t :=
  fun m x => AllKeys (fun y => y < x) m.
-Instance lt_map_map elt : LessThan (t elt) (t elt) :=
+#[export] Instance lt_map_map elt : LessThan (t elt) (t elt) :=
  fun m m' => AllKeys (fun x => x < m') m.
 
 (** [Bst t] : [t] is a binary search tree *)
@@ -423,7 +423,7 @@ Ltac invok := inv_all; chok.
 Ltac autom := auto with map.
 Ltac eautom := eauto with map.
 
-Ltac intuition_m := repeat (intuition; inv MapsTo).
+Ltac intuition_m := repeat (intuition (auto with map); inv MapsTo).
 
 Ltac redk :=
   match goal with
@@ -438,9 +438,9 @@ Arguments Ok {elt} m.
 Arguments Equal {elt} m m'.
 Arguments Eqdom {elt} m m'.
 
-Global Instance Equal_equiv {elt} : Equivalence (@Equal elt).
+ #[export] Instance Equal_equiv {elt} : Equivalence (@Equal elt).
 Proof. split; congruence. Qed.
-Global Instance Eqdom_equiv {elt} : Equivalence (@Eqdom elt).
+ #[export] Instance Eqdom_equiv {elt} : Equivalence (@Eqdom elt).
 Proof.
  split; try firstorder. intros x y z E E' k. now rewrite (E k), (E' k).
 Qed.
@@ -465,7 +465,7 @@ Proof.
 Qed.
 Local Hint Immediate mapsto_eq : map.
 
-Global Instance MapsTo_compat {elt} :
+ #[export] Instance MapsTo_compat {elt} :
   Proper (K.eq==>Logic.eq==>Logic.eq==>iff) (@MapsTo elt).
 Proof.
  split; subst; now apply mapsto_eq.
@@ -483,7 +483,7 @@ Proof.
  intuition_m; subst; auto with map.
 Qed.
 
-Global Instance in_compat {elt} :
+ #[export] Instance in_compat {elt} :
   Proper (K.eq==>Logic.eq==>iff) (@In elt).
 Proof.
  intros x x' E m m' <-.
@@ -502,7 +502,9 @@ Proof.
  exists e. intuition.
 Qed.
 
-Ltac intuition_in := rewrite ?in_node, ?in_leaf; intuition.
+Ltac intuition_in :=
+ rewrite ?in_node, ?in_leaf;
+ intuition (auto with map typeclass_instances).
 
 Lemma in_left {elt} l x (e:elt) r h y : y ∈ l -> y ∈ (Node h l x e r).
 Proof.
@@ -529,7 +531,7 @@ Proof.
  unfold AllKeys. setoid_rewrite in_node. firstorder. apply H0; autom.
 Qed.
 
-Global Instance allkeys_m {elt} :
+ #[export] Instance allkeys_m {elt} :
  Proper ((K.eq ==> iff) ==> Eqdom ==> iff) (@AllKeys elt).
 Proof.
  intros P P' HP m m' Hm. unfold AllKeys.
@@ -551,7 +553,7 @@ Proof.
  apply allkeys_node with (P := fun z => z < x). now intros ? ? ->.
 Qed.
 
-Global Instance above_m {elt} :
+ #[export] Instance above_m {elt} :
   Proper (@Eqdom elt ==> K.eq ==> iff) lessthan.
 Proof.
  intros until 2. apply allkeys_m; auto. split; F.order.
@@ -568,13 +570,13 @@ Proof.
  apply allkeys_node. now intros ? ? ->.
 Qed.
 
-Global Instance below_m {elt} :
+ #[export] Instance below_m {elt} :
   Proper (K.eq ==> @Eqdom elt ==> iff) lessthan.
 Proof.
  intros until 2. apply allkeys_m; auto. split; F.order.
 Qed.
 
-Global Instance apart_m {elt} :
+ #[export] Instance apart_m {elt} :
  Proper (@Eqdom elt ==> @Eqdom elt ==> iff) lessthan.
 Proof.
  intros until 2. apply allkeys_m; auto.
@@ -652,7 +654,7 @@ Qed.
 
 (** Bst is decidable *)
 
-Instance Bst_Ok {elt} (m : t elt) (B : Bst m) : Ok m := B.
+#[export] Instance Bst_Ok {elt} (m : t elt) (B : Bst m) : Ok m := B.
 
 Fixpoint above {elt} x (m : t elt) :=
  match m with
@@ -707,9 +709,9 @@ Qed.
 Lemma isok_iff {elt} (m:t elt) : Ok m <-> isok m = true.
 Proof.
  induction m as [|c l IHl y v r IHr]; simpl.
- - intuition.
+ - intuition (auto with map).
  - rewrite !andb_true_iff, <- IHl, <-IHr, <- below_iff, <- above_iff.
-   intuition; invok; auto.
+   intuition (auto with map); invok; auto.
 Qed.
 
 Lemma isok_spec {elt} (m:t elt) : reflect (Ok m) (isok m).
@@ -811,7 +813,7 @@ Qed.
 
 (** * Empty map *)
 
-Global Instance empty_ok : Ok (empty elt).
+ #[export] Instance empty_ok : Ok (empty elt).
 Proof.
  constructor.
 Qed.
@@ -1130,7 +1132,7 @@ Proof.
 induction m; simpl; intuition_in.
 Qed.
 
-Global Instance map_ok m `{!Ok m} : Ok (map f m).
+ #[export] Instance map_ok m `{!Ok m} : Ok (map f m).
 Proof.
 induction m; simpl; ok; intro; rewrite map_in; order.
 Qed.
@@ -1152,7 +1154,7 @@ Proof.
 induction m; simpl; intuition_in.
 Qed.
 
-Global Instance mapi_ok m `{!Ok m} : Ok (mapi f m).
+ #[export] Instance mapi_ok m `{!Ok m} : Ok (mapi f m).
 Proof.
 induction m; simpl; ok; intro; rewrite mapi_in; order.
 Qed.
@@ -1203,7 +1205,7 @@ Lemma maxdepth_log_cardinal m : m <> Leaf _ ->
  Nat.log2 (cardinal m) < maxdepth m.
 Proof.
  intros H.
- apply Nat.log2_lt_pow2. destruct m; simpl; intuition.
+ apply Nat.log2_lt_pow2. destruct m; simpl; intuition (auto with map arith).
  apply maxdepth_cardinal.
 Qed.
 

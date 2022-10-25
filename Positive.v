@@ -45,9 +45,9 @@ Module PositiveMap <: S PositiveOrderedTypeBits.
   Definition eq_key_elt {A} := @ME.eqke A.
   Definition lt_key {A} := @ME.ltk A.
 
-  Instance eqk_equiv {A} : Equivalence (@eq_key A) := _.
-  Instance eqke_equiv {A} : Equivalence (@eq_key_elt A) := _.
-  Instance ltk_strorder {A} : StrictOrder (@lt_key A) := _.
+  #[export] Instance eqk_equiv {A} : Equivalence (@eq_key A) := _.
+  #[export] Instance eqke_equiv {A} : Equivalence (@eq_key_elt A) := _.
+  #[export] Instance ltk_strorder {A} : StrictOrder (@lt_key A) := _.
 
   Inductive tree (A : Type) :=
     | Leaf : tree A

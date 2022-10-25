@@ -362,19 +362,19 @@ Proof.
  unfold singleton. now rewrite bindings_node.
 Qed.
 
-Global Instance singleton_ok x vx : Ok (singleton x vx).
+ #[export] Instance singleton_ok x vx : Ok (singleton x vx).
 Proof.
  unfold singleton. ok.
 Qed.
 
 (** ** makeBlack, MakeRed *)
 
-Global Instance makeBlack_ok m `{!Ok m} : Ok (makeBlack m).
+ #[export] Instance makeBlack_ok m `{!Ok m} : Ok (makeBlack m).
 Proof.
  destruct m; simpl; ok.
 Qed.
 
-Global Instance makeRed_ok m `{!Ok m} : Ok (makeRed m).
+ #[export] Instance makeRed_ok m `{!Ok m} : Ok (makeRed m).
 Proof.
  destruct m; simpl; ok.
 Qed.
@@ -534,19 +534,19 @@ Qed.
 
 (** ** Balancing for insertion *)
 
-Global Instance lbal_ok l x v r `(!Ok l, !Ok r, l < x, x < r) :
+ #[export] Instance lbal_ok l x v r `(!Ok l, !Ok r, l < x, x < r) :
  Ok (lbal l x v r).
 Proof.
  destruct (lbal_match l x v r); ok; invlt; intuition; eautom.
 Qed.
 
-Global Instance rbal_ok l x v r `(!Ok l, !Ok r, l < x, x < r) :
+ #[export] Instance rbal_ok l x v r `(!Ok l, !Ok r, l < x, x < r) :
  Ok (rbal l x v r).
 Proof.
  destruct (rbal_match l x v r); ok; invlt; intuition; eautom.
 Qed.
 
-Global Instance rbal'_ok l x v r `(!Ok l, !Ok r, l < x, x < r) :
+ #[export] Instance rbal'_ok l x v r `(!Ok l, !Ok r, l < x, x < r) :
  Ok (rbal' l x v r).
 Proof.
  destruct (rbal'_match l x v r); ok; invlt; intuition; eautom.
@@ -638,7 +638,7 @@ Proof.
 Qed.
 Local Hint Resolve ins_above ins_below : map.
 
-Global Instance ins_ok m x v `{!Ok m} : Ok (ins x v m).
+ #[export] Instance ins_ok m x v `{!Ok m} : Ok (ins x v m).
 Proof.
  induct m; auto; destmatch;
  (eapply lbal_ok || eapply rbal_ok || ok); auto; treeorder.
@@ -670,7 +670,7 @@ Proof.
  - apply ins_spec2; trivial; order.
 Qed.
 
-Global Instance add_ok m x v `{!Ok m} : Ok (add x v m).
+ #[export] Instance add_ok m x v `{!Ok m} : Ok (add x v m).
 Proof.
  unfold add; autok.
 Qed.
@@ -696,16 +696,16 @@ Qed.
 
 (** ** Balancing for deletion *)
 
-Global Instance lbalS_ok l x v r :
+ #[export] Instance lbalS_ok l x v r :
   forall `(!Ok l, !Ok r, l < x, x < r), Ok (lbalS l x v r).
 Proof.
  case lbalS_match; intros; destmatch; try treeorder; invok; invlt.
- - ok; intuition.
+ - ok; intuition auto.
  - constructor; chok; try treeorder. apply rbal'_ok; treeorder.
  - apply rbal'_ok; treeorder.
 Qed.
 
-Global Instance rbalS_ok l x v r :
+ #[export] Instance rbalS_ok l x v r :
  forall `(!Ok l, !Ok r, l < x, x < r), Ok (rbalS l x v r).
 Proof.
  case rbalS_match; intros; destmatch; try treeorder; invok; invlt.
@@ -820,7 +820,7 @@ Qed.
 
 Hint Rewrite append_in : map.
 
-Global Instance append_ok : forall l r `{!Ok l, !Ok r},
+ #[export] Instance append_ok : forall l r `{!Ok l, !Ok r},
  l < r -> Ok (@append elt l r).
 Proof.
  append_tac l r; trivial; intros OK OK' AP;
@@ -849,7 +849,7 @@ Qed.
 
 Hint Rewrite del_in : map.
 
-Global Instance del_ok m x `{!Ok m} : Ok (del x m).
+ #[export] Instance del_ok m x `{!Ok m} : Ok (del x m).
 Proof.
 induct m.
 - trivial.
@@ -893,7 +893,7 @@ Qed.
 
 Hint Rewrite remove_in : map.
 
-Global Instance remove_ok m x `{!Ok m} : Ok (remove x m).
+ #[export] Instance remove_ok m x `{!Ok m} : Ok (remove x m).
 Proof.
 unfold remove; ok.
 Qed.
@@ -1007,7 +1007,7 @@ Qed.
 
 (** Apart predicate on lists *)
 
-Global Instance lt_klist A B : LessThan (klist A) (klist B)
+ #[export] Instance lt_klist A B : LessThan (klist A) (klist B)
   := fun lA lB =>
       forall ka kb, List.In ka lA -> List.In kb lB -> ka#1 < kb#1.
 
@@ -1120,10 +1120,10 @@ Proof.
  - unfold bindings. simpl. constructor.
  - rewrite bindings_node; simpl.
    rewrite sort_app_key, sort_cons_key, (@ApartL_consr _ elt). (* TODO *)
-   rewrite <- bindings_above, <- bindings_below. intuition; ok.
+   rewrite <- bindings_above, <- bindings_below. intuition auto; ok.
 Qed.
 
-Instance treeify_ok l : sort O.ltk l -> Ok (@treeify elt l).
+#[export] Instance treeify_ok l : sort O.ltk l -> Ok (@treeify elt l).
 Proof.
  intros. apply bindings_sort. rewrite treeify_bindings; auto.
 Qed.
@@ -1206,7 +1206,7 @@ Proof.
  - apply ApartL_consr. eauto using ApartL_eqk_r with map.
 Qed.
 
-Global Instance mapo_ok m `{!Ok m} : Ok (mapo f m).
+ #[export] Instance mapo_ok m `{!Ok m} : Ok (mapo f m).
 Proof.
  unfold mapo. apply treeify_ok. apply mapoL_sorted; simpl; auto.
  - rewrite rev_bindings_rev, rev_involutive. now apply bindings_spec2.
@@ -1327,7 +1327,7 @@ Proof.
        intros (?,?) (?,?); compute; intuition congruence.
 Qed.
 
-Global Instance merge_ok f m m' `{!Ok m, !Ok m'} : Ok (merge f m m').
+ #[export] Instance merge_ok f m m' `{!Ok m, !Ok m'} : Ok (merge f m m').
 Proof.
 apply treeify_ok, mergeL_sorted; auto;
  rewrite ?rev_bindings_rev, ?rev_involutive;
@@ -1635,7 +1635,7 @@ Proof.
  now rewrite treeify_bindings, filter_aux_bindings, app_nil_r.
 Qed.
 
-Global Instance filter_ok f m `(!Ok m) : Ok (filter f m).
+ #[export] Instance filter_ok f m `(!Ok m) : Ok (filter f m).
 Proof.
  apply bindings_sort.
  rewrite filter_spec0.
@@ -1680,10 +1680,10 @@ Lemma partition_spec2 f m :
  Equal (snd (partition f m)) (filter (fun k e => negb (f k e)) m).
 Proof. now rewrite partition_alt. Qed.
 
-Instance partition_ok1 f m `(!Ok m) : Ok (fst (partition f m)).
+#[export] Instance partition_ok1 f m `(!Ok m) : Ok (fst (partition f m)).
 Proof. rewrite partition_alt; now apply filter_ok. Qed.
 
-Instance partition_ok2 f m `(!Ok m) : Ok (snd (partition f m)).
+#[export] Instance partition_ok2 f m `(!Ok m) : Ok (snd (partition f m)).
 Proof. rewrite partition_alt; now apply filter_ok. Qed.
 
 Lemma partition_spec f m `{!Ok m} :

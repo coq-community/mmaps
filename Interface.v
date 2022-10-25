@@ -155,7 +155,8 @@ Module Type WS (K : DecidableType).
 
  Definition In (k:key)(m: t elt) : Prop := exists e:elt, MapsTo k e m.
 
- Global Declare Instance MapsTo_compat :
+ #[export]
+ Declare Instance MapsTo_compat :
    Proper (K.eq==>Logic.eq==>Logic.eq==>iff) MapsTo.
 
  Variable m : t elt.

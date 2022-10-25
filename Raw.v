@@ -91,23 +91,23 @@ Module Type WS (K : DecidableType).
                       t elt -> t elt' ->  t elt''.
   End Ops.
 
-  Declare Instance empty_ok {elt} : Ok (@empty elt).
-  Declare Instance singleton_ok {elt} x (e:elt) : Ok (singleton x e).
-  Declare Instance add_ok {elt} (m:t elt) x e `(!Ok m) :
+  #[export] Declare Instance empty_ok {elt} : Ok (@empty elt).
+  #[export] Declare Instance singleton_ok {elt} x (e:elt) : Ok (singleton x e).
+  #[export] Declare Instance add_ok {elt} (m:t elt) x e `(!Ok m) :
     Ok (add x e m).
-  Declare Instance remove_ok {elt} (m:t elt) x `(!Ok m) :
+  #[export] Declare Instance remove_ok {elt} (m:t elt) x `(!Ok m) :
     Ok (remove x m).
-  Declare Instance filter_ok {elt} f (m:t elt) `(!Ok m) :
+  #[export] Declare Instance filter_ok {elt} f (m:t elt) `(!Ok m) :
     Ok (filter f m).
-  Declare Instance partition_ok1 {elt} f (m:t elt) `(!Ok m) :
+  #[export] Declare Instance partition_ok1 {elt} f (m:t elt) `(!Ok m) :
     Ok (fst (partition f m)).
-  Declare Instance partition_ok2 {elt} f (m:t elt) `(!Ok m) :
+  #[export] Declare Instance partition_ok2 {elt} f (m:t elt) `(!Ok m) :
     Ok (snd (partition f m)).
-  Declare Instance map_ok {elt elt'}(f:elt->elt') m `(!Ok m) :
+  #[export] Declare Instance map_ok {elt elt'}(f:elt->elt') m `(!Ok m) :
     Ok (map f m).
-  Declare Instance mapi_ok {elt elt'}(f:key->elt->elt') m `(!Ok m) :
+  #[export] Declare Instance mapi_ok {elt elt'}(f:key->elt->elt') m `(!Ok m) :
     Ok (mapi f m).
-  Declare Instance merge_ok {elt elt' elt''}
+  #[export] Declare Instance merge_ok {elt elt' elt''}
     (f:key -> option elt -> option elt' -> option elt'') m m'
     `(!Ok m, !Ok m') :
     Ok (merge f m m').
@@ -117,7 +117,7 @@ Module Type WS (K : DecidableType).
 
   Section Specs.
   Context {elt elt' elt'' : Type}.
-  Global Declare Instance MapsTo_compat :
+   #[export] Declare Instance MapsTo_compat :
       Proper (K.eq==>Logic.eq==>Logic.eq==>iff) (@MapsTo elt).
 
   Variable m m' : t elt.
@@ -219,7 +219,7 @@ Module WPack (K : DecidableType) (R : WS K) <: Interface.WS K.
  Record t_ (elt:Type) := Mkt {this :> R.t elt; ok : Ok this}.
  Definition t := t_.
 
- Existing Instance ok.
+ #[export] Existing Instance ok.
  Arguments Mkt {elt} this {ok}.
 
  (** By default, the adequacy proof attached to a map [m] will have
@@ -270,7 +270,7 @@ Module WPack (K : DecidableType) (R : WS K) <: Interface.WS K.
  Definition eq_key_elt {elt} (p p':key*elt) :=
   K.eq (fst p) (fst p') /\ (snd p) = (snd p').
 
- Instance MapsTo_compat :
+ #[export] Instance MapsTo_compat :
    Proper (K.eq==>Logic.eq==>Logic.eq==>iff) MapsTo.
  Proof.
   intros k k' Hk e e' <- m m' <-. unfold MapsTo; simpl. now rewrite Hk.
