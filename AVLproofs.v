@@ -46,7 +46,7 @@ Inductive avl elt : tree elt -> Prop :=
 
 Class Avl elt (t:tree elt) : Prop := mkAvl : avl t.
 
-Instance avl_Avl elt (s:tree elt) (Hs : avl s) : Avl s := Hs.
+#[export] Instance avl_Avl elt (s:tree elt) (Hs : avl s) : Avl s := Hs.
 
 (** * Automation and dedicated tactics *)
 
@@ -289,14 +289,14 @@ Local Hint Resolve avl_node : map.
 
 (** empty *)
 
-Instance empty_avl : Avl (empty elt).
+#[export] Instance empty_avl : Avl (empty elt).
 Proof.
  autok.
 Qed.
 
 (** singleton *)
 
-Instance singleton_avl x e : Avl (singleton x e).
+#[export] Instance singleton_avl x e : Avl (singleton x e).
 Proof.
  unfold singleton. constructor; autom; simpl; lia_max.
 Qed.
@@ -370,7 +370,7 @@ Proof.
  induct s; inv_avl.
  - intuition; try constructor; simpl; autom; lia_max.
  - (* Eq *)
-   simpl. intuition; lia_max.
+   simpl. intuition (auto with map typeclass_instances); lia_max.
  - (* Lt *)
    destruct (IHl x e); trivial.
    split.
@@ -383,7 +383,7 @@ Proof.
    * lia_bal.
 Qed.
 
-Instance add_avl s x e `{!Avl s} : Avl (add x e s).
+#[export] Instance add_avl s x e `{!Avl s} : Avl (add x e s).
 Proof.
  now destruct (@add_avl_1 s x e).
 Qed.
@@ -439,7 +439,7 @@ Proof.
    * rewrite create_height; trivial; lia_max.
 Qed.
 
-Instance join_avl l x e r `{!Avl l, !Avl r} : Avl (join l x e r).
+#[export] Instance join_avl l x e r `{!Avl l, !Avl r} : Avl (join l x e r).
 Proof.
  now destruct (@join_avl_1 l x e r).
 Qed.
@@ -460,7 +460,7 @@ Proof.
    * lia_bal.
 Qed.
 
-Instance remove_min_avl l x e r h `{!Avl (Node h l x e r)} :
+#[export] Instance remove_min_avl l x e r h `{!Avl (Node h l x e r)} :
   Avl (remove_min l x e r)#1.
 Proof.
  now destruct (@remove_min_avl_1 l x e r h).
@@ -497,7 +497,7 @@ Lemma remove_avl_1 : forall s x `{!Avl s},
  Avl (remove x s) /\ 0 <= height s - height (remove x s) <= 1.
 Proof.
  induct s; inv_avl.
- - intuition; lia_max.
+ - intuition (auto with map typeclass_instances); lia_max.
  - (* Eq *)
    generalize (@append_avl_1 l r).
    intuition lia_max.
@@ -513,14 +513,14 @@ Proof.
    * lia_bal.
 Qed.
 
-Instance remove_avl s x `{!Avl s} : Avl (remove x s).
+#[export] Instance remove_avl s x `{!Avl s} : Avl (remove x s).
 Proof.
  now destruct (@remove_avl_1 s x).
 Qed.
 
 (** concat *)
 
-Instance concat_avl s1 s2 `{!Avl s1, !Avl s2} : Avl (concat s1 s2).
+#[export] Instance concat_avl s1 s2 `{!Avl s1, !Avl s2} : Avl (concat s1 s2).
 Proof.
  functional induction (concat s1 s2); auto.
  apply join_avl; auto.
@@ -534,19 +534,19 @@ Lemma split_avl : forall s x `{!Avl s},
 Proof.
  intros s x. functional induction (split x s); simpl; auto.
  - intros. inv_avl; auto.
- - mysubst; simpl in *; inversion_clear 1; intuition.
- - mysubst; simpl in *; inversion_clear 1; intuition.
+ - mysubst; simpl in *; inversion_clear 1; intuition (auto with map typeclass_instances).
+ - mysubst; simpl in *; inversion_clear 1; intuition (auto with map typeclass_instances).
 Qed.
 
 (** filter *)
 
-Instance filter_avl (f:key->elt->bool) m `{!Avl m} : Avl (filter f m).
+#[export] Instance filter_avl (f:key->elt->bool) m `{!Avl m} : Avl (filter f m).
 Proof.
  induction m; simpl; auto. inv_avl.
  destruct f; [apply join_avl | apply concat_avl ]; auto.
 Qed.
 
-Instance partition_avl1 (f:key->elt->bool) m `{!Avl m} :
+#[export] Instance partition_avl1 (f:key->elt->bool) m `{!Avl m} :
  Avl (fst (partition f m)).
 Proof.
  induction m; simpl; auto. inv_avl.
@@ -554,7 +554,7 @@ Proof.
  [apply join_avl | apply concat_avl]; auto.
 Qed.
 
-Instance partition_avl2 (f:key->elt->bool) m `{!Avl m} :
+#[export] Instance partition_avl2 (f:key->elt->bool) m `{!Avl m} :
  Avl (snd (partition f m)).
 Proof.
  induction m; simpl; auto. inv_avl.
@@ -569,9 +569,9 @@ Proof.
  induction m; simpl; auto.
 Qed.
 
-Instance map_avl {elt elt'}(f:elt->elt') m `(!Avl m) : Avl (map f m).
+#[export] Instance map_avl {elt elt'}(f:elt->elt') m `(!Avl m) : Avl (map f m).
 Proof.
- induction m; simpl; inv_avl; intuition.
+ induction m; simpl; inv_avl; intuition (auto with map typeclass_instances).
  constructor; intuition; rewrite ?map_height; auto.
 Qed.
 
@@ -581,16 +581,16 @@ Proof.
  induction m; simpl; auto.
 Qed.
 
-Instance mapi_avl {elt elt'}(f:key->elt->elt') m `(!Avl m) : Avl (mapi f m).
+#[export] Instance mapi_avl {elt elt'}(f:key->elt->elt') m `(!Avl m) : Avl (mapi f m).
 Proof.
- induction m; simpl; inv_avl; intuition.
+ induction m; simpl; inv_avl; intuition (auto with map typeclass_instances).
  constructor; intuition; rewrite ?mapi_height; auto.
 Qed.
 
-Instance mapo_avl {elt elt'}(f:key->elt->option elt') m `{!Avl m} :
+#[export] Instance mapo_avl {elt elt'}(f:key->elt->option elt') m `{!Avl m} :
   Avl (mapo f m).
 Proof.
- induction m; simpl; inv_avl; intuition.
+ induction m; simpl; inv_avl; intuition (auto with map typeclass_instances).
  destruct f.
  - apply join_avl; auto.
  - apply concat_avl; auto.
@@ -604,7 +604,7 @@ Variable mapr : t elt' -> t elt''.
 Hypothesis mapl_avl : forall m, Avl m -> Avl (mapl m).
 Hypothesis mapr_avl : forall m', Avl m' -> Avl (mapr m').
 
-Instance gmerge_avl m m' `{!Avl m, !Avl m'} :
+#[export] Instance gmerge_avl m m' `{!Avl m, !Avl m'} :
   Avl (gmerge f mapl mapr m m').
 Proof.
   functional induction (gmerge f mapl mapr m m');
@@ -614,7 +614,7 @@ Proof.
 Qed.
 End Gmerge.
 
-Instance merge_avl {elt elt' elt''}
+#[export] Instance merge_avl {elt elt' elt''}
  (f:key -> option elt -> option elt' -> option elt'') m m'
  `(!Avl m, !Avl m') :
    Avl (merge f m m').

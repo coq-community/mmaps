@@ -94,7 +94,7 @@ Proof.
    + rewrite tra; eauto. easy.
 Qed.
 
-Global Instance pair_compare_st :
+#[export] Instance pair_compare_st :
   SymTrans cmpA -> SymTrans cmpB -> SymTrans pair_compare.
 Proof.
  constructor.
@@ -145,7 +145,7 @@ Proof.
  - intros <- _. rewrite tra; eauto. easy.
 Qed.
 
-Global Instance list_compare_st : SymTrans cmp -> SymTrans list_compare.
+#[export] Instance list_compare_st : SymTrans cmp -> SymTrans list_compare.
 Proof.
  constructor. apply list_compare_sym, sym. now apply list_compare_trans.
 Qed.
@@ -225,7 +225,7 @@ Fixpoint list_ecompare (l1 l2 : list A) : comparison*flag :=
  induction u; destruct u'; intros GT LT; cbn; auto.
  - destruct v; simpl in *; auto. rewrite GT; auto.
  - destruct v'; simpl in *; auto. rewrite LT; auto.
- - case cmp; intuition.
+ - case cmp; intuition (auto with datatypes).
  Qed.
 
 End ListExtComp.

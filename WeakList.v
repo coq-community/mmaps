@@ -123,7 +123,7 @@ Proof.
  reflexivity.
 Qed.
 
-Global Instance empty_ok : Ok empty.
+ #[export] Instance empty_ok : Ok empty.
 Proof.
  unfold empty; red; auto.
 Qed.
@@ -191,7 +191,7 @@ Proof.
    + intuition. right; eapply IH; eauto.
 Qed.
 
-Global Instance add_ok m x e (Hm:Ok m) : Ok (add x e m).
+ #[export] Instance add_ok m x e (Hm:Ok m) : Ok (add x e m).
 Proof.
  induction m as [ | (k,e') m IH]; simpl.
  - constructor; auto. now inversion 1.
@@ -236,7 +236,7 @@ Proof.
  right; eapply H; eauto.
 Qed.
 
-Global Instance remove_ok m x (Hm:Ok m) : Ok (remove x m).
+ #[export] Instance remove_ok m x (Hm:Ok m) : Ok (remove x m).
 Proof.
  induction m.
  simpl; intuition.
@@ -283,7 +283,7 @@ Definition singleton k (e:elt) : t elt := (k,e)::nil.
 Lemma singleton_spec x e : bindings (singleton x e) = (x,e)::nil.
 Proof. reflexivity. Qed.
 
-Global Instance singleton_ok x e : Ok (singleton x e).
+ #[export] Instance singleton_ok x e : Ok (singleton x e).
 Proof.
  constructor; auto. inversion 1.
 Qed.
@@ -417,7 +417,7 @@ Proof.
   intuition.
 Qed.
 
-Global Instance map_ok (f:elt->elt') m (Hm : Ok m) : Ok (map f m).
+ #[export] Instance map_ok (f:elt->elt') m (Hm : Ok m) : Ok (map f m).
 Proof.
  induction m as [|(x,e) m IH]; simpl. red; constructor.
  inversion_clear Hm. constructor; autok. now rewrite map_InA.
@@ -431,7 +431,7 @@ Proof.
  reflexivity.
 Qed.
 
-Global Instance mapi_ok (f: key->elt->elt') m (Hm:Ok m) : Ok (mapi f m).
+ #[export] Instance mapi_ok (f: key->elt->elt') m (Hm:Ok m) : Ok (mapi f m).
 Proof.
  induction m as [|(x,e) m IH]; simpl. red; constructor.
  inversion_clear Hm; auto.
@@ -559,7 +559,7 @@ Variable f : key -> option elt -> option elt' -> option elt''.
 Definition merge m m' : t elt'' :=
  fold_keys (fun k => f k (find k m) (find k m')) (domains m m').
 
-Global Instance merge_ok m m' (Hm:Ok m)(Hm':Ok m') : Ok (merge m m').
+ #[export] Instance merge_ok m m' (Hm:Ok m)(Hm':Ok m') : Ok (merge m m').
 Proof.
  now apply fold_keys_ok, domains_ok.
 Qed.
@@ -610,7 +610,7 @@ Proof. reflexivity. Qed.
 Definition MapsTo {elt} := @P.MapsTo elt.
 Definition In {elt} := @P.In elt.
 
-Instance MapsTo_compat {elt} :
+#[export] Instance MapsTo_compat {elt} :
   Proper (K.eq==>Logic.eq==>Logic.eq==>iff) (@MapsTo elt).
 Proof.
  intros x x' Hx e e' <- m m' <-. unfold MapsTo. now rewrite Hx.
@@ -632,7 +632,7 @@ Lemma filter_spec {elt} (f:key->elt->bool) m `{!Ok m} :
  bindings (filter f m) = List.filter (fun '(k,e) => f k e) (bindings m).
 Proof. reflexivity. Qed.
 
-Instance filter_ok {elt} f (m:t elt) : Ok m -> Ok (filter f m).
+#[export] Instance filter_ok {elt} f (m:t elt) : Ok m -> Ok (filter f m).
 Proof.
  induction 1; simpl.
  - constructor.
@@ -661,12 +661,12 @@ Proof.
  rewrite <- IHm. now destruct (partition f m), a, f.
 Qed.
 
-Instance partition_ok1 {elt} f (m:t elt) : Ok m -> Ok (fst (partition f m)).
+#[export] Instance partition_ok1 {elt} f (m:t elt) : Ok m -> Ok (fst (partition f m)).
 Proof.
  rewrite partition_fst; eauto with *.
 Qed.
 
-Instance partition_ok2 {elt} f (m:t elt) : Ok m -> Ok (snd (partition f m)).
+#[export] Instance partition_ok2 {elt} f (m:t elt) : Ok m -> Ok (snd (partition f m)).
 Proof.
  rewrite partition_snd; eauto with *.
 Qed.

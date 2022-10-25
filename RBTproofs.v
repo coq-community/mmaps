@@ -278,16 +278,16 @@ induction 1 as [ | n l k v r | n l k v r Hl IHl Hr IHr ].
 - rewrite ifred_notred by autom.
   cbn. destmatch; intro.
   * autom.
-  * apply lbal_rb; trivial. apply ifred_or in IHl; intuition.
-  * apply rbal_rb; trivial. apply ifred_or in IHr; intuition.
+  * apply lbal_rb; trivial. apply ifred_or in IHl; intuition (auto with map).
+  * apply rbal_rb; trivial. apply ifred_or in IHr; intuition (auto with map).
 Qed.
 
 Lemma ins_arb x e s n : rbt n s -> arbt n (ins x e s).
 Proof.
- intros H. apply (ins_rr_rb x e), ifred_or in H. intuition.
+ intros H. apply (ins_rr_rb x e), ifred_or in H. intuition (auto with map).
 Qed.
 
-Instance add_rb x e s : Rbt s -> Rbt (add x e s).
+#[export] Instance add_rb x e s : Rbt s -> Rbt (add x e s).
 Proof.
  intros (n,H). unfold add. now apply (@makeBlack_rb n), ins_arb.
 Qed.
@@ -392,7 +392,7 @@ Proof.
     nonzero n. apply rbalS_rb; auto. }
 Qed.
 
-Instance remove_rb s x : Rbt s -> Rbt (remove x s).
+#[export] Instance remove_rb s x : Rbt s -> Rbt (remove x s).
 Proof.
  intros (n,H). unfold remove.
  destruct s as [|[|] l y v r].
@@ -471,7 +471,7 @@ Qed.
 (** The black depth of [treeify l] is actually a log2, but
     we don't need to mention that. *)
 
-Instance treeify_rb (l:klist elt) : Rbt (treeify l).
+#[export] Instance treeify_rb (l:klist elt) : Rbt (treeify l).
 Proof.
  unfold treeify.
  destruct (treeify_aux_rb (plength l)) as (d,H).
@@ -480,18 +480,18 @@ Proof.
  now rewrite plength_spec.
 Qed.
 
-Instance filter_rb (f:key->elt->bool) m : Rbt m -> Rbt (filter f m).
+#[export] Instance filter_rb (f:key->elt->bool) m : Rbt m -> Rbt (filter f m).
 Proof.
  unfold filter. intros. apply treeify_rb.
 Qed.
 
-Instance partition_rb1 (f:key->elt->bool) m :
+#[export] Instance partition_rb1 (f:key->elt->bool) m :
  Rbt m -> Rbt (fst (partition f m)).
 Proof.
  unfold partition. intros. destruct partition_aux. apply treeify_rb.
 Qed.
 
-Instance partition_rb2 (f:key->elt->bool) m :
+#[export] Instance partition_rb2 (f:key->elt->bool) m :
  Rbt m -> Rbt (snd (partition f m)).
 Proof.
  unfold partition. intros. destruct partition_aux. apply treeify_rb.
@@ -499,21 +499,21 @@ Qed.
 
 End Elt.
 
-Instance map_rb {elt elt'}(f:elt->elt') m : Rbt m -> Rbt (map f m).
+#[export] Instance map_rb {elt elt'}(f:elt->elt') m : Rbt m -> Rbt (map f m).
 Proof.
  intros (n,H). exists n. induction H; simpl; constructor; auto.
  destruct l; auto.
  destruct r; auto.
 Qed.
 
-Instance mapi_rb {elt elt'}(f:key->elt->elt') m : Rbt m -> Rbt (mapi f m).
+#[export] Instance mapi_rb {elt elt'}(f:key->elt->elt') m : Rbt m -> Rbt (mapi f m).
 Proof.
  intros (n,H). exists n. induction H; simpl; constructor; auto.
  destruct l; auto.
  destruct r; auto.
 Qed.
 
-Instance merge_rb {elt elt' elt''}
+#[export] Instance merge_rb {elt elt' elt''}
  (f:key -> option elt -> option elt' -> option elt'') m m' :
  Rbt m -> Rbt m' -> Rbt (merge f m m').
 Proof.

@@ -82,9 +82,9 @@ Fixpoint isok (m:t elt) :=
 Lemma isok_spec (m:t elt) : isok m = true <-> Ok m.
 Proof.
  induction m as [|(x,e) m IH]; simpl.
- - intuition.
+ - intuition (auto with map).
  - destruct m as [|(y,e') m].
-   + intuition.
+   + intuition (auto with map).
    + case X.compare_spec; intros C.
      * split. easy. inversion 1; subst. inversion H3; subst.
        compute in H1. order.
@@ -162,7 +162,7 @@ Proof.
  reflexivity.
 Qed.
 
-Global Instance empty_ok : Ok empty.
+#[export] Instance empty_ok : Ok empty.
 Proof.
  unfold empty; autok.
 Qed.
@@ -229,11 +229,11 @@ Proof.
 Qed.
 Local Hint Resolve add_Inf : map.
 
-Global Instance add_ok m x e {Hm:Ok m} : Ok (add x e m).
+#[export] Instance add_ok m x e {Hm:Ok m} : Ok (add x e m).
 Proof.
  induction m as [|(y,v) m IH].
- - simpl; intuition.
- - simpl; case (X.compare_spec x y); intuition; inversion_clear Hm;
+ - simpl; intuition (auto with map).
+ - simpl; case (X.compare_spec x y); intuition auto; inversion_clear Hm;
      constructor; autok.
    apply Inf_eq with (y,v); auto.
 Qed.
@@ -293,7 +293,7 @@ Proof.
 Qed.
 Local Hint Resolve remove_Inf : map.
 
-Global Instance remove_ok m x {Hm:Ok m} : Ok (remove x m).
+#[export] Instance remove_ok m x {Hm:Ok m} : Ok (remove x m).
 Proof.
  induction m.
  simpl; intuition.
@@ -330,7 +330,7 @@ Definition singleton k (e:elt) : t elt := (k,e)::nil.
 Lemma singleton_spec x e : bindings (singleton x e) = (x,e)::nil.
 Proof. reflexivity. Qed.
 
-Global Instance singleton_ok x e : Ok (singleton x e).
+#[export] Instance singleton_ok x e : Ok (singleton x e).
 Proof.
  constructor; auto.
 Qed.
@@ -485,7 +485,7 @@ Proof.
 Qed.
 Local Hint Resolve map_Inf : map.
 
-Global Instance map_ok (f:elt->elt')(m: t elt){Hm : Ok m} : Ok (map f m).
+#[export] Instance map_ok (f:elt->elt')(m: t elt){Hm : Ok m} : Ok (map f m).
 Proof.
  induction m as [|(x,e) m IH]; simpl; autok.
  inversion_clear Hm. constructor; eautok.
@@ -507,7 +507,7 @@ Proof.
 Qed.
 Local Hint Resolve mapi_Inf : map.
 
-Global Instance mapi_ok (f:key->elt->elt') m {Hm : Ok m} :
+#[export] Instance mapi_ok (f:key->elt->elt') m {Hm : Ok m} :
   Ok (mapi f m).
 Proof.
  induction m as [|(x,e) m IH]; simpl; autok.
@@ -622,7 +622,7 @@ Proof.
 Qed.
 Local Hint Resolve combine_Inf : map.
 
-Global Instance combine_ok m m' {Hm : Ok m}{Hm' : Ok m'} :
+#[export] Instance combine_ok m m' {Hm : Ok m}{Hm' : Ok m'} :
  Ok (combine m m').
 Proof.
  revert m' Hm'.
@@ -647,7 +647,7 @@ Proof.
        exact (combine_Inf _  H3 H2).
 Qed.
 
-Global Instance merge_ok m m' {Hm : Ok m}{Hm' : Ok m'} :
+#[export] Instance merge_ok m m' {Hm : Ok m}{Hm' : Ok m'} :
   Ok (merge m m').
 Proof.
  intros.
@@ -851,7 +851,7 @@ Proof. reflexivity. Qed.
 Definition MapsTo {elt} := @PX.MapsTo elt.
 Definition In {elt} := @PX.In elt.
 
-Instance MapsTo_compat {elt} :
+#[export] Instance MapsTo_compat {elt} :
   Proper (X.eq==>Logic.eq==>Logic.eq==>iff) (@MapsTo elt).
 Proof.
  intros x x' Hx e e' <- m m' <-. unfold MapsTo. now rewrite Hx.
@@ -894,7 +894,7 @@ Lemma exists_spec {elt}(f:key->elt->bool) m :
  exists_ f m = List.existsb (fun '(k,e) => f k e) (bindings m).
 Proof. reflexivity. Qed.
 
-Instance filter_ok {elt} f (m:t elt) : Ok m -> Ok (filter f m).
+#[export] Instance filter_ok {elt} f (m:t elt) : Ok m -> Ok (filter f m).
 Proof.
  eapply filter_sort with (eqA:=eqke); eauto with *.
 Qed.
@@ -912,12 +912,12 @@ Proof.
  rewrite <- IHm. now destruct (partition f m), a, f.
 Qed.
 
-Instance partition_ok1 {elt} f (m:t elt) : Ok m -> Ok (fst (partition f m)).
+#[export] Instance partition_ok1 {elt} f (m:t elt) : Ok m -> Ok (fst (partition f m)).
 Proof.
  rewrite partition_fst; eauto with *.
 Qed.
 
-Instance partition_ok2 {elt} f (m:t elt) : Ok m -> Ok (snd (partition f m)).
+#[export] Instance partition_ok2 {elt} f (m:t elt) : Ok m -> Ok (snd (partition f m)).
 Proof.
  rewrite partition_snd; eauto with *.
 Qed.

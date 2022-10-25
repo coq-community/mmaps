@@ -380,7 +380,7 @@ Implicit Types m r : t elt.
 
 (** * Helper functions *)
 
-Global Instance create_ok l x e r `{!Ok l, !Ok r} :
+#[export] Instance create_ok l x e r `{!Ok l, !Ok r} :
  l < x -> x < r -> Ok (create l x e r).
 Proof.
  unfold create; autok.
@@ -398,11 +398,11 @@ Proof.
  apply bindings_node.
 Qed.
 
-Global Instance bal_ok l x e r `{!Ok l, !Ok r} :
+#[export] Instance bal_ok l x e r `{!Ok l, !Ok r} :
  l < x -> x < r -> Ok (bal l x e r).
 Proof.
  functional induction (bal l x e r); intros; cleanf; invok; invlt;
- repeat apply create_ok; rewrite ?above_node, ?below_node; intuition;
+ repeat apply create_ok; rewrite ?above_node, ?below_node; intuition (auto with map);
  intro; rewrite create_in; intuition; order.
 Qed.
 
@@ -441,7 +441,7 @@ Proof.
  unfold singleton. now rewrite bindings_node.
 Qed.
 
-Global Instance singleton_ok x (e:elt) : Ok (singleton x e).
+#[export] Instance singleton_ok x (e:elt) : Ok (singleton x e).
 Proof.
  unfold singleton. autok.
 Qed.
@@ -466,7 +466,7 @@ Proof.
 Qed.
 Local Hint Resolve add_lt add_gt : map.
 
-Global Instance add_ok m x e `{!Ok m} : Ok (add x e m).
+#[export] Instance add_ok m x e `{!Ok m} : Ok (add x e m).
 Proof.
  functional induction (add x e m); intros; cleanf; invok; autok.
 Qed.
@@ -580,7 +580,7 @@ Proof.
  intros z. rewrite bal_in. intuition; order.
 Qed.
 
-Global Instance remove_min_ok m m' p `{!Ok m} : RemoveMin m (m',p) -> Ok m'.
+#[export] Instance remove_min_ok m m' p `{!Ok m} : RemoveMin m (m',p) -> Ok m'.
 Proof.
  revert m'.
  induction m as [|h l IH x e r _]; [destruct 1|].
@@ -647,7 +647,7 @@ Proof.
  unfold In. setoid_rewrite append_mapsto. firstorder.
 Qed.
 
-Global Instance append_ok m1 m2 `{!Ok m1, !Ok m2} : m1 < m2 ->
+#[export] Instance append_ok m1 m2 `{!Ok m1, !Ok m2} : m1 < m2 ->
  Ok (append m1 m2).
 Proof.
  functional induction (append m1 m2); intros B12; trivial.
@@ -677,7 +677,7 @@ Proof.
 Qed.
 Local Hint Resolve remove_gt remove_lt : map.
 
-Global Instance remove_ok m x `{!Ok m} : Ok (remove x m).
+#[export] Instance remove_ok m x `{!Ok m} : Ok (remove x m).
 Proof.
  functional induction (remove x m); simpl; intros; cleanf; invok; autok.
  apply append_ok; eauto using between.
@@ -685,7 +685,7 @@ Qed.
 
 Lemma remove_spec1 m x `{!Ok m} : find x (remove x m) = None.
 Proof.
- intros. apply not_find_iff; autok. rewrite remove_in; intuition.
+ intros. apply not_find_iff; autok. rewrite remove_in; intuition (auto with map).
 Qed.
 
 Lemma remove_spec2 m x y `{!Ok m} : ~ x == y ->
@@ -712,7 +712,7 @@ Proof.
  - apply create_in.
 Qed.
 
-Global Instance join_ok l x d r :
+#[export] Instance join_ok l x d r :
  Ok (create l x d r) -> Ok (join l x d r).
 Proof.
   join_tac l x d r; unfold create in *; invok; invok; invlt; autok.
@@ -827,14 +827,16 @@ Proof.
 Qed.
 Local Hint Resolve split_lt_l split_lt_r split_gt_l split_gt_r : map.
 
-Global Instance split_ok_l m x `{!Ok m} : Ok (split x m)#l.
+#[export] Instance split_ok_l m x `{!Ok m} : Ok (split x m)#l.
 Proof.
-  functional induction (split x m); intros; cleansplit; intuition.
+  functional induction (split x m); intros; cleansplit;
+   intuition (auto with map typeclass_instances).
 Qed.
 
-Global Instance split_ok_r m x `{!Ok m} : Ok (split x m)#r.
+#[export] Instance split_ok_r m x `{!Ok m} : Ok (split x m)#r.
 Proof.
-  functional induction (split x m); intros; cleansplit; intuition.
+  functional induction (split x m); intros; cleansplit;
+   intuition (auto with map typeclass_instances).
 Qed.
 
 Lemma split_find m x y `{!Ok m} :
@@ -865,7 +867,7 @@ Proof.
    rewrite join_in, (remove_min_in R); simpl; intuition.
 Qed.
 
-Global Instance concat_ok m1 m2 `{!Ok m1, !Ok m2} : m1 < m2 ->
+#[export] Instance concat_ok m1 m2 `{!Ok m1, !Ok m2} : m1 < m2 ->
  Ok (concat m1 m2).
 Proof.
   functional induction (concat m1 m2); intros LT; auto;
@@ -922,7 +924,7 @@ Proof.
  case (f y d); rewrite ?join_in, ?concat_in; intuition_in.
 Qed.
 
-Global Instance filter_ok f (m:t elt) `(!Ok m) : Ok (filter f m).
+#[export] Instance filter_ok f (m:t elt) `(!Ok m) : Ok (filter f m).
 Proof.
  induction m as [|h l IHl x e r IHr]; simpl; autok.
  invok. case (f x e).
@@ -961,12 +963,12 @@ Proof.
  now destruct (partition f l), (partition f r), f.
 Qed.
 
-Instance partition_ok1 f (m:t elt) : Ok m -> Ok (fst (partition f m)).
+#[export] Instance partition_ok1 f (m:t elt) : Ok m -> Ok (fst (partition f m)).
 Proof.
  rewrite partition_fst; eauto with *.
 Qed.
 
-Instance partition_ok2 f (m:t elt) : Ok m -> Ok (snd (partition f m)).
+#[export] Instance partition_ok2 f (m:t elt) : Ok m -> Ok (snd (partition f m)).
 Proof.
  rewrite partition_snd; eauto with *.
 Qed.
@@ -1015,7 +1017,7 @@ Proof.
 Qed.
 Local Hint Resolve mapo_lt mapo_gt : map.
 
-Global Instance mapo_ok m `{!Ok m} : Ok (mapo f m).
+#[export] Instance mapo_ok m `{!Ok m} : Ok (mapo f m).
 Proof.
 functional induction (mapo f m); simpl; autok; invok.
 - apply join_ok, create_ok; autok.
@@ -1110,11 +1112,11 @@ Qed.
 Local Hint Resolve gmerge_lt gmerge_gt : map.
 Local Hint Resolve split_ok_l split_ok_r split_lt_l split_gt_r : map.
 
-Global Instance gmerge_ok m m' `{!Ok m, !Ok m'} : Ok (gmerge m m').
+#[export] Instance gmerge_ok m m' `{!Ok m, !Ok m'} : Ok (gmerge m m').
 Proof.
   functional induction (gmerge m m'); auto; factornode m2; invok;
   (apply join_ok, create_ok || apply concat_ok);
-  revert IHt2 IHt0; cleansplit; intuition.
+  revert IHt2 IHt0; cleansplit; intuition (auto with map).
   apply between with x1; autom.
 Qed.
 
@@ -1186,7 +1188,7 @@ Section Merge.
 Variable elt elt' elt'' : Type.
 Variable f : key -> option elt -> option elt' -> option elt''.
 
-Global Instance merge_ok m m' `{!Ok m, !Ok m'} : Ok (merge f m m').
+#[export] Instance merge_ok m m' `{!Ok m, !Ok m'} : Ok (merge f m m').
 Proof.
 unfold merge; intros.
 apply gmerge_ok with f;

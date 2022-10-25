@@ -36,8 +36,8 @@ Lemma eq_refl x : K.eq x x. Proof. apply K.eq_equiv. Qed.
 Lemma eq_sym x y : K.eq x y -> K.eq y x. Proof. apply K.eq_equiv. Qed.
 Lemma eq_trans x y z : K.eq x y -> K.eq y z -> K.eq x z.
 Proof. apply K.eq_equiv. Qed.
-Hint Immediate eq_refl eq_sym : map.
-Hint Resolve eq_trans eq_equivalence K.eq_equiv : map.
+#[export] Hint Immediate eq_refl eq_sym : map.
+#[export] Hint Resolve eq_trans eq_equivalence K.eq_equiv : map.
 
 Definition eqb x y := if K.eq_dec x y then true else false.
 
@@ -81,12 +81,12 @@ Notation not_find_in_iff := not_in_find (only parsing).
 
 Infix "==" := Equal (at level 30).
 
-Instance Equal_equiv {elt} : Equivalence (@Equal elt).
+#[export] Instance Equal_equiv {elt} : Equivalence (@Equal elt).
 Proof.
 unfold Equal. split; congruence.
 Qed.
 
-Instance Eqdom_equiv {elt} : Equivalence (@Eqdom elt).
+#[export] Instance Eqdom_equiv {elt} : Equivalence (@Eqdom elt).
 Proof.
 split.
 - now intro m.
@@ -94,7 +94,7 @@ split.
 - intros m1 m2 m3 E E' y. now rewrite (E y), <-(E' y).
 Qed.
 
-Instance Equal_Eqdom {elt} : subrelation (@Equal elt) (@Eqdom elt).
+#[export] Instance Equal_Eqdom {elt} : subrelation (@Equal elt) (@Eqdom elt).
 Proof.
  intros x y E k. specialize (E k). now rewrite !in_find, E.
 Qed.
@@ -102,14 +102,14 @@ Qed.
 Arguments Equal {elt} m m'.
 Arguments Eqdom {elt} m m'.
 
-Instance MapsTo_m {elt} :
+#[export] Instance MapsTo_m {elt} :
   Proper (K.eq==>Logic.eq==>Equal==>iff) (@MapsTo elt).
 Proof.
 intros k k' Hk e e' <- m m' Hm. rewrite <- Hk.
 now rewrite <- !find_spec, Hm.
 Qed.
 
-Instance find_m {elt} : Proper (K.eq==>Equal==>Logic.eq) (@find elt).
+#[export] Instance find_m {elt} : Proper (K.eq==>Equal==>Logic.eq) (@find elt).
 Proof.
 intros k k' Hk m m' <-.
 rewrite eq_option_alt. intros. now rewrite !find_spec, Hk.
@@ -120,17 +120,17 @@ Qed.
     Since [Equal] implies [Eqdom], this allows nonetheless to
     rewrite later with [Equal]. *)
 
-Instance In_m {elt} : Proper (K.eq==>Eqdom==>iff) (@In elt).
+#[export] Instance In_m {elt} : Proper (K.eq==>Eqdom==>iff) (@In elt).
 Proof.
 intros k k' Hk m m' Hm. rewrite (Hm k). rewrite !in_find. now rewrite Hk.
 Qed.
 
-Instance mem_m {elt} : Proper (K.eq==>Eqdom==>Logic.eq) (@mem elt).
+#[export] Instance mem_m {elt} : Proper (K.eq==>Eqdom==>Logic.eq) (@mem elt).
 Proof.
 intros k k' Hk m m' Hm. now rewrite eq_bool_alt, !mem_spec, Hk, Hm.
 Qed.
 
-Instance Empty_m {elt} : Proper (Eqdom==>iff) (@Empty elt).
+#[export] Instance Empty_m {elt} : Proper (Eqdom==>iff) (@Empty elt).
 Proof.
 assert (forall m m' : t elt, Eqdom m m' -> Empty m -> Empty m').
 { intros m m' EQ EM x e MT.
@@ -140,13 +140,13 @@ assert (forall m m' : t elt, Eqdom m m' -> Empty m -> Empty m').
 intros m m' EQ. split; apply H; auto. symmetry; auto.
 Qed.
 
-Instance is_empty_m {elt} : Proper (Eqdom ==> Logic.eq) (@is_empty elt).
+#[export] Instance is_empty_m {elt} : Proper (Eqdom ==> Logic.eq) (@is_empty elt).
 Proof.
 intros m m' Hm. rewrite eq_bool_alt, !is_empty_spec.
 setoid_rewrite <- not_in_find. now setoid_rewrite Hm.
 Qed.
 
-Instance add_m {elt} : Proper (K.eq==>Logic.eq==>Equal==>Equal) (@add elt).
+#[export] Instance add_m {elt} : Proper (K.eq==>Logic.eq==>Equal==>Equal) (@add elt).
 Proof.
 intros k k' Hk e e' <- m m' Hm y.
 destruct (K.eq_dec k y) as [H|H].
@@ -154,7 +154,7 @@ destruct (K.eq_dec k y) as [H|H].
 - rewrite !add_spec2; trivial. now rewrite <- Hk.
 Qed.
 
-Instance remove_m {elt} : Proper (K.eq==>Equal==>Equal) (@remove elt).
+#[export] Instance remove_m {elt} : Proper (K.eq==>Equal==>Equal) (@remove elt).
 Proof.
 intros k k' Hk m m' Hm y.
 destruct (K.eq_dec k y) as [H|H].
@@ -162,7 +162,7 @@ destruct (K.eq_dec k y) as [H|H].
 - rewrite !remove_spec2; trivial. now rewrite <- Hk.
 Qed.
 
-Instance merge_m {elt elt' elt''} :
+#[export] Instance merge_m {elt elt' elt''} :
  Proper ((K.eq==>Logic.eq==>Logic.eq==>Logic.eq)==>Equal==>Equal==>Equal)
   (@merge elt elt' elt'').
 Proof.
@@ -344,14 +344,14 @@ Proof.
    exists e0. rewrite <- bindings_spec1, InA_alt. firstorder.
 Qed.
 
-Instance map_m {elt elt'} :
+#[export] Instance map_m {elt elt'} :
   Proper ((Logic.eq==>Logic.eq)==>Equal==>Equal) (@map elt elt').
 Proof.
 intros f f' Hf m m' Hm y. rewrite !map_find, Hm.
 destruct (find y m'); simpl; trivial. f_equal. now apply Hf.
 Qed.
 
-Instance mapi_m {elt elt'} :
+#[export] Instance mapi_m {elt elt'} :
   Proper ((K.eq==>Logic.eq==>Logic.eq)==>Equal==>Equal) (@mapi elt elt').
 Proof.
 intros f f' Hf m m' Hm y.
@@ -409,10 +409,10 @@ Lemma map2_2 {elt elt' elt''}(m: t elt)(m': t elt')
   In x (map2 f m m') -> In x m \/ In x m'.
 Proof. apply merge_spec2. Qed.
 
-Hint Immediate MapsTo_1 mem_2 is_empty_2 : map.
-Hint Immediate map_2 mapi_2 add_3 remove_3 find_2 : map.
-Hint Resolve mem_1 is_empty_1 is_empty_2 add_1 add_2 remove_1 : map.
-Hint Resolve remove_2 find_1 fold_1 map_1 mapi_1 mapi_2 : map.
+#[export] Hint Immediate MapsTo_1 mem_2 is_empty_2 : map.
+#[export] Hint Immediate map_2 mapi_2 add_3 remove_3 find_2 : map.
+#[export] Hint Resolve mem_1 is_empty_1 is_empty_2 add_1 add_2 remove_1 : map.
+#[export] Hint Resolve remove_2 find_1 fold_1 map_1 mapi_1 mapi_2 : map.
 
 (** ** Specifications written using equivalences *)
 
@@ -433,7 +433,7 @@ Proof. symmetry. apply mem_spec. Qed.
 
 Lemma not_mem_in_iff m x : ~In x m <-> mem x m = false.
 Proof.
-rewrite mem_in_iff; destruct (mem x m); intuition.
+rewrite mem_in_iff; destruct (mem x m); intuition discriminate.
 Qed.
 
 Lemma mem_find m x : mem x m = true <-> find x m <> None.
@@ -449,7 +449,7 @@ Qed.
 Lemma In_dec m x : { In x m } + { ~ In x m }.
 Proof.
  generalize (mem_in_iff m x).
- destruct (mem x m); [left|right]; intuition.
+ destruct (mem x m); [left|right]; intuition discriminate.
 Qed.
 
 Lemma find_mapsto_iff m x e : MapsTo x e m <-> find x m = Some e.
@@ -572,7 +572,7 @@ Lemma singleton_mapsto_iff x y e e' :
  MapsTo y e' (singleton x e) <-> K.eq x y /\ e = e'.
 Proof.
 rewrite <- bindings_spec1, singleton_spec, InA_cons, InA_nil.
-unfold Duo; simpl. intuition.
+unfold Duo; simpl; intuition (auto with map).
 Qed.
 
 End IffSpec.
@@ -652,13 +652,13 @@ Qed.
     same domain before, same domain after, regardless of what happens
     to the datas. *)
 
-Instance add_m' {elt} : Proper (K.eq==>Logic.eq==>Eqdom==>Eqdom) (@add elt).
+#[export] Instance add_m' {elt} : Proper (K.eq==>Logic.eq==>Eqdom==>Eqdom) (@add elt).
 Proof.
 intros k k' Hk e e' <- m m' Hm y.
 rewrite !add_in_iff. now rewrite Hk, Hm.
 Qed.
 
-Instance remove_m' {elt} : Proper (K.eq==>Eqdom==>Eqdom) (@remove elt).
+#[export] Instance remove_m' {elt} : Proper (K.eq==>Eqdom==>Eqdom) (@remove elt).
 Proof.
 intros k k' Hk m m' Hm y.
 rewrite !remove_in_iff. now rewrite Hk, Hm.
@@ -667,13 +667,13 @@ Qed.
 (** Note : We could even use completely differents functions below,
     not equal ones *)
 
-Instance map_m' {elt elt'} :
+#[export] Instance map_m' {elt elt'} :
   Proper (Logic.eq==>Eqdom==>Eqdom) (@map elt elt').
 Proof.
 intros f f' <- m m' Hm y. rewrite !map_in_iff. apply Hm.
 Qed.
 
-Instance mapi_m' {elt elt'} :
+#[export] Instance mapi_m' {elt elt'} :
   Proper (Logic.eq==>Eqdom==>Eqdom) (@mapi elt elt').
 Proof.
 intros f f' <- m m' Hm y. rewrite !mapi_in_iff. apply Hm.
@@ -899,7 +899,7 @@ Proof.
 intros. rewrite eq_option_alt. intro e.
 rewrite <- find_mapsto_iff, bindings_mapsto_iff.
 unfold eqb.
-rewrite <- findA_NoDupA; dintuition; try apply bindings_3w; eauto.
+rewrite <- findA_NoDupA; dintuition auto; try apply bindings_3w; eauto with map.
 Qed.
 
 Lemma bindings_b : forall m x,
@@ -929,7 +929,7 @@ Proof.
  intros y. now rewrite singleton_o, add_o, empty_o.
 Qed.
 
-Global Instance singleton_m :
+ #[export] Instance singleton_m :
  Proper (K.eq ==> eq ==> Equal) (@singleton elt).
 Proof.
  intros x x' Hx e e' <-. rewrite !singleton_add. now f_equiv.
@@ -1106,13 +1106,13 @@ Section Elt.
   Notation eqke := (@eq_key_elt elt).
   Notation eqk := (@eq_key elt).
 
-  Instance eqk_equiv : Equivalence eqk.
+  #[export] Instance eqk_equiv : Equivalence eqk.
   Proof. unfold eq_key, Fst. destruct K.eq_equiv. constructor; eauto. Qed.
 
-  Instance eqke_equiv : Equivalence eqke.
+  #[export] Instance eqke_equiv : Equivalence eqke.
   Proof.
-   unfold eq_key_elt, Duo; split; repeat red; intuition; simpl in *;
-    etransitivity; eauto.
+   unfold eq_key_elt, Duo; split; repeat red; intuition auto; simpl in *;
+    etransitivity; eauto with map.
   Qed.
 
   (** Complements about InA, NoDupA and findA *)
@@ -1220,7 +1220,7 @@ Section Elt.
     specialize (IH k e Hnodup'); clear Hnodup'.
     rewrite add_mapsto_iff, InA_cons, <- IH.
     unfold eq_key_elt, Duo at 1; simpl.
-    split; destruct 1 as [H|H]; try (intuition;fail).
+    split; destruct 1 as [H|H]; try (intuition (auto with map);fail).
     destruct (K.eq_dec k k'); [left|right]; split; auto with map.
     contradict Hnotin.
     apply InA_eqke_eqk with k e; intuition.
@@ -1472,7 +1472,7 @@ Section Elt.
 
   Hint Resolve NoDupA_eqk_eqke NoDupA_rev bindings_3w : map.
 
-  Instance fold_Proper : Proper (Equal==>eqA==>eqA) (fold f).
+  #[export] Instance fold_Proper : Proper (Equal==>eqA==>eqA) (fold f).
   Proof using st Hf Hf'.
   intros m1 m2 Hm i j Hi.
   rewrite 2 fold_spec_right.
@@ -1515,7 +1515,7 @@ Section Elt.
     rewrite InA_cons, 2 InA_rev, <- 2 bindings_mapsto_iff,
     2 find_mapsto_iff by (auto with * ).
     unfold eq_key_elt,Duo; simpl.
-    rewrite Hm2, !find_spec, add_mapsto_new; intuition.
+    rewrite Hm2, !find_spec, add_mapsto_new; intuition (auto with map).
   Qed.
 
   Lemma fold_add m k e i :
@@ -1628,7 +1628,7 @@ Section Elt.
   apply foldkeys_Proper with (eqA:=eq); try congruence; auto with map.
   Qed.
 
-  Global Instance cardinal_m :
+   #[export] Instance cardinal_m :
     Proper (Eqdom ==> Logic.eq) (@cardinal elt).
   Proof.
   intros m m' Hm. now apply Eqdom_cardinal.
@@ -1831,7 +1831,7 @@ Section Elt.
 
   (** Morphisms *)
 
-  Global Instance filter_m :
+   #[export] Instance filter_m :
    Proper ((K.eq==>eq==>eq)==>Equal==>Equal) (@filter elt).
   Proof.
   intros f f' Hf m m' Hm k.
@@ -1856,7 +1856,7 @@ Section Elt.
     rewrite <- F. now apply Hf.
   Qed.
 
-  Global Instance for_all_m :
+   #[export] Instance for_all_m :
    Proper ((K.eq==>Logic.eq==>Logic.eq)==>Equal==>Logic.eq) (@for_all elt).
   Proof.
   intros f f' Hf m m' Hm.
@@ -1864,7 +1864,7 @@ Section Elt.
   intros x x' Hx e e' <-. f_equal. now apply Hf.
   Qed.
 
-  Global Instance exists_m :
+   #[export] Instance exists_m :
    Proper ((K.eq==>Logic.eq==>Logic.eq)==>Equal==>Logic.eq) (@exists_ elt).
   Proof.
   intros f f' Hf m m' Hm.
@@ -1964,14 +1964,14 @@ Section Elt.
     Disjoint m1 m2 /\
     (forall k e, MapsTo k e m <-> MapsTo k e m1 \/ MapsTo k e m2).
 
-  Global Instance Disjoint_m : Proper (Eqdom ==> Eqdom ==> iff) Disjoint.
+   #[export] Instance Disjoint_m : Proper (Eqdom ==> Eqdom ==> iff) Disjoint.
   Proof.
   intros m1 m1' Hm1 m2 m2' Hm2. unfold Disjoint. split; intros.
   rewrite <- Hm1, <- Hm2; auto.
   rewrite Hm1, Hm2; auto.
   Qed.
 
-  Global Instance Partition_m :
+   #[export] Instance Partition_m :
    Proper (Equal ==> Equal ==> Equal ==> iff) Partition.
   Proof.
   intros m1 m1' Hm1 m2 m2' Hm2 m3 m3' Hm3. unfold Partition.
@@ -2232,7 +2232,7 @@ Section Elt.
   destruct f; [apply add_spec2 | apply remove_spec2]; auto.
   Qed.
 
-  Global Instance update_m : Proper (K.eq==>(eq==>eq)==>Equal==>Equal) update.
+   #[export] Instance update_m : Proper (K.eq==>(eq==>eq)==>Equal==>Equal) update.
   Proof.
   intros x x' Hx f f' Hf m m' Hm. unfold update.
   rewrite <- Hx. rewrite <- Hm at 1. rewrite <- (Hf (find x m)) by auto.
@@ -2253,7 +2253,7 @@ Section Elt.
     destruct o1, o2; auto. apply Hf; auto.
   Qed.
 
-  Global Instance union_m :
+   #[export] Instance union_m :
     Proper ((K.eq==>eq==>eq==>eq)==>Equal==>Equal==>Equal) union.
   Proof.
   intros f f' Hf m1 m1' Hm1 m2 m2' Hm2. unfold union.
@@ -2305,7 +2305,7 @@ Section Elt.
   intros m m' k e.
   unfold diff.
   rewrite filter_iff.
-  intuition.
+  intuition (auto with map bool).
   rewrite mem_1 in *; auto; discriminate.
   intros ? ? Hk _ _ _; rewrite Hk; auto.
   Qed.
@@ -2325,7 +2325,7 @@ Section Elt.
   intros m m' k e.
   unfold restrict.
   rewrite filter_iff.
-  intuition.
+  intuition (auto with map).
   intros ? ? Hk _ _ _; rewrite Hk; auto.
   Qed.
 
@@ -2345,14 +2345,14 @@ Section Elt.
   intros k k' e e' a b b' Hk <- <-. now apply add_add_2.
  Qed.
 
- Instance extend_m {elt} : Proper (Equal ==> Equal ==> Equal) (@extend elt).
+ #[export] Instance extend_m {elt} : Proper (Equal ==> Equal ==> Equal) (@extend elt).
  Proof.
   intros m1 m1' Hm1 m2 m2' Hm2.
   unfold extend.
   apply fold_Proper; auto using diamond_add with *.
  Qed.
 
- Instance restrict_m {elt} : Proper (Equal==>Equal==>Equal) (@restrict elt).
+ #[export] Instance restrict_m {elt} : Proper (Equal==>Equal==>Equal) (@restrict elt).
  Proof.
   intros m1 m1' Hm1 m2 m2' Hm2 y.
   unfold restrict.
@@ -2362,7 +2362,7 @@ Section Elt.
   clear. intros x x' Hx e e' He. now rewrite Hx.
  Qed.
 
- Instance diff_m {elt} : Proper (Equal==>Equal==>Equal) (@diff elt).
+ #[export] Instance diff_m {elt} : Proper (Equal==>Equal==>Equal) (@diff elt).
  Proof.
   intros m1 m1' Hm1 m2 m2' Hm2 y.
   unfold diff.
@@ -2419,10 +2419,10 @@ Module OrdProperties (K:OrderedType)(M:S K).
   Lemma leb_1 : forall p p', leb p p' = true <-> ~ltk p' p.
   Proof.
    intros (x,e) (y,e'); unfold leb, gtb; klean.
-   case K.compare_spec; intuition; try discriminate; F.order.
+   case K.compare_spec; intuition auto; try discriminate; F.order.
   Qed.
 
-  Instance gtb_compat : forall p, Proper (eqke==>eq) (gtb p).
+  #[export] Instance gtb_compat : forall p, Proper (eqke==>eq) (gtb p).
   Proof.
    red; intros (x,e) (a,e') (b,e'') H; red in H; simpl in *; destruct H.
    generalize (gtb_1 (x,e) (a,e'))(gtb_1 (x,e) (b,e''));
@@ -2431,7 +2431,7 @@ Module OrdProperties (K:OrderedType)(M:S K).
    - intros. rewrite H1. rewrite H, <- H2; auto.
   Qed.
 
-  Instance leb_compat : forall p, Proper (eqke==>eq) (leb p).
+  #[export] Instance leb_compat : forall p, Proper (eqke==>eq) (leb p).
   Proof.
    intros x a b H. unfold leb; f_equal; apply gtb_compat; auto.
   Qed.
@@ -2517,7 +2517,7 @@ Module OrdProperties (K:OrderedType)(M:S K).
    find_mapsto_iff, (H0 t0), <- find_mapsto_iff,
    add_mapsto_iff by (auto with *).
   change (eqke (t0,e0) (x,e)) with (K.eq t0 x /\ e0 = e).
-  intuition.
+  intuition (auto with map).
   destruct (K.eq_dec x t0) as [Heq|Hneq]; auto.
   exfalso.
   assert (In t0 m) by (exists e0; auto).
@@ -2546,7 +2546,7 @@ Module OrdProperties (K:OrderedType)(M:S K).
     find_mapsto_iff, (H0 t0), <- find_mapsto_iff,
     add_mapsto_iff by (auto with * ).
   change (eqke (t0,e0) (x,e)) with (K.eq t0 x /\ e0 = e).
-  intuition.
+  intuition (auto with map).
   destruct (K.eq_dec x t0) as [Heq|Hneq]; auto.
   exfalso.
   assert (In t0 m) by (exists e0; auto).
@@ -2676,7 +2676,7 @@ Module OrdProperties (K:OrderedType)(M:S K).
      | _,_ => False
      end.
 
-  Instance optrel_equiv {A} (R:relation A) `{!Equivalence R} :
+  #[export] Instance optrel_equiv {A} (R:relation A) `{!Equivalence R} :
     Equivalence (optrel R).
   Proof.
   split.
@@ -2685,7 +2685,7 @@ Module OrdProperties (K:OrderedType)(M:S K).
   - intros [x|] [y|] [z|]; simpl; eauto; try easy. now transitivity y.
   Qed.
 
-  Global Instance min_elt_m : Proper (Equal ==> optrel eqke) min_elt.
+   #[export] Instance min_elt_m : Proper (Equal ==> optrel eqke) min_elt.
   Proof.
   intros m m' E. unfold min_elt.
   apply bindings_Equal_eqlistA in E.
@@ -2693,7 +2693,7 @@ Module OrdProperties (K:OrderedType)(M:S K).
   now destruct x as (k,e), x' as (k',e').
   Qed.
 
-  Global Instance min_elt_m' : Proper (Eqdom ==> optrel eqk) min_elt.
+   #[export] Instance min_elt_m' : Proper (Eqdom ==> optrel eqk) min_elt.
   Proof.
   intros m m' E. unfold min_elt.
   apply bindings_Eqdom_eqlistA in E.
@@ -2768,20 +2768,20 @@ Module OrdProperties (K:OrderedType)(M:S K).
   assert (H':=IHl H); discriminate.
   Qed.
 
-  Instance optlast_m {A} R `{Equivalence A R} :
+  #[export] Instance optlast_m {A} R `{Equivalence A R} :
     Proper (eqlistA R ==> optrel R) (@optlast A).
   Proof.
   induction 1; simpl; auto.
   destruct l, l'; simpl; auto. inversion H1. inversion H1.
   Qed.
 
-  Global Instance max_elt_m : Proper (Equal ==> optrel eqke) max_elt.
+   #[export] Instance max_elt_m : Proper (Equal ==> optrel eqke) max_elt.
   Proof.
   intros m m' E. unfold max_elt.
   apply bindings_Equal_eqlistA in E. now rewrite E.
   Qed.
 
-  Global Instance max_elt_m' : Proper (Eqdom ==> optrel eqk) max_elt.
+   #[export] Instance max_elt_m' : Proper (Eqdom ==> optrel eqk) max_elt.
   Proof.
   intros m m' E. unfold max_elt.
   apply bindings_Eqdom_eqlistA in E. now rewrite E.
@@ -2845,7 +2845,7 @@ Module OrdProperties (K:OrderedType)(M:S K).
 
   Section Fold_properties.
 
-  Global Instance fold_m {A}(eqA:A->A->Prop)(st:Equivalence eqA) :
+   #[export] Instance fold_m {A}(eqA:A->A->Prop)(st:Equivalence eqA) :
    Proper ((K.eq==>eq==>eqA==>eqA)==>Equal==>eqA==>eqA) (@fold elt A).
   Proof.
   intros f f' Hf m m' Hm i i' Hi.
@@ -2909,7 +2909,7 @@ Module OrdProperties (K:OrderedType)(M:S K).
     rewrite ?compare_eq_iff, ?compare_lt_iff,  ?compare_gt_iff; order.
   Qed.
 
-  Global Instance Kcompare_symtrans : SymTrans K.compare.
+   #[export] Instance Kcompare_symtrans : SymTrans K.compare.
   Proof.
    split. exact F.compare_antisym. exact Kcompare_trans.
   Qed.
@@ -2948,7 +2948,7 @@ Module OrdProperties (K:OrderedType)(M:S K).
   Variable cmp : elt -> elt -> comparison.
   Context `(!SymTrans cmp).
 
-  Global Instance compare_symtrans : SymTrans (compare cmp).
+   #[export] Instance compare_symtrans : SymTrans (compare cmp).
   Proof.
   constructor.
   - intros x y. rewrite !compare_spec; apply sym; eauto with *.
@@ -2965,7 +2965,7 @@ Module OrdProperties (K:OrderedType)(M:S K).
   rewrite sym, CompOpp_iff in E. simpl in E. congruence.
   Qed.
 
-  Global Instance eq_equiv : Equivalence eq.
+   #[export] Instance eq_equiv : Equivalence eq.
   Proof.
   split.
   - intro x. apply compare_refl.
@@ -2973,14 +2973,14 @@ Module OrdProperties (K:OrderedType)(M:S K).
   - intros x y z. apply tra.
   Qed.
 
-  Global Instance lt_strorder : StrictOrder lt.
+   #[export] Instance lt_strorder : StrictOrder lt.
   Proof.
   split.
   - intros x. red. unfold lt. now rewrite compare_refl.
   - intros x y z. apply tra.
   Qed.
 
-  Global Instance lt_compat : Proper (eq ==> eq ==> iff) lt.
+   #[export] Instance lt_compat : Proper (eq ==> eq ==> iff) lt.
   Proof.
   intros x x' E y y' E'. unfold lt,eq in *. split; intros <-.
   - symmetry.
@@ -3028,17 +3028,17 @@ Module OrderedMaps (K:OrderedType)(D:OrderedType)(M:S K) <: OrderedType.
  Definition lt := P.lt D.compare.
  Definition compare := M.compare D.compare.
 
- Instance Dcompare_symtrans : SymTrans D.compare.
+ #[export] Instance Dcompare_symtrans : SymTrans D.compare.
  Proof.
  split. exact D'.compare_sym. exact D'.compare_trans.
  Qed.
 
- Instance compare_symtrans : SymTrans compare.
+ #[export] Instance compare_symtrans : SymTrans compare.
  Proof. apply P.compare_symtrans, Dcompare_symtrans. Qed.
 
- Instance eq_equiv : Equivalence eq := P.eq_equiv _.
- Instance lt_strorder : StrictOrder lt := P.lt_strorder _.
- Instance lt_compat : Proper (eq ==> eq ==> iff) lt := P.lt_compat _.
+ #[export] Instance eq_equiv : Equivalence eq := P.eq_equiv _.
+ #[export] Instance lt_strorder : StrictOrder lt := P.lt_strorder _.
+ #[export] Instance lt_compat : Proper (eq ==> eq ==> iff) lt := P.lt_compat _.
 
  Lemma compare_spec (m m' :t) :
   CompareSpec (eq m m') (lt m m') (lt m' m) (compare m m').
