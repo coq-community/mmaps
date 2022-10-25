@@ -33,14 +33,14 @@ license:
   identifier: LGPL-2.1-only
 
 supported_coq_versions:
-  text: 8.13 to 8.16
-  opam: '{>= "8.13" & < "8.17~"}'
+  text: 8.14 and later
+  opam: '{>= "8.14"}'
 
 tested_coq_opam_versions:
+- version: 'dev'
 - version: '8.16'
 - version: '8.15'
 - version: '8.14'
-- version: '8.13'
 
 namespace: MMaps
 

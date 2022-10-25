@@ -36,7 +36,7 @@ the MSet library.
   - Pierre Letouzey ([**@letouzey**](https://github.com/letouzey))
   - Karl Palmskog ([**@palmskog**](https://github.com/palmskog))
 - License: [GNU Lesser General Public License v2.1](LICENSE)
-- Compatible Coq versions: 8.13 to 8.16
+- Compatible Coq versions: 8.14 and later
 - Additional dependencies: none
 - Coq namespace: `MMaps`
 - Related publication(s): none
