@@ -1,0 +1,4 @@
+(coq.theory
+ (name MMaps)
+ (package coq-mmaps)
+ (synopsis "Several implementations of finite maps over arbitrary ordered types using Coq functors"))
