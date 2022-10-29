@@ -40,7 +40,9 @@ that is meant to complement the Stdlib's MSet library.
 - Compatible Coq versions: 8.14 and later
 - Additional dependencies: none
 - Coq namespace: `MMaps`
-- Related publication(s): none
+- Related publication(s):
+  - [Efficient Verified Red-Black Trees](https://www.cs.princeton.edu/~appel/papers/redblack.pdf) 
+  - [Functors for Proofs and Programs](https://hal.inria.fr/hal-00150913) doi:[10.1007/978-3-540-24725-8_26](https://doi.org/10.1007/978-3-540-24725-8_26)
 
 ## Building and installation instructions
 

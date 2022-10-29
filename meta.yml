@@ -15,6 +15,13 @@ description: |-
   Coq functors. This is an updated version of the Coq Stdlib's FMaps
   that is meant to complement the Stdlib's MSet library.
 
+publications:
+- pub_url: https://www.cs.princeton.edu/~appel/papers/redblack.pdf
+  pub_title: Efficient Verified Red-Black Trees
+- pub_url: https://hal.inria.fr/hal-00150913
+  pub_title: Functors for Proofs and Programs
+  pub_doi: 10.1007/978-3-540-24725-8_26
+
 authors:
 - name: Pierre Letouzey
   initial: true
