@@ -23,10 +23,11 @@ Follow the instructions on https://github.com/coq-community/templates to regener
 
 
 
-This project contains several implementations of finite maps
-over arbitrary ordered types using Coq functors. This is an
-updated version of Coq Stdlib's FMaps. It is meant to complement
-the MSet library.
+This project contains several implementations of finite maps,
+including implementations based on AVL trees and red-black trees.
+The finite maps are parameterized on arbitrary ordered types using
+Coq functors. This is an updated version of the Coq Stdlib's FMaps
+that is meant to complement the Stdlib's MSet library.
 
 ## Meta
 
@@ -35,7 +36,7 @@ the MSet library.
 - Coq-community maintainer(s):
   - Pierre Letouzey ([**@letouzey**](https://github.com/letouzey))
   - Karl Palmskog ([**@palmskog**](https://github.com/palmskog))
-- License: [GNU Lesser General Public License v2.1](LICENSE)
+- License: [GNU Lesser General Public License v2.1 only](LICENSE)
 - Compatible Coq versions: 8.14 and later
 - Additional dependencies: none
 - Coq namespace: `MMaps`
@@ -43,7 +44,15 @@ the MSet library.
 
 ## Building and installation instructions
 
-To build and install manually, do:
+The easiest way to install the latest released version of Modular Finite Maps over Ordered Types
+is via [OPAM](https://opam.ocaml.org/doc/Install.html):
+
+```shell
+opam repo add coq-released https://coq.inria.fr/opam/released
+opam install coq-mmaps
+```
+
+To instead build and install manually, do:
 
 ``` shell
 git clone https://github.com/coq-community/coq-mmaps.git
@@ -51,6 +60,7 @@ cd coq-mmaps
 make   # or make -j <number-of-cores-on-your-machine> 
 make install
 ```
+
 
 ## Documentation
 

@@ -12,10 +12,11 @@ license: "LGPL-2.1-only"
 
 synopsis: "Several implementations of finite maps over arbitrary ordered types using Coq functors"
 description: """
-This project contains several implementations of finite maps
-over arbitrary ordered types using Coq functors. This is an
-updated version of Coq Stdlib's FMaps. It is meant to complement
-the MSet library."""
+This project contains several implementations of finite maps,
+including implementations based on AVL trees and red-black trees.
+The finite maps are parameterized on arbitrary ordered types using
+Coq functors. This is an updated version of the Coq Stdlib's FMaps
+that is meant to complement the Stdlib's MSet library."""
 
 build: [make "-j%{jobs}%"]
 install: [make "install"]
