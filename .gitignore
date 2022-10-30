@@ -8,3 +8,5 @@
 .Makefile.coq.d
 Makefile.coq
 Makefile.coq.conf
+_build/
+docs/
