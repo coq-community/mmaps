@@ -1,9 +1,8 @@
+(** * Finite Modular Maps: Raw Interface *)
 
-(** * Finite Modular Maps : Raw Interface *)
-
-(** Author : Pierre Letouzey (Université de Paris - INRIA),
+(** Author: Pierre Letouzey (Université de Paris - INRIA),
     adapted from earlier works in Coq Standard Library, see README.md.
-    Licence : LGPL 2.1, see file LICENSE. *)
+    License: LGPL-2.1-only, see file LICENSE. *)
 
 (** This "raw" interface isn't meant for general use, see rather the
     [Interface] file for that. The "raw" version has two interests :
@@ -36,6 +35,7 @@
     extra explanations. *)
 
 From MMaps Require Export Comparisons Interface.
+
 Set Implicit Arguments.
 Unset Strict Implicit.
 (* No induction principles for the records below *)
@@ -185,7 +185,7 @@ Module Type WS (K : DecidableType).
   End Specs.
 End WS.
 
-(** ** Raw Maps on ordered keys. *)
+(** ** Raw maps on ordered keys *)
 
 Module Type S (K : OrderedType).
   Include WS K.

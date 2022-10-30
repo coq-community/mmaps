@@ -1,6 +1,9 @@
-(** * MSets.GenTree : maps via generic trees
+(** * Finite Modular Maps: Generic Trees *)
 
-    This module factorizes common parts in implementations
+(** Author: Pierre Letouzey (Université de Paris - INRIA),
+    License: LGPL-2.1-only, see file LICENSE. *)
+
+(** This module factorizes common parts in implementations
     of finite maps as AVL trees and as Red-Black trees. The nodes
     of the trees defined here include an generic information
     parameter, that will be the height in AVL trees and the color
@@ -41,7 +44,7 @@ Module Type InfoTyp.
  Parameter t : Set.
 End InfoTyp.
 
-(** * Ops : the pure functions *)
+(** ** Ops: the pure functions *)
 
 Module Type Ops (K:OrderedType)(Info:InfoTyp).
 
@@ -51,7 +54,7 @@ Section Elt.
 
 Variable elt : Type.
 
-(** * Trees *)
+(** *** Trees *)
 
 Inductive tree  : Type :=
 | Leaf : tree
@@ -59,7 +62,7 @@ Inductive tree  : Type :=
 
 Definition t := tree.
 
-(** ** The empty map and emptyness test *)
+(** *** The empty map and emptiness test *)
 
 Definition empty := Leaf.
 
@@ -69,7 +72,7 @@ Definition is_empty t :=
  | _ => false
  end.
 
-(** ** Membership test *)
+(** *** Membership test *)
 
 (** The [mem] function is deciding membership. It exploits the
     binary search tree invariant to achieve logarithmic complexity. *)
@@ -96,7 +99,7 @@ Fixpoint find x m : option elt :=
        end
    end.
 
-(** ** Minimal, maximal, arbitrary bindings *)
+(** *** Minimal, maximal, arbitrary bindings *)
 
 Fixpoint min_binding (t : tree) : option (key * elt) :=
  match t with
@@ -114,7 +117,7 @@ Fixpoint max_binding (t : tree) : option (key * elt) :=
 
 Definition choose := min_binding.
 
-(** ** Iteration on elements *)
+(** *** Iteration on elements *)
 
 Fixpoint fold {A: Type} (f: key -> elt -> A -> A) (t: tree) (base: A) : A :=
   match t with
@@ -156,7 +159,7 @@ Fixpoint mindepth s :=
  | Node _ l _ _ r => S (min (mindepth l) (mindepth r))
  end.
 
-(** ** Testing universal or existential properties. *)
+(** *** Testing universal or existential properties *)
 
 (** We do not use the standard boolean operators of Coq,
     but lazy ones. *)
@@ -171,7 +174,7 @@ Fixpoint exists_ (f:key->elt->bool) s := match s with
   | Node _ l x e r => f x e ||| exists_ f l ||| exists_ f r
 end.
 
-(** ** Comparison of trees *)
+(** *** Comparison of trees *)
 
 (** The algorithm here has been suggested by Xavier Leroy,
     and transformed into c.p.s. by Benjamin Grégoire.
@@ -181,8 +184,6 @@ end.
     continuations computes dramatically faster in Coq, and
     should be almost as efficient after extraction.
 *)
-
-(** * Comparison *)
 
 (** Enumeration of the elements of a tree. This corresponds
     to the "samefringe" notion in the litterature. *)
@@ -265,7 +266,7 @@ Definition compare m1 m2 :=
 
 End Elt.
 
-(** ** Map *)
+(** *** Map *)
 
 Fixpoint map {elt elt'}(f : elt -> elt')(m : t elt) : t elt' :=
   match m with
@@ -273,7 +274,7 @@ Fixpoint map {elt elt'}(f : elt -> elt')(m : t elt) : t elt' :=
    | Node h l x d r => Node h (map f l) x (f d) (map f r)
   end.
 
-(* ** Mapi *)
+(** *** Mapi *)
 
 Fixpoint mapi (elt elt' : Type)(f : key -> elt -> elt')(m : t elt) : t elt' :=
   match m with
@@ -283,7 +284,7 @@ Fixpoint mapi (elt elt' : Type)(f : key -> elt -> elt')(m : t elt) : t elt' :=
 
 End Ops.
 
-(** * Props : correctness proofs of these generic operations *)
+(** ** Props: correctness proofs for the generic operations *)
 
 Module Type Props (K:OrderedType)(Info:InfoTyp)(Import M:Ops K Info).
 
@@ -298,7 +299,7 @@ Local Infix "<" := lessthan.
 
 #[export] Instance lt_key_key : LessThan K.t K.t := K.lt.
 
-(** ** Occurrence in a tree *)
+(** *** Occurrence in a tree *)
 
 Module Ind. (* Module allowing a "Definition" of MapsTo below. *)
 
@@ -326,7 +327,7 @@ Definition Equivb elt cmp := @Equiv elt (Cmp cmp).
 Definition AllKeys elt (P:key->Prop) (m : t elt) :=
  forall x, x ∈ m -> P x.
 
-(** ** Binary search trees *)
+(** *** Binary search trees *)
 
 (** Strict order between keys and trees:
     [x < m] when [x] is strictly smaller than any key in [m].
@@ -358,7 +359,7 @@ Module L := MMaps.OrdList.MakeRaw K.
 
 Scheme tree_ind := Induction for tree Sort Prop.
 
-(** * Automation and dedicated tactics. *)
+(** *** Automation and dedicated tactics *)
 
 Local Hint Constructors tree MapsTo Bst : map.
 Local Hint Unfold Ok In : map.
@@ -438,9 +439,9 @@ Arguments Ok {elt} m.
 Arguments Equal {elt} m m'.
 Arguments Eqdom {elt} m m'.
 
- #[export] Instance Equal_equiv {elt} : Equivalence (@Equal elt).
+#[export] Instance Equal_equiv {elt} : Equivalence (@Equal elt).
 Proof. split; congruence. Qed.
- #[export] Instance Eqdom_equiv {elt} : Equivalence (@Eqdom elt).
+#[export] Instance Eqdom_equiv {elt} : Equivalence (@Eqdom elt).
 Proof.
  split; try firstorder. intros x y z E E' k. now rewrite (E k), (E' k).
 Qed.
@@ -465,7 +466,7 @@ Proof.
 Qed.
 Local Hint Immediate mapsto_eq : map.
 
- #[export] Instance MapsTo_compat {elt} :
+#[export] Instance MapsTo_compat {elt} :
   Proper (K.eq==>Logic.eq==>Logic.eq==>iff) (@MapsTo elt).
 Proof.
  split; subst; now apply mapsto_eq.
@@ -483,7 +484,7 @@ Proof.
  intuition_m; subst; auto with map.
 Qed.
 
- #[export] Instance in_compat {elt} :
+#[export] Instance in_compat {elt} :
   Proper (K.eq==>Logic.eq==>iff) (@In elt).
 Proof.
  intros x x' E m m' <-.
@@ -553,7 +554,7 @@ Proof.
  apply allkeys_node with (P := fun z => z < x). now intros ? ? ->.
 Qed.
 
- #[export] Instance above_m {elt} :
+#[export] Instance above_m {elt} :
   Proper (@Eqdom elt ==> K.eq ==> iff) lessthan.
 Proof.
  intros until 2. apply allkeys_m; auto. split; F.order.
@@ -570,7 +571,7 @@ Proof.
  apply allkeys_node. now intros ? ? ->.
 Qed.
 
- #[export] Instance below_m {elt} :
+#[export] Instance below_m {elt} :
   Proper (K.eq ==> @Eqdom elt ==> iff) lessthan.
 Proof.
  intros until 2. apply allkeys_m; auto. split; F.order.
@@ -651,7 +652,6 @@ Proof.
  intros H; repeat split; intros y IN; now specialize (H y IN).
 Qed.
 
-
 (** Bst is decidable *)
 
 #[export] Instance Bst_Ok {elt} (m : t elt) (B : Bst m) : Ok m := B.
@@ -726,7 +726,7 @@ Section Elt.
 Variable elt:Type.
 Implicit Types m r : t elt.
 
-(** * Membership *)
+(** *** Membership *)
 
 Lemma find_1 m x e `{!Ok m} : m@x ↦ e -> find x m = Some e.
 Proof.
@@ -811,7 +811,7 @@ Proof.
  - invok. rewrite in_node. case K.compare_spec; intuition; order.
 Qed.
 
-(** * Empty map *)
+(** *** Empty map *)
 
  #[export] Instance empty_ok : Ok (empty elt).
 Proof.
@@ -823,7 +823,7 @@ Proof.
  reflexivity.
 Qed.
 
-(** * Emptyness test *)
+(** *** Emptiness test *)
 
 Lemma is_empty_spec m : is_empty m = true <-> forall x, find x m = None.
 Proof.
@@ -831,7 +831,7 @@ Proof.
  intros H. specialize (H x). now rewrite F.compare_refl in H.
 Qed.
 
-(** * Elements *)
+(** *** Elements *)
 
 Definition eq_key : (key*elt) -> (key*elt) -> Prop := @O.eqk elt.
 Definition eq_key_elt : (key*elt) -> (key*elt) -> Prop := @O.eqke elt.
@@ -966,7 +966,7 @@ Proof.
    try apply in_bindings in INl; try apply in_bindings in INr; order.
 Qed.
 
-(** * Fold *)
+(** *** Fold *)
 
 Definition fold' {A} (f : key -> elt -> A -> A) m :=
   L.fold f (bindings m).
@@ -991,7 +991,7 @@ Proof.
  rewrite fold_equiv. unfold fold'. now rewrite L.fold_spec.
 Qed.
 
-(** * For_all / exists *)
+(** *** For_all and exists *)
 
 Lemma for_all_spec (f:key->elt->bool) m :
   for_all f m = List.forallb (fun '(k,e) => f k e) (bindings m).
@@ -1011,7 +1011,7 @@ rewrite <- !orb_lazy_alt, orb_assoc, (orb_comm (f _ _)).
 f_equal; auto. f_equal; auto.
 Qed.
 
-(** * Comparison *)
+(** *** Comparison *)
 
 (** [flatten_e e] returns the list of bindings of the enumeration [e]
     i.e. the list of bindings actually compared *)

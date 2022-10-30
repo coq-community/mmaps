@@ -1,8 +1,10 @@
+(** * Finite Modular Maps: comparison utilities *)
+
+(** Author: Pierre Letouzey (Université de Paris - INRIA),
+    License: LGPL-2.1-only, see file LICENSE. *)
 
 From Coq Require Import List.
 Import ListNotations.
-
-(** * Some complements on [comparison] *)
 
 Set Implicit Arguments.
 

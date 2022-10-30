@@ -1,12 +1,11 @@
+(** * Finite Modular Maps: AVL Trees *)
 
-(** * Finite Modular Maps : AVL Trees *)
-
-(** Author : Pierre Letouzey (Université de Paris - INRIA),
+(** Author: Pierre Letouzey (Université de Paris - INRIA),
     adapted from earlier works in Coq Standard Library, see README.md.
-    Licence : LGPL 2.1, see file LICENSE. *)
+    License: LGPL-2.1-only, see file LICENSE. *)
 
 (** This module implements maps using AVL trees.
-    It follows the implementation from Ocaml's standard library.
+    It follows the implementation from OCaml's standard library.
 
     See the comments at the beginning of MSetAVL for more details.
 
@@ -27,14 +26,14 @@ Local Unset Strict Implicit.
 (* For nicer extraction, we create inductive principles only when needed *)
 Local Unset Elimination Schemes.
 
-(** * The Raw functor
-
-   Functor of pure functions + separate proofs of invariant
+(** Functor of pure functions + separate proofs of invariant
    preservation *)
 
 Module MakeRaw (Import I:Int)(K: OrderedType) <: Raw.S K.
 
-(** ** Generic trees instantiated with integer height *)
+(** ** Functions *)
+
+(** *** Generic trees instantiated with integer height *)
 
 (** We reuse a generic definition of trees where the information
     parameter is a [Int.t]. Functions like mem or fold are also
@@ -52,7 +51,7 @@ Local Notation t := (tree elt).
 Implicit Types l r m : t.
 Implicit Types e : elt.
 
-(** * Basic functions on trees: height and cardinal *)
+(** *** Basic functions on trees: height and cardinal *)
 
 Definition height (m : t) : int :=
   match m with
@@ -60,11 +59,11 @@ Definition height (m : t) : int :=
   | Node h _ _ _ _ => h
   end.
 
-(** * Singleton set *)
+(** *** Singleton set *)
 
 Definition singleton x e := Node 1 (Leaf _) x e (Leaf _).
 
-(** * Helper functions *)
+(** *** Helper functions *)
 
 (** [create l x r] creates a node, assuming [l] and [r]
     to be balanced and [|height l - height r| <= 2]. *)
@@ -110,7 +109,7 @@ Definition bal l x d r :=
     else
       create l x d r.
 
-(** * Insertion *)
+(** *** Insertion *)
 
 Fixpoint add x d m :=
   match m with
@@ -123,7 +122,7 @@ Fixpoint add x d m :=
       end
   end.
 
-(** * Extraction of minimum binding
+(** *** Extraction of minimum binding
 
   Morally, [remove_min] is to be applied to a non-empty tree
   [t = Node l x e r h]. Since we can't deal here with [assert false]
@@ -138,7 +137,7 @@ Fixpoint remove_min l x d r : t*(key*elt) :=
        (bal l' x d r, m)
   end.
 
-(** * Appending two disjoint maps of similar heights
+(** *** Appending two disjoint maps of similar heights
 
   [append t1 t2] builds the union of [t1] and [t2] assuming all keys
   of [t1] to be smaller than all keys of [t2], and
@@ -156,7 +155,7 @@ Definition append s1 s2 :=
       bal s1 x d s2'
   end.
 
-(** * Deletion *)
+(** *** Deletion *)
 
 Fixpoint remove x m := match m with
   | Leaf _ => Leaf _
@@ -168,7 +167,7 @@ Fixpoint remove x m := match m with
       end
    end.
 
-(** * join
+(** *** Join
 
     Same as [bal] but does not assume anything regarding heights of [l]
     and [r].
@@ -187,7 +186,7 @@ Fixpoint join l : key -> elt -> t -> t :=
           end
   end.
 
-(** * Splitting
+(** *** Splitting
 
     [split x m] returns a triple [(l, o, r)] where
     - [l] is the set of elements of [m] that are [< x]
@@ -207,7 +206,7 @@ Fixpoint split x m : triple := match m with
      end
  end.
 
-(** * Concatenation
+(** *** Concatenation
 
    Same as [append] but does not assume anything about heights.
 *)
@@ -221,7 +220,7 @@ Definition concat m1 m2 :=
             join m1 xd#1 xd#2 m2'
    end.
 
-(** Filter and partition *)
+(** *** Filter and partition *)
 
 Fixpoint filter (f:key->elt->bool) m :=
   match m with
@@ -249,7 +248,7 @@ Local Notation "t #l" := (t_left t) (at level 9, format "t '#l'").
 Local Notation "t #o" := (t_opt t) (at level 9, format "t '#o'").
 Local Notation "t #r" := (t_right t) (at level 9, format "t '#r'").
 
-(** * Map with removal *)
+(** *** Map with removal *)
 
 Fixpoint mapo (elt elt' : Type)(f : key -> elt -> option elt')(m : t elt)
   : t elt' :=
@@ -262,7 +261,7 @@ Fixpoint mapo (elt elt' : Type)(f : key -> elt -> option elt')(m : t elt)
       end
   end.
 
-(** * Generalized merge
+(** *** Generalized merge
 
   Suggestion by B. Gregoire: a [merge] function with specialized
   arguments that allows bypassing some tree traversal. Instead of one
@@ -296,7 +295,7 @@ Fixpoint gmerge m1 m2 :=
 
 End GMerge.
 
-(** * Merge
+(** *** Merge
 
     The [merge] function of the Map interface can be implemented
     via [gmerge] and [mapo].
@@ -314,7 +313,7 @@ Definition merge : t elt -> t elt' -> t elt'' :=
 
 End Merge.
 
-(** * Correctness proofs *)
+(** ** Correctness proofs *)
 
 Include MMaps.GenTree.Props K I.
 Import Ind.
@@ -335,7 +334,7 @@ Functional Scheme split_ind := Induction for split Sort Prop.
 Functional Scheme mapo_ind := Induction for mapo Sort Prop.
 Functional Scheme gmerge_ind := Induction for gmerge Sort Prop.
 
-(** * Automation and dedicated tactics. *)
+(** *** Automation and dedicated tactics *)
 
 Local Hint Constructors tree MapsTo Bst : map.
 Local Hint Unfold Ok Bst_Ok In : map.
@@ -378,7 +377,7 @@ Variable elt:Type.
 Implicit Types x y : K.t.
 Implicit Types m r : t elt.
 
-(** * Helper functions *)
+(** *** Helper functions *)
 
 #[export] Instance create_ok l x e r `{!Ok l, !Ok r} :
  l < x -> x < r -> Ok (create l x e r).
@@ -446,7 +445,7 @@ Proof.
  unfold singleton. autok.
 Qed.
 
-(** * Insertion *)
+(** *** Insertion *)
 
 Lemma add_in m x y e :
  y ∈ (add x e m) <-> y == x \/ y ∈ m.
@@ -522,7 +521,7 @@ Proof.
  rewrite app_ass. f_equal. simpl. f_equal. intuition.
 Qed.
 
-(** * Extraction of minimum binding *)
+(** *** Extraction of minimum binding *)
 
 Definition RemoveMin m res :=
  match m with
@@ -623,7 +622,7 @@ Proof.
  now rewrite (IH _ R).
 Qed.
 
-(** * Merging two trees *)
+(** *** Merging two trees *)
 
 Ltac factor_remove_min m R := match goal with
  | h:int, H:remove_min ?l ?x ?e ?r = ?p |- _ =>
@@ -657,7 +656,7 @@ Proof.
  - now apply (remove_min_gt R).
 Qed.
 
-(** * Deletion *)
+(** *** Deletion *)
 
 Lemma remove_in m x y `{!Ok m} :
  y ∈ remove x m <-> ~ y == x /\ y ∈ m.
@@ -699,7 +698,7 @@ Proof.
  - rewrite bal_find by autok. simpl. case K.compare_spec; auto.
 Qed.
 
-(** * join *)
+(** *** Join *)
 
 Lemma join_in l x d r y :
  y ∈ (join l x d r) <-> y == x \/ y ∈ l \/ y ∈ r.
@@ -773,7 +772,7 @@ Proof.
    now rewrite Hrl, create_bindings, app_ass by (ok; intuition).
 Qed.
 
-(** * split *)
+(** *** Split *)
 
 Lemma split_in_l0 m x y : y ∈ (split x m)#l -> y ∈ m.
 Proof.
@@ -855,7 +854,7 @@ Proof.
    simpl; repeat case K.compare_spec; trivial; order.
 Qed.
 
-(** * Concatenation *)
+(** *** Concatenation *)
 
 Lemma concat_in m1 m2 y :
  y ∈ (concat m1 m2) <-> y ∈ m1 \/ y ∈ m2.
@@ -916,7 +915,7 @@ Proof.
    + apply create_ok; eauto with *. now apply (remove_min_gt R).
 Qed.
 
-(** Filter and partition *)
+(** *** Filter and partition *)
 
 Lemma filter_in_inv f (m:t elt) x : x ∈ filter f m -> x ∈ m.
 Proof.
@@ -1219,7 +1218,7 @@ Qed.
 End Merge.
 End MakeRaw.
 
-(** * Encapsulation
+(** ** Encapsulation
 
    Now, in order to really provide a functor implementing [S], we need
    to encapsulate everything into a type of binary search trees. *)

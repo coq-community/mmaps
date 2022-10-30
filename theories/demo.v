@@ -1,9 +1,8 @@
+(** * Finite Modular Maps: The Demo *)
 
-(** MMaps Library : the demo *)
-
-(** Author : Pierre Letouzey (Université de Paris - INRIA),
+(** Author: Pierre Letouzey (Université de Paris - INRIA),
     adapted from earlier works in Coq Standard Library, see README.md.
-    Licence : LGPL 2.1, see file LICENSE. *)
+    License: LGPL-2.1-only, see file LICENSE. *)
 
 From Coq Require Import ZArith String Orders List.
 From MMaps Require Import MMaps.
@@ -109,7 +108,7 @@ Compute R.isok raw1.
 Check (eq_refl : R.isok raw1 = true).
 Check (@ZM.Mkt_bool _ raw1 eq_refl).
 
-(** * Some more intense tests. *)
+(** ** Some more intense tests *)
 
 Fixpoint multiples (m:Z)(start:Z)(n:nat) {struct n} : list Z :=
   match n with
@@ -135,7 +134,7 @@ Definition bigmap4 :=
 Time Compute ZM.bindings (ZM.merge both bigmap3 bigmap4).
 
 
-(** * the Facts *)
+(** ** The Facts *)
 
 (* The properties provided by ZM are deliberately minimalistic.
    They correspond to the minimal specifications present in Interface.S.
@@ -164,7 +163,7 @@ Check ZMF.fold_add.
  and for instance RBT.Make_ord *)
 
 
-(** * The Weak Maps *)
+(** ** The Weak Maps *)
 
 (* Sometimes, one may need finite sets and maps over a base type
    that does not come with a decidable order. As long as this type

@@ -1,5 +1,8 @@
+(** * Finite Modular Maps: RBT Proofs *)
 
-(** * Finite Modular Maps : RBT Proofs *)
+(** Author: Pierre Letouzey (Université de Paris - INRIA),
+    adapted from earlier works in Coq Standard Library, see README.md.
+    License: LGPL-2.1-only, see file LICENSE. *)
 
 (** This is a complement to [MMaps.RBT], proving the Red/Black balancing
     invariants for the code in [MMaps.RBT], and hence the logarithmic
@@ -30,7 +33,7 @@ Local Arguments Leaf {elt}.
 Local Notation Rd := (@Node _ Red).
 Local Notation Bk := (@Node _ Black).
 
-(** ** Red-Black invariants *)
+(** ** Red-black invariants *)
 
 (** In a red-black tree :
     - a red node has no red children
@@ -65,7 +68,7 @@ Inductive arbt elt (n:nat)(t:tree elt) : Prop :=
 
 Class Rbt elt (t:tree elt) :=  RBT : exists d, rbt d t.
 
-(** ** Basic tactics and results about red-black *)
+(** ** Basic tactics and results about red-black trees *)
 
 Scheme rbt_ind := Induction for rbt Sort Prop.
 Local Hint Constructors rbt rrt arbt : map.
@@ -106,7 +109,7 @@ Qed.
 
 Local Hint Resolve arb_nrr_rb arb_nr_rb : map.
 
-(** ** A Red-Black tree has indeed a logarithmic depth *)
+(** ** A red-black tree has a logarithmic depth *)
 
 Definition redcarac s :=
  rcase (elt:=elt) (fun _ _ _ _ => 1) (fun _ => 0) s.
@@ -168,7 +171,7 @@ Proof.
  unfold singleton. exists 1; autom.
 Qed.
 
-(** ** [makeBlack] and [makeRed] *)
+(** ** makeBlack and makeRed *)
 
 Lemma makeBlack_rb n t : arbt n t -> Rbt (makeBlack t).
 Proof.

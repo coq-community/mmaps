@@ -1,9 +1,12 @@
+(** * Finite Modular Maps: bool and list utilities *)
+
+(** Author: Pierre Letouzey (Université de Paris - INRIA),
+    License: LGPL-2.1-only, see file LICENSE. *)
+
 From Coq Require Import List SetoidList.
 Import ListNotations.
 
 Set Implicit Arguments.
-
-(** * Some complements on bool and lists *)
 
 Lemma eq_bool_alt b b' : b=b' <-> (b=true <-> b'=true).
 Proof.

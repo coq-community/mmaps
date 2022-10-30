@@ -1,12 +1,12 @@
+(** * Finite Modular Maps: Main Interface *)
 
-(** * Finite Modular Maps : Main Interface *)
-
-(** Author : Pierre Letouzey (Université de Paris - INRIA),
+(** Author: Pierre Letouzey (Université de Paris - INRIA),
     adapted from earlier works in Coq Standard Library, see README.md.
-    Licence : LGPL 2.1, see file LICENSE. *)
+    License: LGPL-2.1-only, see file LICENSE. *)
 
 From Coq Require Export Bool Equalities Orders SetoidList.
 From MMaps Require Import Comparisons.
+
 Set Implicit Arguments.
 Unset Strict Implicit.
 
@@ -252,8 +252,7 @@ Module Type WS (K : DecidableType).
  End MapsSpecs.
 End WS.
 
-
-(** ** Maps on ordered keys. *)
+(** ** Maps on ordered keys *)
 
 Module Type S (K : OrderedType).
  Include WS K.

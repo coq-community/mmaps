@@ -3,8 +3,8 @@
 theories/Utils.v
 theories/Comparisons.v
 theories/Interface.v
-theories/Facts.v
 theories/Raw.v
+theories/Facts.v
 theories/WeakList.v
 theories/OrdList.v
 theories/Positive.v
