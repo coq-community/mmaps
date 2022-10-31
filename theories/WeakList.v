@@ -1,9 +1,8 @@
+(** * Finite Modular Maps: Unordered Lists *)
 
-(** * Finite Modular Maps : Unordered Lists *)
-
-(** Author : Pierre Letouzey (Université de Paris - INRIA),
+(** Author: Pierre Letouzey (Université de Paris - INRIA),
     adapted from earlier works in Coq Standard Library, see README.md.
-    Licence : LGPL 2.1, see file LICENSE. *)
+    License: LGPL-2.1-only, see file LICENSE. *)
 
 (** This file proposes an implementation of the interface
  [MMaps.Interface.WS] using lists of pairs, unordered but without
@@ -55,7 +54,7 @@ Section Elt.
 
 Variable elt : Type.
 
-(** * [find] *)
+(** ** find *)
 
 Fixpoint find (k:key) (s: t elt) : option elt :=
   match s with
@@ -77,7 +76,7 @@ Proof.
    + rewrite IH; intuition.
 Qed.
 
-(** * [mem] *)
+(** ** mem *)
 
 Fixpoint mem (k : key) (s : t elt) : bool :=
   match s with
@@ -114,7 +113,7 @@ Qed.
 Lemma isok_Ok (m:t elt) : isok m = true -> Ok m.
 Proof. apply isok_spec. Qed.
 
-(** * [empty] *)
+(** ** empty *)
 
 Definition empty : t elt := nil.
 
@@ -123,12 +122,12 @@ Proof.
  reflexivity.
 Qed.
 
- #[export] Instance empty_ok : Ok empty.
+#[export] Instance empty_ok : Ok empty.
 Proof.
  unfold empty; red; auto.
 Qed.
 
-(** * [is_empty] *)
+(** ** is_empty *)
 
 Definition is_empty (l : t elt) : bool := if l then true else false.
 
@@ -152,7 +151,7 @@ Proof.
  elim E. now transitivity x'.
 Qed.
 
-(** * [add] *)
+(** ** add *)
 
 Fixpoint add (k : key) (x : elt) (s : t elt) : t elt :=
   match s with
@@ -191,7 +190,7 @@ Proof.
    + intuition. right; eapply IH; eauto.
 Qed.
 
- #[export] Instance add_ok m x e (Hm:Ok m) : Ok (add x e m).
+#[export] Instance add_ok m x e (Hm:Ok m) : Ok (add x e m).
 Proof.
  induction m as [ | (k,e') m IH]; simpl.
  - constructor; auto. now inversion 1.
@@ -200,7 +199,7 @@ Proof.
    + contradict H; apply add_InA with x e; auto.
 Qed.
 
-(** * [remove] *)
+(** ** remove *)
 
 Fixpoint remove (k : key) (s : t elt) : t elt :=
   match s with
@@ -236,7 +235,7 @@ Proof.
  right; eapply H; eauto.
 Qed.
 
- #[export] Instance remove_ok m x (Hm:Ok m) : Ok (remove x m).
+#[export] Instance remove_ok m x (Hm:Ok m) : Ok (remove x m).
 Proof.
  induction m.
  simpl; intuition.
@@ -248,7 +247,7 @@ Proof.
  contradict H; apply remove_InA with x; auto.
 Qed.
 
-(** * [bindings] *)
+(** ** bindings *)
 
 Definition bindings (m : t elt) := m.
 
@@ -262,7 +261,7 @@ Proof.
  trivial.
 Qed.
 
-(** * [fold] *)
+(** ** fold *)
 
 Fixpoint fold (A:Type)(f:key->elt->A->A)(m:t elt) (acc : A) :  A :=
   match m with
@@ -276,19 +275,19 @@ Proof.
  induction m as [ | (k,e) m IH]; simpl; auto.
 Qed.
 
-(** * [singleton] *)
+(** ** singleton *)
 
 Definition singleton k (e:elt) : t elt := (k,e)::nil.
 
 Lemma singleton_spec x e : bindings (singleton x e) = (x,e)::nil.
 Proof. reflexivity. Qed.
 
- #[export] Instance singleton_ok x e : Ok (singleton x e).
+#[export] Instance singleton_ok x e : Ok (singleton x e).
 Proof.
  constructor; auto. inversion 1.
 Qed.
 
-(** * [equal] *)
+(** ** equal *)
 
 Definition check (cmp : elt -> elt -> bool)(k:key)(e:elt)(m': t elt) :=
   match find k m' with
@@ -394,7 +393,7 @@ End Elt.
 Section Elt2.
 Variable elt elt' : Type.
 
-(** * [map] and [mapi] *)
+(** ** map and mapi *)
 
 Definition map (f:elt -> elt') (m:t elt) : t elt' :=
   List.map (fun '(k,e) => (k,f e)) m.
@@ -417,7 +416,7 @@ Proof.
   intuition.
 Qed.
 
- #[export] Instance map_ok (f:elt->elt') m (Hm : Ok m) : Ok (map f m).
+#[export] Instance map_ok (f:elt->elt') m (Hm : Ok m) : Ok (map f m).
 Proof.
  induction m as [|(x,e) m IH]; simpl. red; constructor.
  inversion_clear Hm. constructor; autok. now rewrite map_InA.
@@ -431,7 +430,7 @@ Proof.
  reflexivity.
 Qed.
 
- #[export] Instance mapi_ok (f: key->elt->elt') m (Hm:Ok m) : Ok (mapi f m).
+#[export] Instance mapi_ok (f: key->elt->elt') m (Hm:Ok m) : Ok (mapi f m).
 Proof.
  induction m as [|(x,e) m IH]; simpl. red; constructor.
  inversion_clear Hm; auto.
@@ -559,7 +558,7 @@ Variable f : key -> option elt -> option elt' -> option elt''.
 Definition merge m m' : t elt'' :=
  fold_keys (fun k => f k (find k m) (find k m')) (domains m m').
 
- #[export] Instance merge_ok m m' (Hm:Ok m)(Hm':Ok m') : Ok (merge m m').
+#[export] Instance merge_ok m m' (Hm:Ok m)(Hm':Ok m') : Ok (merge m m').
 Proof.
  now apply fold_keys_ok, domains_ok.
 Qed.

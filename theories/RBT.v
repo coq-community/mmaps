@@ -1,12 +1,11 @@
+(** * Finite Modular Maps: Red-Black Trees *)
 
-(** * Finite Modular Maps : Red-Black Trees *)
-
-(** Author : Pierre Letouzey (Université de Paris - INRIA),
+(** Author: Pierre Letouzey (Université de Paris - INRIA),
     adapted from earlier works in Coq Standard Library, see README.md.
-    Licence : LGPL 2.1, see file LICENSE. *)
+    License: LGPL-2.1-only, see file LICENSE. *)
 
 (** This module implements finite maps using Red-Black trees.
-    This code is based on Coq [MSetRBT.v], due initially to
+    This code is based on [MSetRBT.v] in Coq's Stdlib, due initially to
     Andrew W. Appel, 2011. See initial comment at the beginning
     of [MSetRBT.v].
 
@@ -39,14 +38,14 @@ Module Color.
  Definition t := color.
 End Color.
 
-(** * The Raw functor
-
-   Functor of pure functions + separate proofs of invariant
+(** Functor of pure functions + separate proofs of invariant
    preservation *)
 
 Module MakeRaw (K: OrderedType) <: Raw.S K.
 
-(** ** Generic trees instantiated with Red/Black colors *)
+(** ** Functions *)
+
+(** *** Generic trees instantiated with Red/Black colors *)
 
 (** We reuse a generic definition of trees where the information
     parameter is a [Color.t]. Functions like mem or fold are also
@@ -66,12 +65,12 @@ Local Notation t := (tree elt).
 Implicit Types l r m : t.
 Implicit Types e : elt.
 
-(** ** Basic tree *)
+(** *** Basic tree *)
 
 Definition singleton (k : key) (v : elt) : t :=
   Node Black Leaf k v Leaf.
 
-(** ** Changing root color *)
+(** *** Changing root color *)
 
 Definition makeBlack m : t :=
  match m with
@@ -85,7 +84,7 @@ Definition makeRed m : t :=
  | Node _ a x v b => Rd a x v b
  end.
 
-(** ** Balancing *)
+(** *** Balancing *)
 
 (** We adapt when one side is not a true red-black tree.
     Both sides have the same black depth. *)
@@ -140,7 +139,7 @@ Definition rbalS l k vk r :=
    end
  end.
 
-(** ** Insertion *)
+(** *** Insertion *)
 
 Fixpoint ins x vx s :=
  match s with
@@ -163,7 +162,7 @@ Fixpoint ins x vx s :=
 
 Definition add x vx s := makeBlack (ins x vx s).
 
-(** ** Deletion *)
+(** *** Deletion *)
 
 Fixpoint append (l:t) : t -> t :=
  match l with
@@ -213,7 +212,7 @@ Fixpoint del x m : t :=
 
 Definition remove x m := makeBlack (del x m).
 
-(** ** Tree-ification
+(** *** Tree-ification
 
     We rebuild a tree of size [if pred then n-1 else n] as soon
     as the list [l] has enough elements *)
@@ -261,7 +260,7 @@ Definition treeify (l:klist elt) :=
 
 End Elt.
 
-(** * Map with removal *)
+(** *** Map with removal *)
 
 Definition ocons {A B} (a:A) (o:option B) (l:list (A*B)) :=
  match o with
@@ -284,7 +283,7 @@ Definition mapo (m : t elt) : t elt' :=
 
 End Mapo.
 
-(** * Merge *)
+(** *** Merge *)
 
 Section Merge.
 Variable elt elt' elt'' : Type.
@@ -312,7 +311,7 @@ Definition merge (m1 : t elt) (m2 : t elt') : t elt'' :=
 
 End Merge.
 
-(** * Correctness proofs *)
+(** ** Correctness proofs *)
 
 Include MMaps.GenTree.Props K Color.
 Import Ind.
@@ -355,26 +354,26 @@ Implicit Types m : t elt.
 Implicit Types k x y : key.
 Implicit Types v vx vy : elt.
 
-(** ** Singleton set *)
+(** *** Singleton set *)
 
 Lemma singleton_spec x (e:elt) : bindings (singleton x e) = (x,e)::nil.
 Proof.
  unfold singleton. now rewrite bindings_node.
 Qed.
 
- #[export] Instance singleton_ok x vx : Ok (singleton x vx).
+#[export] Instance singleton_ok x vx : Ok (singleton x vx).
 Proof.
  unfold singleton. ok.
 Qed.
 
-(** ** makeBlack, MakeRed *)
+(** *** makeBlack and makeRed *)
 
- #[export] Instance makeBlack_ok m `{!Ok m} : Ok (makeBlack m).
+#[export] Instance makeBlack_ok m `{!Ok m} : Ok (makeBlack m).
 Proof.
  destruct m; simpl; ok.
 Qed.
 
- #[export] Instance makeRed_ok m `{!Ok m} : Ok (makeRed m).
+#[export] Instance makeRed_ok m `{!Ok m} : Ok (makeRed m).
 Proof.
  destruct m; simpl; ok.
 Qed.
@@ -409,7 +408,7 @@ Proof.
  now destruct m.
 Qed.
 
-(** ** Generic handling for red-matching and red-red-matching *)
+(** *** Generic handling for red-matching and red-red-matching *)
 
 Definition isblack m :=
  match m with Bk _ _ _ _ => True | _ => False end.
@@ -532,7 +531,7 @@ Proof.
  exact (rmatch _ _ _).
 Qed.
 
-(** ** Balancing for insertion *)
+(** *** Balancing for insertion *)
 
  #[export] Instance lbal_ok l x v r `(!Ok l, !Ok r, l < x, x < r) :
  Ok (lbal l x v r).
@@ -617,7 +616,7 @@ Qed.
 Hint Rewrite (@in_node elt) makeRed_in makeBlack_in : map.
 Hint Rewrite lbal_in rbal_in rbal'_in : map.
 
-(** ** Insertion *)
+(** *** Insertion *)
 
 Lemma ins_in m x v y :
  y ∈ (ins x v m) <-> y == x \/ y ∈ m.
@@ -638,7 +637,7 @@ Proof.
 Qed.
 Local Hint Resolve ins_above ins_below : map.
 
- #[export] Instance ins_ok m x v `{!Ok m} : Ok (ins x v m).
+#[export] Instance ins_ok m x v `{!Ok m} : Ok (ins x v m).
 Proof.
  induct m; auto; destmatch;
  (eapply lbal_ok || eapply rbal_ok || ok); auto; treeorder.
@@ -670,7 +669,7 @@ Proof.
  - apply ins_spec2; trivial; order.
 Qed.
 
- #[export] Instance add_ok m x v `{!Ok m} : Ok (add x v m).
+#[export] Instance add_ok m x v `{!Ok m} : Ok (add x v m).
 Proof.
  unfold add; autok.
 Qed.
@@ -693,10 +692,9 @@ Proof.
 unfold add. rewrite makeBlack_find. now apply ins_spec2.
 Qed.
 
+(** *** Balancing for deletion *)
 
-(** ** Balancing for deletion *)
-
- #[export] Instance lbalS_ok l x v r :
+#[export] Instance lbalS_ok l x v r :
   forall `(!Ok l, !Ok r, l < x, x < r), Ok (lbalS l x v r).
 Proof.
  case lbalS_match; intros; destmatch; try treeorder; invok; invlt.
@@ -766,7 +764,7 @@ Qed.
 
 Hint Rewrite lbalS_in rbalS_in : map.
 
-(** ** Append for deletion *)
+(** *** Append for deletion *)
 
 Ltac append_tac l r :=
  induction l as [| lc ll _ lx lv lr IHlr];
@@ -820,7 +818,7 @@ Qed.
 
 Hint Rewrite append_in : map.
 
- #[export] Instance append_ok : forall l r `{!Ok l, !Ok r},
+#[export] Instance append_ok : forall l r `{!Ok l, !Ok r},
  l < r -> Ok (@append elt l r).
 Proof.
  append_tac l r; trivial; intros OK OK' AP;
@@ -838,7 +836,7 @@ Proof.
    simpl. destmatch; try apply lbalS_ok; invlt; ok; intuition; eautom.
 Qed.
 
-(** ** Deletion *)
+(** *** Deletion *)
 
 Lemma del_in m x y `{!Ok m} :
  y ∈ (del x m) <-> y ∈ m /\ ~ y==x.
@@ -893,7 +891,7 @@ Qed.
 
 Hint Rewrite remove_in : map.
 
- #[export] Instance remove_ok m x `{!Ok m} : Ok (remove x m).
+#[export] Instance remove_ok m x `{!Ok m} : Ok (remove x m).
 Proof.
 unfold remove; ok.
 Qed.
@@ -909,7 +907,7 @@ Proof.
 unfold remove. rewrite makeBlack_find. now apply del_spec2.
 Qed.
 
-(** ** Treeify *)
+(** *** Treeify *)
 
 Local Notation ifpred p n := (if p then pred n else n%nat).
 Local Notation treeify_t := (klist elt -> t elt * klist elt).
@@ -1578,7 +1576,7 @@ Qed.
 
 End Merge.
 
-(** ** Filtering *)
+(** *** Filtering *)
 
 Section Filter.
 Variable elt : Type.
@@ -1608,7 +1606,7 @@ Definition partition f m :=
   let (l1,l2) := partition_aux f m nil nil in
   (treeify l1, treeify l2).
 
-(** ** Filter *)
+(** *** Filter *)
 
 Lemma filter_aux_bindings f m acc :
  filter_aux f m acc = List.filter (fun '(k,e) => f k e) (bindings m) ++ acc.
@@ -1651,7 +1649,7 @@ Proof.
 Qed.
 
 
-(** ** Partition *)
+(** *** Partition *)
 
 Lemma partition_aux_spec f m acc1 acc2 :
  partition_aux f m acc1 acc2 =
@@ -1698,7 +1696,7 @@ Qed.
 End Filter.
 End MakeRaw.
 
-(** * Encapsulation
+(** ** Encapsulation
 
    Now, in order to really provide a functor implementing [S], we
    need to encapsulate everything into a type of binary search trees. *)

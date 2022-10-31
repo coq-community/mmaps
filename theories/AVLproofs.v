@@ -1,9 +1,8 @@
+(** * Finite Modular Maps: AVL Proofs *)
 
-(** * Finite Modular Maps : AVL Proofs *)
-
-(** Author : Pierre Letouzey (Université de Paris - INRIA),
+(** Author: Pierre Letouzey (Université de Paris - INRIA),
     adapted from earlier works in Coq Standard Library, see README.md.
-    Licence : LGPL 2.1, see file LICENSE. *)
+    License: LGPL-2.1-only, see file LICENSE. *)
 
 (** This is a complement to [MMaps.AVL], proving the AVL balancing
     invariants for the code in [MMaps.AVL], and hence the logarithmic
@@ -31,7 +30,7 @@ Ltac mysubst :=
    | _ => idtac
  end.
 
-(** * AVL trees *)
+(** ** AVL trees *)
 
 (** [avl s] : [s] is a properly balanced AVL tree,
     i.e. for any node the heights of the two children
@@ -48,7 +47,7 @@ Class Avl elt (t:tree elt) : Prop := mkAvl : avl t.
 
 #[export] Instance avl_Avl elt (s:tree elt) (Hs : avl s) : Avl s := Hs.
 
-(** * Automation and dedicated tactics *)
+(** ** Automation and dedicated tactics *)
 
 Local Hint Constructors avl : map.
 
@@ -75,7 +74,7 @@ Ltac inv_avl' :=
     inversion_clear H; avl2Avl
   end.
 
-(** * AVL trees have indeed logarithmic depth *)
+(** ** AVL trees have logarithmic depth *)
 
 Module LogDepth.
 
@@ -285,7 +284,7 @@ Proof.
 Qed.
 Local Hint Resolve avl_node : map.
 
-(** * The AVL invariant is preserved by set operations *)
+(** ** The AVL invariant is preserved by set operations *)
 
 (** empty *)
 

@@ -1,17 +1,8 @@
+(** * Finite Modular Maps: Implementation for Positive Keys *)
 
-(** * Finite Modular Maps : Implementation for Positive Keys *)
-
-(** Author : Pierre Letouzey (Université de Paris - INRIA),
+(** Author: Pierre Letouzey (Université de Paris - INRIA),
     adapted from earlier works in Coq Standard Library, see README.md.
-    Licence : LGPL 2.1, see file LICENSE. *)
-
-From Coq Require Import Bool PeanoNat BinPos Orders OrdersEx OrdersLists.
-From MMaps Require Import Utils Comparisons Interface.
-
-Set Implicit Arguments.
-Local Open Scope lazy_bool_scope.
-Local Open Scope positive_scope.
-Local Unset Elimination Schemes.
+    License: LGPL-2.1-only, see file LICENSE. *)
 
 (** This file is an adaptation to the [MMaps] framework of a work by
   Xavier Leroy and Sandrine Blazy (used for building certified compilers).
@@ -20,6 +11,14 @@ Local Unset Elimination Schemes.
   This is quite similar to the earlier [IntMap] library, except that no path
   compression is implemented, and that the current file is simple enough to be
   self-contained. *)
+
+From Coq Require Import Bool PeanoNat BinPos Orders OrdersEx OrdersLists.
+From MMaps Require Import Utils Comparisons Interface.
+
+Set Implicit Arguments.
+Local Open Scope lazy_bool_scope.
+Local Open Scope positive_scope.
+Local Unset Elimination Schemes.
 
 (** Reverses the positive [y] and concatenate it with [x] *)
 

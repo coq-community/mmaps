@@ -1,16 +1,17 @@
--R . MMaps
-Utils.v
-Comparisons.v
-Interface.v
-Facts.v
-Raw.v
-WeakList.v
-OrdList.v
-Positive.v
-GenTree.v
-AVL.v
-AVLproofs.v
-RBT.v
-RBTproofs.v
-MMaps.v
-demo.v
+-R theories MMaps
+
+theories/Utils.v
+theories/Comparisons.v
+theories/Interface.v
+theories/Raw.v
+theories/Facts.v
+theories/WeakList.v
+theories/OrdList.v
+theories/Positive.v
+theories/GenTree.v
+theories/AVL.v
+theories/AVLproofs.v
+theories/RBT.v
+theories/RBTproofs.v
+theories/MMaps.v
+theories/demo.v

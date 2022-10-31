@@ -1,9 +1,8 @@
+(** * Finite Modular Maps: Functors of Properties *)
 
-(** * Finite Modular Maps : Functors of Properties *)
-
-(** Author : Pierre Letouzey (Université de Paris - INRIA),
+(** Author: Pierre Letouzey (Université de Paris - INRIA),
     adapted from earlier works in Coq Standard Library, see README.md.
-    Licence : LGPL 2.1, see file LICENSE. *)
+    License: LGPL-2.1-only, see file LICENSE. *)
 
 (** This functor derives additional facts from [MMaps.Interface.S]. These
   facts are mainly the specifications of [MMaps.Interface.S] written using
@@ -14,10 +13,11 @@ From Coq Require Import Bool Equalities Orders OrdersFacts OrdersLists.
 From Coq Require OrdersAlt.
 From Coq Require Import Morphisms Permutation SetoidPermutation.
 From MMaps Require Import Utils Comparisons Interface.
+
 Set Implicit Arguments.
 Unset Strict Implicit.
 
-(** * Properties that are common to weak maps and ordered maps.
+(** ** Properties that are common to weak maps and ordered maps
 
     Thanks to subtyping, this functor can also be applied to
     [(K:OrderedType)(M:S K)].
@@ -77,7 +77,7 @@ Qed.
 Notation in_find_iff := in_find (only parsing).
 Notation not_find_in_iff := not_in_find (only parsing).
 
-(** * [Equal] and [Eqdom] are setoid equalities. *)
+(** *** Equal and Eqdom are setoid equalities *)
 
 Infix "==" := Equal (at level 30).
 
@@ -192,7 +192,7 @@ Qed.
 
 (* Later: compatibility for cardinal, fold, map, mapi... *)
 
-(** ** Earlier specifications (cf. FMaps) *)
+(** *** Earlier specifications (cf. FMaps) *)
 
 Section OldSpecs.
 Variable elt: Type.
@@ -414,7 +414,7 @@ Proof. apply merge_spec2. Qed.
 #[export] Hint Resolve mem_1 is_empty_1 is_empty_2 add_1 add_2 remove_1 : map.
 #[export] Hint Resolve remove_2 find_1 fold_1 map_1 mapi_1 mapi_2 : map.
 
-(** ** Specifications written using equivalences *)
+(** *** Specifications written using equivalences *)
 
 Section IffSpec.
 Variable elt: Type.
@@ -690,7 +690,7 @@ Ltac map_iff :=
   rewrite map_mapsto_iff || rewrite map_in_iff ||
   rewrite mapi_in_iff)).
 
-(** ** Specifications via the reflect predicate *)
+(** *** Specifications via the reflect predicate *)
 
 Lemma is_empty_spec' {elt}(m:t elt) : reflect (Empty m) (is_empty m).
 Proof.
@@ -702,7 +702,7 @@ Proof.
  apply iff_reflect. apply mem_in_iff.
 Qed.
 
-(** ** Specifications written using boolean predicates *)
+(** *** Specifications written using boolean predicates *)
 
 Section BoolSpec.
 
@@ -1013,7 +1013,7 @@ intro k. rewrite eq_option_alt. intro e.
 rewrite <- 2 find_mapsto_iff; auto.
 Qed.
 
-(** * Relations between [Equal], [Eqdom], [Equiv] and [Equivb]. *)
+(** *** Relations between Equal, Eqdom, Equiv and Equivb *)
 
 (** First, [Equal] is [Equiv] with Leibniz on elements. *)
 
@@ -1089,7 +1089,7 @@ Qed.
 
 End Equalities.
 
-(** * Results about [fold], [bindings], induction principles... *)
+(** Results about fold, bindings, and induction principles *)
 
 Section Elt.
   Variable elt:Type.
@@ -1154,7 +1154,7 @@ Section Elt.
   change (NoDupA eqk (rev l)). apply NoDupA_rev; auto using eqk_equiv.
   Qed.
 
-  (** * Bindings *)
+  (** *** Bindings *)
 
   Lemma in_bindings_iff m x :
     In x m <-> exists e, InA eqk (x,e) (bindings m).
@@ -1199,7 +1199,7 @@ Section Elt.
   rewrite <-bindings_Empty; apply empty_1.
   Qed.
 
-  (** * Conversions between maps and association lists. *)
+  (** *** Conversions between maps and association lists *)
 
   Definition uncurry {U V W : Type} (f : U -> V -> W) : U*V -> W :=
    fun p => f (fst p) (snd p).
@@ -1251,8 +1251,6 @@ Section Elt.
   apply bindings_3w.
   Qed.
 
-  (** * Fold *)
-
   (** Alternative specification via [fold_right] *)
 
   Lemma fold_spec_right m {A}(i:A)(f : key -> elt -> A -> A) :
@@ -1261,7 +1259,7 @@ Section Elt.
    rewrite fold_1. symmetry. apply fold_left_rev_right.
   Qed.
 
-  (** ** Induction principles about fold contributed by S. Lescuyer *)
+  (** *** Induction principles about fold contributed by S. Lescuyer *)
 
   (** In the following lemma, the step hypothesis is deliberately restricted
       to the precise map m we are considering. *)
@@ -1411,7 +1409,7 @@ Section Elt.
 
   Section Fold_More.
 
-  (** ** Additional properties of fold *)
+  (** *** Additional properties of fold *)
 
   (** When a function [f] is compatible and allows transpositions, we can
       compute [fold f] in any order. *)
@@ -1526,7 +1524,7 @@ Section Elt.
 
   End Fold_More.
 
-  (** ** Special case of a fold only on keys *)
+  (** *** Special case of a fold only on keys *)
 
   Section Fold_Keys.
   Variables (A:Type)(eqA:A->A->Prop)(st:Equivalence eqA).
@@ -1598,7 +1596,7 @@ Section Elt.
 
   End Fold_Keys.
 
-  (** * Cardinal *)
+  (** *** Cardinal *)
 
   Lemma cardinal_fold m :
    cardinal m = fold (fun _ _ => S) m 0.
@@ -1751,7 +1749,7 @@ Section Elt.
   exists x, e. now left.
   Qed.
 
-  (** * Properties about filter, partition, for_all, exists_ *)
+  (** *** Properties about filter, partition, for_all, and exists_ *)
 
   (** First, alternative formulations, e.g. based on fold,
       or on filter for the other operations *)
@@ -1956,7 +1954,7 @@ Section Elt.
   Definition partition_dom (f : key -> bool) := partition (fun k e => f k).
   Definition partition_range (f : elt -> bool) := partition (fun k => f).
 
-  (** * Extra predicates on maps : Disjoint and Partition *)
+  (** *** Extra predicates on maps: Disjoint and Partition *)
 
   Definition Disjoint m m' := forall k, ~(In k m /\ In k m').
 
@@ -1964,14 +1962,14 @@ Section Elt.
     Disjoint m1 m2 /\
     (forall k e, MapsTo k e m <-> MapsTo k e m1 \/ MapsTo k e m2).
 
-   #[export] Instance Disjoint_m : Proper (Eqdom ==> Eqdom ==> iff) Disjoint.
+  #[export] Instance Disjoint_m : Proper (Eqdom ==> Eqdom ==> iff) Disjoint.
   Proof.
   intros m1 m1' Hm1 m2 m2' Hm2. unfold Disjoint. split; intros.
   rewrite <- Hm1, <- Hm2; auto.
   rewrite Hm1, Hm2; auto.
   Qed.
 
-   #[export] Instance Partition_m :
+  #[export] Instance Partition_m :
    Proper (Equal ==> Equal ==> Equal ==> iff) Partition.
   Proof.
   intros m1 m1' Hm1 m2 m2' Hm2 m3 m3' Hm3. unfold Partition.
@@ -2170,7 +2168,7 @@ Section Elt.
     rewrite <- not_mem_in_iff. destruct Hm as (Hm,->). firstorder.
   Qed.
 
-  (** * Emulation of some functions lacking in the interface *)
+  (** *** Emulation of some functions lacking in the interface *)
 
   (** [update] now mimics the one of OCaml : [update x f m] returns a map
       containing the same bindings as m, except for the binding of
@@ -2232,7 +2230,7 @@ Section Elt.
   destruct f; [apply add_spec2 | apply remove_spec2]; auto.
   Qed.
 
-   #[export] Instance update_m : Proper (K.eq==>(eq==>eq)==>Equal==>Equal) update.
+  #[export] Instance update_m : Proper (K.eq==>(eq==>eq)==>Equal==>Equal) update.
   Proof.
   intros x x' Hx f f' Hf m m' Hm. unfold update.
   rewrite <- Hx. rewrite <- Hm at 1. rewrite <- (Hf (find x m)) by auto.
@@ -2253,7 +2251,7 @@ Section Elt.
     destruct o1, o2; auto. apply Hf; auto.
   Qed.
 
-   #[export] Instance union_m :
+  #[export] Instance union_m :
     Proper ((K.eq==>eq==>eq==>eq)==>Equal==>Equal==>Equal) union.
   Proof.
   intros f f' Hf m1 m1' Hm1 m2 m2' Hm2. unfold union.
@@ -2374,7 +2372,7 @@ Section Elt.
 
 End Properties.
 
-(** * Properties specific to maps with ordered keys *)
+(** ** Properties specific to maps with ordered keys *)
 
 Module OrdProperties (K:OrderedType)(M:S K).
  Module Import F := OrderedTypeFacts K.
@@ -2685,7 +2683,7 @@ Module OrdProperties (K:OrderedType)(M:S K).
   - intros [x|] [y|] [z|]; simpl; eauto; try easy. now transitivity y.
   Qed.
 
-   #[export] Instance min_elt_m : Proper (Equal ==> optrel eqke) min_elt.
+  #[export] Instance min_elt_m : Proper (Equal ==> optrel eqke) min_elt.
   Proof.
   intros m m' E. unfold min_elt.
   apply bindings_Equal_eqlistA in E.
@@ -2693,7 +2691,7 @@ Module OrdProperties (K:OrderedType)(M:S K).
   now destruct x as (k,e), x' as (k',e').
   Qed.
 
-   #[export] Instance min_elt_m' : Proper (Eqdom ==> optrel eqk) min_elt.
+  #[export] Instance min_elt_m' : Proper (Eqdom ==> optrel eqk) min_elt.
   Proof.
   intros m m' E. unfold min_elt.
   apply bindings_Eqdom_eqlistA in E.
@@ -2775,13 +2773,13 @@ Module OrdProperties (K:OrderedType)(M:S K).
   destruct l, l'; simpl; auto. inversion H1. inversion H1.
   Qed.
 
-   #[export] Instance max_elt_m : Proper (Equal ==> optrel eqke) max_elt.
+  #[export] Instance max_elt_m : Proper (Equal ==> optrel eqke) max_elt.
   Proof.
   intros m m' E. unfold max_elt.
   apply bindings_Equal_eqlistA in E. now rewrite E.
   Qed.
 
-   #[export] Instance max_elt_m' : Proper (Eqdom ==> optrel eqk) max_elt.
+  #[export] Instance max_elt_m' : Proper (Eqdom ==> optrel eqk) max_elt.
   Proof.
   intros m m' E. unfold max_elt.
   apply bindings_Eqdom_eqlistA in E. now rewrite E.
@@ -2845,7 +2843,7 @@ Module OrdProperties (K:OrderedType)(M:S K).
 
   Section Fold_properties.
 
-   #[export] Instance fold_m {A}(eqA:A->A->Prop)(st:Equivalence eqA) :
+  #[export] Instance fold_m {A}(eqA:A->A->Prop)(st:Equivalence eqA) :
    Proper ((K.eq==>eq==>eqA==>eqA)==>Equal==>eqA==>eqA) (@fold elt A).
   Proof.
   intros f f' Hf m m' Hm i i' Hi.
@@ -2909,7 +2907,7 @@ Module OrdProperties (K:OrderedType)(M:S K).
     rewrite ?compare_eq_iff, ?compare_lt_iff,  ?compare_gt_iff; order.
   Qed.
 
-   #[export] Instance Kcompare_symtrans : SymTrans K.compare.
+  #[export] Instance Kcompare_symtrans : SymTrans K.compare.
   Proof.
    split. exact F.compare_antisym. exact Kcompare_trans.
   Qed.
@@ -2948,7 +2946,7 @@ Module OrdProperties (K:OrderedType)(M:S K).
   Variable cmp : elt -> elt -> comparison.
   Context `(!SymTrans cmp).
 
-   #[export] Instance compare_symtrans : SymTrans (compare cmp).
+  #[export] Instance compare_symtrans : SymTrans (compare cmp).
   Proof.
   constructor.
   - intros x y. rewrite !compare_spec; apply sym; eauto with *.
@@ -2965,7 +2963,7 @@ Module OrdProperties (K:OrderedType)(M:S K).
   rewrite sym, CompOpp_iff in E. simpl in E. congruence.
   Qed.
 
-   #[export] Instance eq_equiv : Equivalence eq.
+  #[export] Instance eq_equiv : Equivalence eq.
   Proof.
   split.
   - intro x. apply compare_refl.
@@ -2973,14 +2971,14 @@ Module OrdProperties (K:OrderedType)(M:S K).
   - intros x y z. apply tra.
   Qed.
 
-   #[export] Instance lt_strorder : StrictOrder lt.
+  #[export] Instance lt_strorder : StrictOrder lt.
   Proof.
   split.
   - intros x. red. unfold lt. now rewrite compare_refl.
   - intros x y z. apply tra.
   Qed.
 
-   #[export] Instance lt_compat : Proper (eq ==> eq ==> iff) lt.
+  #[export] Instance lt_compat : Proper (eq ==> eq ==> iff) lt.
   Proof.
   intros x x' E y y' E'. unfold lt,eq in *. split; intros <-.
   - symmetry.

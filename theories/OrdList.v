@@ -1,9 +1,8 @@
+(** * Finite Modular Maps: Ordered Lists *)
 
-(** * Finite Modular Maps : Ordered Lists *)
-
-(** Author : Pierre Letouzey (Université de Paris - INRIA),
+(** Author: Pierre Letouzey (Université de Paris - INRIA),
     adapted from earlier works in Coq Standard Library, see README.md.
-    Licence : LGPL 2.1, see file LICENSE. *)
+    License: LGPL-2.1-only, see file LICENSE. *)
 
 (** This file proposes an implementation of the interface
     [MMaps.Interface.S] using lists of pairs ordered (increasing)
@@ -97,7 +96,7 @@ Qed.
 Lemma isok_Ok (m:t elt) : isok m = true -> Ok m.
 Proof. apply isok_spec. Qed.
 
-(** * [find] *)
+(** ** find *)
 
 Fixpoint find (k:key) (m: t elt) : option elt :=
  match m with
@@ -126,7 +125,7 @@ Proof.
      intros [(E,<-)|IN]; trivial. MX.order.
 Qed.
 
-(** * [mem] *)
+(** ** mem *)
 
 Fixpoint mem (k : key) (m : t elt) : bool :=
  match m with
@@ -153,7 +152,7 @@ Proof.
      MX.order.
 Qed.
 
-(** * [empty] *)
+(** ** empty *)
 
 Definition empty : t elt := nil.
 
@@ -167,7 +166,7 @@ Proof.
  unfold empty; autok.
 Qed.
 
-(** * [is_empty] *)
+(** ** is_empty *)
 
 Definition is_empty (l : t elt) : bool := if l then true else false.
 
@@ -178,7 +177,7 @@ Proof.
  intros H. specialize (H k). now rewrite compare_refl in H.
 Qed.
 
-(** * [add] *)
+(** ** add *)
 
 Fixpoint add (k : key) (x : elt) (s : t elt) : t elt :=
  match s with
@@ -238,7 +237,7 @@ Proof.
    apply Inf_eq with (y,v); auto.
 Qed.
 
-(** * [remove] *)
+(** ** remove *)
 
 Fixpoint remove (k : key) (s : t elt) : t elt :=
  match s with
@@ -303,7 +302,7 @@ Proof.
  constructor; autok.
 Qed.
 
-(** * [bindings] *)
+(** ** bindings *)
 
 Definition bindings (m: t elt) := m.
 
@@ -323,7 +322,7 @@ Proof.
  now apply Sort_NoDupA.
 Qed.
 
-(** * [singleton] *)
+(** ** singleton *)
 
 Definition singleton k (e:elt) : t elt := (k,e)::nil.
 
@@ -335,7 +334,7 @@ Proof.
  constructor; auto.
 Qed.
 
-(** * [fold] *)
+(** ** fold *)
 
 Fixpoint fold (A:Type)(f:key->elt->A->A)(m:t elt) (acc:A) :  A :=
   match m with
@@ -349,7 +348,7 @@ Proof.
  induction m as [|(k,e) m IH]; simpl; auto.
 Qed.
 
-(** * [equal] *)
+(** ** equal *)
 
 Fixpoint equal (cmp:elt->elt->bool)(m m' : t elt) : bool :=
   match m, m' with
@@ -456,7 +455,7 @@ Qed.
 
 Variable elt':Type.
 
-(** * [map] and [mapi] *)
+(** ** map and mapi *)
 
 Definition map (f:elt -> elt') (m:t elt) : t elt' :=
   List.map (fun '(k,e) => (k,f e)) m.
@@ -517,7 +516,7 @@ Qed.
 End Elt2.
 Section Elt3.
 
-(** * [merge] *)
+(** ** merge *)
 
 Variable elt elt' elt'' : Type.
 Variable f : key -> option elt -> option elt' -> option elt''.

@@ -9,10 +9,18 @@ action: true
 synopsis: Several implementations of finite maps over arbitrary ordered types using Coq functors
 
 description: |-
-  This project contains several implementations of finite maps
-  over arbitrary ordered types using Coq functors. This is an
-  updated version of Coq Stdlib's FMaps. It is meant to complement
-  the MSet library.
+  This project contains several implementations of finite maps,
+  including implementations based on AVL trees and red-black trees.
+  The finite maps are parameterized on arbitrary ordered types using
+  Coq functors. This is an updated version of the Coq Stdlib's FMaps
+  that is meant to complement the Stdlib's MSet library.
+
+publications:
+- pub_url: https://www.cs.princeton.edu/~appel/papers/redblack.pdf
+  pub_title: Efficient Verified Red-Black Trees
+- pub_url: https://hal.inria.fr/hal-00150913
+  pub_title: Functors for Proofs and Programs
+  pub_doi: 10.1007/978-3-540-24725-8_26
 
 authors:
 - name: Pierre Letouzey
@@ -29,7 +37,7 @@ opam-file-maintainer: palmskog@gmail.com
 opam-file-version: dev
 
 license:
-  fullname: GNU Lesser General Public License v2.1
+  fullname: GNU Lesser General Public License v2.1 only
   identifier: LGPL-2.1-only
 
 supported_coq_versions:
@@ -52,18 +60,6 @@ keywords:
 
 categories:
 - name: Computer Science/Data Types and Data Structures
-
-build: |-
-  ## Building and installation instructions
-
-  To build and install manually, do:
-
-  ``` shell
-  git clone https://github.com/coq-community/coq-mmaps.git
-  cd coq-mmaps
-  make   # or make -j <number-of-cores-on-your-machine> 
-  make install
-  ```
 
 documentation: |-
   ## Documentation
