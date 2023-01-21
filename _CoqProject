@@ -13,5 +13,6 @@ theories/AVL.v
 theories/AVLproofs.v
 theories/RBT.v
 theories/RBTproofs.v
+theories/Trie.v
 theories/MMaps.v
 theories/demo.v
