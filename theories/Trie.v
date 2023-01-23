@@ -108,9 +108,9 @@ Lemma extensionality {A} : forall m1 m2, (forall i, @get A i m1 = get i m2) -> m
 Proof.
   induction m1 using trie_ind; induction m2 using trie_ind; intros;
     eauto using eq_sym, extensionality_empty.
-  f_equal; [apply IHm1_1| |apply IHm1_2]; try intros i.
-  all : [>specialize (H1 (xO i)) | specialize (H1 xH) | specialize (H1 (xI i))].
-  all : rewrite ?get_Node in *; auto.
+  f_equal; [apply IHm1_1| |apply IHm1_2]; try intros i;
+    [>specialize (H1 (xO i)) | specialize (H1 xH) | specialize (H1 (xI i))];
+    rewrite ?get_Node in H1; auto.
 Qed.
 
 (** Setters *)
