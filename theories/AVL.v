@@ -518,7 +518,7 @@ Proof.
  functional induction (add x e m); simpl; intros; cleanf; trivial;
  invlt; try (intuition; order).
  rewrite bal_bindings. unfold create. rewrite !bindings_node.
- rewrite app_ass. f_equal. simpl. f_equal. intuition.
+ rewrite <- app_assoc. f_equal. simpl. f_equal. intuition.
 Qed.
 
 (** *** Extraction of minimum binding *)
@@ -765,11 +765,11 @@ Proof.
    rewrite create_bindings. now apply add_above_bindings.
  - clear Hrl LT. factornode r. invok; invlt.
    rewrite bal_bindings, !create_bindings, bindings_node.
-   rewrite app_ass; simpl. f_equal. f_equal.
+   rewrite <- app_assoc; simpl. f_equal. f_equal.
    now rewrite Hlr, create_bindings by (ok; intuition).
  - clear Hlr LT LT'. factornode l. invok; invlt.
    rewrite bal_bindings, !create_bindings, bindings_node.
-   now rewrite Hrl, create_bindings, app_ass by (ok; intuition).
+   now rewrite Hrl, create_bindings, <- app_assoc by (ok; intuition).
 Qed.
 
 (** *** Split *)
