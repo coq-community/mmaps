@@ -38,7 +38,7 @@ Print CompareSpec.
     and then maps with [Z] numbers as keys. *)
 
 Module NatMaps := MMaps.RBT.Make(Nat).
-Module ZM := MMaps.RBT.Make(Z).
+Module ZM := MMaps.RBT.Make(BinInt.Z).
 
 (* Let's play with them : *)
 
@@ -141,7 +141,7 @@ Time Compute ZM.bindings (ZM.merge both bigmap3 bigmap4).
    This way, building new implementations is relatively simple.
    Now, lots of additional facts can be derived from this common interface. *)
 
-Module ZMF := MMaps.Facts.Properties Z ZM.
+Module ZMF := MMaps.Facts.Properties BinInt.Z ZM.
 
 (* It contains mainly rephrasing of the specifications. *)
 Check ZMF.add_1.
@@ -172,7 +172,7 @@ Check ZMF.fold_add.
    provide such structures.
 *)
 
-Module W := MMaps.WeakList.Make(Z).
+Module W := MMaps.WeakList.Make(BinInt.Z).
 
 (* Of course, we cannot provide efficient functions anymore : the
    underlying structure is unsorted lists (but without redundancies). *)

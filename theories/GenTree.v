@@ -917,7 +917,7 @@ Proof.
  induction s; simpl; intros; auto.
  rewrite IHs1, IHs2.
  unfold bindings; simpl.
- rewrite 2 IHs1, IHs2, !app_nil_r, !app_ass; auto.
+ rewrite 2 IHs1, IHs2, !app_nil_r, <- !app_assoc; auto.
 Qed.
 
 Lemma bindings_node_acc (t1 t2:t elt) x e z acc :
@@ -925,7 +925,7 @@ Lemma bindings_node_acc (t1 t2:t elt) x e z acc :
  bindings t1 ++ (x,e) :: bindings t2 ++ acc.
 Proof.
  unfold bindings; simpl; intros.
- rewrite !bindings_app, !app_nil_r, !app_ass; auto.
+ rewrite !bindings_app, !app_nil_r, <- !app_assoc; auto.
 Qed.
 
 Lemma bindings_node (t1 t2:t elt) x e z :

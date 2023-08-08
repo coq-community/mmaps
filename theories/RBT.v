@@ -1616,7 +1616,7 @@ Proof.
  intros acc.
  rewrite <- (List.app_nil_r (bindings _)).
  rewrite bindings_node, !filter_app. simpl. rewrite List.app_nil_r.
- destruct (f x v); now rewrite IHl, IHr, app_ass.
+ destruct (f x v); now rewrite IHl, IHr, <- app_assoc.
 Qed.
 
 Lemma filter_spec0 f m :

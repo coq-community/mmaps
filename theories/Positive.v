@@ -363,7 +363,7 @@ Module PositiveMap <: S PositiveOrderedTypeBits.
   revert j l.
   induction m; simpl; intros; auto.
   destruct o; unfold bindings; simpl;
-   rewrite !IHm1, !IHm2, map_app, map_map, app_ass, app_nil_r; simpl;
+   rewrite !IHm1, !IHm2, map_app, map_map, <- app_assoc, app_nil_r; simpl;
    f_equal; try (apply map_ext; now intros (?,?)); f_equal.
   - f_equal. rewrite map_map. apply map_ext. now intros (?,?).
   - rewrite map_map. apply map_ext. now intros (?,?).
