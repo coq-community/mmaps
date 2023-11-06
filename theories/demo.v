@@ -4,8 +4,8 @@
     adapted from earlier works in Coq Standard Library, see README.md.
     License: LGPL-2.1-only, see file LICENSE. *)
 
-From Coq Require Import ZArith String Orders List.
-From MMaps Require Import MMaps.
+From Coq Require Import ZArith Int String Orders List.
+From MMaps Require Import MMaps AVLproofs.
 
 Set Implicit Arguments.
 Open Scope string.
@@ -182,3 +182,72 @@ Compute W.bindings (W.add 1 "yes" (W.add 3 "no" (W.add 2 "foo" W.empty))).
 (* For now, [Interface.WS] provides the same operations as [Interface.S]
    (minus [compare]), and the only different specification concerns [bindings],
    which isn't sorted, but only without redundancies. *)
+
+(** ** AVLproofs *)
+
+Module ZP := AvlProofs Z_as_Int BinInt.Z.
+
+Definition addup_table tab :=
+ ZP.fold (fun k p i => Z.add (Z.pos p) i) tab Z0.
+
+Definition add_to_table k p tab :=
+ match ZP.find k tab with
+ | Some x => ZP.add k (p+x)%positive tab
+ | None => ZP.add k p tab
+ end.
+
+Lemma add_to_table_ok:
+forall k p tab `{!ZP.Ok tab},
+ ZP.Ok (add_to_table k p tab).
+Proof.
+intros.
+unfold add_to_table.
+destruct (ZP.find k tab);
+apply ZP.add_ok; assumption.
+Qed.
+
+Lemma add_to_table_correct:
+ forall k p tab `{!ZP.Ok tab},
+  addup_table (add_to_table k p tab) = Z.add (addup_table tab) (Z.pos p).
+Proof.
+intros.
+pose (lift (k: ZP.key) p := Z.pos p).
+pose proof @ZP.relate_fold_add positive _ _ Z.eq_equiv lift
+  ltac:(intros; auto)
+  Z.add
+  ltac:(intros; subst; auto)
+  Z.add_assoc Z.add_comm
+  Z0
+  Z.add_0_l
+  (fun k p x => Z.add (Z.pos p) x)
+  ltac:(intros; subst; reflexivity).
+pose proof (@add_to_table_ok k p tab H) as Hok.
+unfold addup_table.
+rewrite (H0 (add_to_table k p tab) Hok k).
+rewrite (H0 tab H k).
+clear H0.
+unfold add_to_table.
+destruct (ZP.find k tab) eqn:?H.
+- pose proof (@ZP.add_spec1 _ tab k (p + p0)%positive H) as Hf.
+  rewrite Hf.
+  rewrite ZP.fold_add_ignore; [|assumption|].
+  unfold lift.
+  rewrite Pos.add_comm.
+  rewrite Pos2Z.inj_add.
+  rewrite <- !Z.add_assoc.
+  rewrite (Z.add_comm (Z.pos p)).
+  auto.
+  intros; rewrite <- H1.
+  destruct k; [reflexivity| |].
+  rewrite Pos.compare_refl; reflexivity.
+  rewrite Pos.compare_refl; reflexivity.
+- rewrite ZP.add_spec1 by (apply H).
+  rewrite ZP.fold_add_ignore; [|assumption|].
+  set (u := ZP.fold _ _ _).
+  rewrite Z.add_0_l.
+  apply Z.add_comm.
+  intros; rewrite <- H1.
+  destruct k; [reflexivity| |].
+  rewrite Pos.compare_refl; reflexivity.
+  rewrite Pos.compare_refl; reflexivity.
+Qed.
