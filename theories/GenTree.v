@@ -358,6 +358,7 @@ Module O := KeyOrderedType K.
 Module L := MMaps.OrdList.MakeRaw K.
 
 Scheme tree_ind := Induction for tree Sort Prop.
+Scheme Bst_ind := Induction for Bst Sort Prop.
 
 (** *** Automation and dedicated tactics *)
 
@@ -989,6 +990,146 @@ Lemma fold_spec m {A} (i:A)(f : key -> elt -> A -> A) :
  fold f m i = fold_left (fun a p => f (fst p) (snd p) a) (bindings m) i.
 Proof.
  rewrite fold_equiv. unfold fold'. now rewrite L.fold_spec.
+Qed.
+
+Lemma relate_fold_add:
+ forall [A: Type]
+     [eqv: A -> A -> Prop]
+     (eqv_rel: Equivalence eqv)
+     (lift: key -> elt -> A)
+     (lift_prop: forall (k k' : key) (x : elt), k == k' -> eqv (lift k x) (lift k' x))
+    (f:  A -> A -> A)
+    (f_mor: forall (x1 y1 : A), eqv x1 y1 ->
+              forall (x2 y2 : A), eqv x2 y2 ->
+              eqv (f x1 x2) (f y1 y2))
+    (f_assoc: forall x y z : A, eqv (f x (f y z)) (f (f x y) z))
+    (f_commut: forall x y : A, eqv (f x y) (f y x))
+    (u: A)
+    (u_unit: forall (x : A), eqv (f u x) x)
+    (g: key -> elt -> A -> A)
+    (g_eqv: forall k (x : elt) a, eqv (g k x a) (f (lift k x) a))
+    (this: t elt)
+    `{!Ok this} (* need BST *)
+    (k: key),
+    eqv (fold g this u)
+      (f (match find k this with Some x => lift k x | None => u end)
+       (fold (fun k' (x : elt) (a : A) =>
+                           match K.compare k k' with Eq => a
+                                 | _ => g k' x a end) this u)).
+Proof.
+intros.
+set (h := fun k' (x : elt) (a : A) =>
+          match K.compare k k' with
+          | Eq => a
+          | _ => g k' x a
+          end).
+assert (g_mor: forall (k : key) (x : elt) a b, eqv a b -> eqv (g k x a) (g k x b)). {
+  intros. rewrite !g_eqv. apply f_mor; auto; reflexivity.
+}
+assert (FOLD1: forall t a,  ~In k t ->
+    fold g t a = fold h t a). {
+ induction t0; simpl; intros;auto.
+ rewrite IHt0_1, IHt0_2.
+ f_equal. set (uu := fold _ _ _); clearbody uu.
+ unfold h. clear -H.
+ destruct (K.compare k t1) eqn:?; auto. contradiction H.
+ apply F.compare_eq in Heqc.
+ exists e; constructor; auto.
+ contradict H; inversion H; exists x; constructor 3; auto.
+ contradict H. inversion H; exists x; constructor 2; auto.
+}
+assert (FOLD2: forall t a b, eqv a b -> eqv (fold g t a) (fold g t b)). {
+ clear - eqv_rel g_mor.
+  induction t0; simpl; intros;auto.
+}
+assert (FOLD3: forall t k a b,
+    eqv (fold g t (g k a b)) (g k a (fold g t b))). {
+  induction t0; simpl; intros. reflexivity.
+  etransitivity; [ |   apply IHt0_2]. apply FOLD2.
+  transitivity (g t1 e (g k0 a (fold g t0_1 b))).
+  apply g_mor; auto.
+  set (v := fold _ _ _). clearbody v.
+  rewrite (g_eqv t1).
+  etransitivity. apply f_mor. reflexivity.
+  apply g_eqv.
+  etransitivity; [apply f_assoc |].
+  etransitivity. apply f_mor. apply f_commut. reflexivity.
+  etransitivity; [symmetry; apply f_assoc |].
+  symmetry.
+  rewrite g_eqv. apply f_mor. reflexivity.  apply g_eqv.
+}
+destruct (find k this) eqn:?H.
+-
+set (a:=u). clearbody a.
+revert a; induction Ok0; simpl; intros; [ discriminate | ].
+simpl in H.
+unfold h at 2.
+destruct (K.compare k x) eqn:?.
++
+apply F.compare_eq in Heqc.
+assert (Hl: ~In k l). {
+ apply above_notin.
+ rewrite Heqc; auto.
+}
+assert (Hr: ~In k r). {
+ apply below_notin.
+ rewrite Heqc; auto.
+}
+inversion H; clear H; subst.
+clear IHOk0_1 IHOk0_2.
+rewrite <- !FOLD1 by auto.
+etransitivity.
+apply FOLD3.
+rewrite !g_eqv.
+apply f_mor; try reflexivity.
+symmetry.
+apply lift_prop; auto.
++
+apply F.compare_lt_iff in Heqc.
+specialize (IHOk0_1 H); clear IHOk0_2.
+assert (Hr: ~ In k r). {
+ apply below_notin.
+ revert l1.
+ revert Heqc.
+ apply below_trans.
+}
+rewrite <- FOLD1 by (apply Hr).
+etransitivity. apply FOLD2. apply g_mor. apply IHOk0_1.
+set (v := fold h l a). clearbody v.
+symmetry.
+etransitivity.
+symmetry.
+rewrite <- g_eqv.
+apply FOLD3.
+apply FOLD2.
+rewrite g_eqv.
+etransitivity. apply f_mor. reflexivity. apply g_eqv.
+rewrite f_assoc.
+etransitivity. apply f_mor. apply f_commut. reflexivity.
+rewrite <- f_assoc.
+rewrite g_eqv.
+reflexivity.
++
+apply F.compare_gt_iff in Heqc.
+specialize (IHOk0_2 H); clear IHOk0_1.
+assert (Hl: ~In k l). {
+ apply above_notin.
+ revert l0.
+ revert Heqc.
+ apply above_trans.
+}
+etransitivity. apply IHOk0_2. clear IHOk0_2.
+apply f_mor. reflexivity.
+rewrite FOLD1 by auto. reflexivity.
+-
+assert (Hr: ~In k this). {
+ apply not_find_iff.
+ apply Ok0.
+ assumption.
+}
+rewrite FOLD1 by auto.
+rewrite u_unit.
+reflexivity.
 Qed.
 
 (** *** For_all and exists *)
