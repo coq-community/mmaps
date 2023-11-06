@@ -561,6 +561,46 @@ Proof.
  [apply concat_avl | apply join_avl]; auto.
 Qed.
 
+(** fold *)
+
+Lemma fold_bal:
+  forall [A : Type] (f: key -> elt -> A -> A) (t1 t2: tree elt) k e x,
+  fold f (bal t1 k e t2) x =  fold f t2 (f k e (fold f t1 x)).
+Proof.
+intros.
+unfold bal.
+repeat match goal with
+ | |- context [if ?A then _ else _] => destruct A
+ | |- context [match add ?p ?x ?y with _ => _ end] =>
+                   destruct (add p x y) eqn:?H
+ | |- context [match ?t with _ => _ end ] => destruct t
+end;
+simpl; auto.
+Qed.
+
+Lemma fold_add_ignore:
+  forall [A : Type]
+   (f: key -> elt -> A -> A)
+   (this: tree elt)
+   `{!Ok this}
+   (k: key)
+   (x: elt) (a0: A),
+   (forall k' y a, X.eq k k' -> f k' y a = a) ->
+   fold f (add k x this) a0 = fold f this a0.
+Proof.
+intros.
+revert a0; induction Ok0; intros.
+unfold add. simpl.
+apply H; reflexivity.
+simpl.
+destruct (X.compare k x0) eqn:?; rewrite ?fold_bal.
+- apply F.compare_eq in Heqc.
+  simpl; f_equal.
+  rewrite ?H; auto.
+- rewrite IHOk0_1. auto.
+- rewrite IHOk0_2. auto.
+Qed.
+
 End Elt.
 
 Lemma map_height {elt elt'}(f:elt->elt') m : height (map f m) = height m.
