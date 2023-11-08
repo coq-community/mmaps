@@ -185,7 +185,8 @@ Compute W.bindings (W.add 1 "yes" (W.add 3 "no" (W.add 2 "foo" W.empty))).
 
 (** ** AVLproofs *)
 
-Module ZP := AvlProofs Z_as_Int BinInt.Z.
+Module ZPRaw := AvlProofs Z_as_Int BinInt.Z.
+Module ZP := Raw.Pack BinInt.Z ZPRaw.
 
 Definition addup_table tab :=
  ZP.fold (fun k p i => Z.add (Z.pos p) i) tab Z0.
@@ -196,23 +197,56 @@ Definition add_to_table k p tab :=
  | None => ZP.add k p tab
  end.
 
-Lemma add_to_table_ok:
-forall k p tab `{!ZP.Ok tab},
- ZP.Ok (add_to_table k p tab).
+Lemma ZP_relate_fold_add:
+ forall [elt A: Type]
+     [eqv: A -> A -> Prop]
+     (eqv_rel: Equivalence eqv)
+     (lift: ZP.key -> elt -> A)
+     (lift_prop: forall k k' x, k = k' -> eqv (lift k x) (lift k' x))
+    (f:  A -> A -> A)
+    (f_mor: forall x1 y1, eqv x1 y1 ->
+              forall x2 y2, eqv x2 y2 ->
+              eqv (f x1 x2) (f y1 y2))
+    (f_assoc: forall x y z : A, eqv (f x (f y z)) (f (f x y) z))
+    (f_commut: forall x y : A, eqv (f x y) (f y x))
+    (u: A)
+    (u_unit: forall x, eqv (f u x) x)
+    (g: ZP.key -> elt -> A -> A)
+    (g_eqv: forall k x a, eqv (g k x a) (f (lift k x) a))
+    (tab: ZP.t elt)
+    (k: ZP.key),
+    eqv (ZP.fold g tab u)
+      (f (match ZP.find k tab with Some x => lift k x | None => u end)
+       (ZP.fold (fun k' x a =>
+         match Z.compare k k' with Eq => a | _ => g k' x a end) tab u)).
 Proof.
-intros.
-unfold add_to_table.
-destruct (ZP.find k tab);
-apply ZP.add_ok; assumption.
+intros; destruct tab.
+unfold ZP.fold, ZP.find; simpl.
+apply ZPRaw.relate_fold_add; auto.
+Qed.
+
+Lemma ZP_fold_add_ignore:
+  forall [elt A]
+   (f: ZP.key -> elt -> A -> A)
+   (tab: ZP.t elt)
+   (k: ZP.key)
+   (x: elt) (a0: A),
+   (forall k' y a, k = k' -> f k' y a = a) ->
+   ZP.fold f (ZP.add k x tab) a0 =
+   ZP.fold f tab a0.
+Proof.
+intros; destruct tab.
+unfold ZP.fold, ZP.add; simpl.
+apply ZPRaw.fold_add_ignore; auto.
 Qed.
 
 Lemma add_to_table_correct:
- forall k p tab `{!ZP.Ok tab},
+ forall k p tab,
   addup_table (add_to_table k p tab) = Z.add (addup_table tab) (Z.pos p).
 Proof.
 intros.
 pose (lift (k: ZP.key) p := Z.pos p).
-pose proof @ZP.relate_fold_add positive _ _ Z.eq_equiv lift
+pose proof ZP_relate_fold_add Z.eq_equiv lift
   ltac:(intros; auto)
   Z.add
   ltac:(intros; subst; auto)
@@ -221,33 +255,27 @@ pose proof @ZP.relate_fold_add positive _ _ Z.eq_equiv lift
   Z.add_0_l
   (fun k p x => Z.add (Z.pos p) x)
   ltac:(intros; subst; reflexivity).
-pose proof (@add_to_table_ok k p tab H) as Hok.
 unfold addup_table.
-rewrite (H0 (add_to_table k p tab) Hok k).
-rewrite (H0 tab H k).
-clear H0.
+rewrite (H (add_to_table k p tab) k).
+rewrite (H tab k).
+clear H.
 unfold add_to_table.
 destruct (ZP.find k tab) eqn:?H.
-- pose proof (@ZP.add_spec1 _ tab k (p + p0)%positive H) as Hf.
-  rewrite Hf.
-  rewrite ZP.fold_add_ignore; [|assumption|].
-  unfold lift.
-  rewrite Pos.add_comm.
-  rewrite Pos2Z.inj_add.
-  rewrite <- !Z.add_assoc.
-  rewrite (Z.add_comm (Z.pos p)).
-  auto.
-  intros; rewrite <- H1.
-  destruct k; [reflexivity| |].
-  rewrite Pos.compare_refl; reflexivity.
-  rewrite Pos.compare_refl; reflexivity.
+- rewrite ZP.add_spec1.
+  rewrite ZP_fold_add_ignore.
+  * unfold lift.
+    rewrite Pos.add_comm.
+    rewrite Pos2Z.inj_add.
+    rewrite <- !Z.add_assoc.
+    rewrite (Z.add_comm (Z.pos p)).
+    reflexivity.
+  * intros; subst.
+    rewrite Z.compare_refl; reflexivity.
 - rewrite ZP.add_spec1 by (apply H).
-  rewrite ZP.fold_add_ignore; [|assumption|].
-  set (u := ZP.fold _ _ _).
-  rewrite Z.add_0_l.
-  apply Z.add_comm.
-  intros; rewrite <- H1.
-  destruct k; [reflexivity| |].
-  rewrite Pos.compare_refl; reflexivity.
-  rewrite Pos.compare_refl; reflexivity.
+  rewrite ZP_fold_add_ignore.
+  * set (u := ZP.fold _ _ _).
+    rewrite Z.add_0_l.
+    apply Z.add_comm.
+  * intros; subst.
+    rewrite Z.compare_refl; reflexivity.
 Qed.
