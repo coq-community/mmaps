@@ -182,3 +182,58 @@ Compute W.bindings (W.add 1 "yes" (W.add 3 "no" (W.add 2 "foo" W.empty))).
 (* For now, [Interface.WS] provides the same operations as [Interface.S]
    (minus [compare]), and the only different specification concerns [bindings],
    which isn't sorted, but only without redundancies. *)
+
+(* Prove properties using general facts relating fold and add *)
+
+Module ZMO := MMaps.Facts.OrdProperties BinInt.Z ZM.
+
+Definition addup_table tab :=
+ ZM.fold (fun k p i => Z.add (Z.pos p) i) tab Z0.
+
+Definition add_to_table k p tab :=
+ match ZM.find k tab with
+ | Some x => ZM.add k (p+x)%positive tab
+ | None => ZM.add k p tab
+ end.
+
+Lemma add_to_table_correct:
+ forall k p tab,
+  addup_table (add_to_table k p tab) = Z.add (addup_table tab) (Z.pos p).
+Proof.
+intros.
+pose (lift (k: ZM.key) p := Z.pos p).
+pose proof @ZMO.relate_fold_add _ _ _ Z.eq_equiv lift
+  ltac:(intros; auto)
+  Z.add
+  ltac:(intros; subst; auto)
+  Z.add_assoc Z.add_comm
+  Z0
+  Z.add_0_l
+  (fun k p x => Z.add (Z.pos p) x)
+  ltac:(intros; subst; reflexivity).
+unfold addup_table.
+rewrite (H (add_to_table k p tab) k).
+rewrite (H tab k).
+clear H.
+unfold add_to_table.
+destruct (ZM.find k tab) eqn:?H.
+- rewrite ZM.add_spec1.
+  rewrite ZMF.fold_add_ignore.
+  * unfold lift.
+    rewrite Pos.add_comm.
+    rewrite Pos2Z.inj_add.
+    rewrite <- !Z.add_assoc.
+    rewrite (Z.add_comm (Z.pos p)).
+    reflexivity.
+  * intros; subst.
+    destruct k'; try reflexivity;
+    rewrite Pos.compare_refl; reflexivity.
+- rewrite ZM.add_spec1 by (apply H).
+  rewrite ZMF.fold_add_ignore.
+  * set (u := ZM.fold _ _ _).
+    rewrite Z.add_0_l.
+    apply Z.add_comm.
+  * intros; subst.
+    destruct k'; try reflexivity;
+    rewrite Pos.compare_refl; reflexivity.
+Qed.

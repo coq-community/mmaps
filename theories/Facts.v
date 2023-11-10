@@ -2370,6 +2370,19 @@ Section Elt.
   clear. intros x x' Hx e e' He. now rewrite Hx.
  Qed.
 
+  Lemma fold_add_ignore:
+   forall [elt A : Type]
+   (f: key -> elt -> A -> A)
+   (this: t elt)
+   (k: key)
+   (x: elt) (a0: A),
+   (forall k' y a, K.eq k k' -> f k' y a = a) ->
+   fold f (add k x this) a0 = fold f this a0.
+  Proof.
+    intros.
+    rewrite 2!fold_spec.
+  Admitted.
+
 End Properties.
 
 (** ** Properties specific to maps with ordered keys *)
@@ -3007,6 +3020,32 @@ Module OrdProperties (K:OrderedType)(M:S K).
   Defined.
 
   End Compare.
+
+  Lemma relate_fold_add:
+    forall [A: Type]
+     [eqv: A -> A -> Prop]
+     (eqv_rel: Equivalence eqv)
+     (lift: key -> elt -> A)
+     (lift_prop: forall (k k' : key) (x : elt), K.eq k k' -> eqv (lift k x) (lift k' x))
+    (f:  A -> A -> A)
+    (f_mor: forall (x1 y1 : A), eqv x1 y1 ->
+              forall (x2 y2 : A), eqv x2 y2 ->
+              eqv (f x1 x2) (f y1 y2))
+    (f_assoc: forall x y z : A, eqv (f x (f y z)) (f (f x y) z))
+    (f_commut: forall x y : A, eqv (f x y) (f y x))
+    (u: A)
+    (u_unit: forall (x : A), eqv (f u x) x)
+    (g: key -> elt -> A -> A)
+    (g_eqv: forall k (x : elt) a, eqv (g k x a) (f (lift k x) a))
+    (this: t elt)
+    (k: key),
+    eqv (fold g this u)
+      (f (match find k this with Some x => lift k x | None => u end)
+       (fold (fun k' (x : elt) (a : A) =>
+                           match K.compare k k' with Eq => a
+                                 | _ => g k' x a end) this u)).
+  Proof.
+  Admitted.
  End Elt.
 End OrdProperties.
 
