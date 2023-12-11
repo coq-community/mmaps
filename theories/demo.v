@@ -185,7 +185,6 @@ Compute W.bindings (W.add 1 "yes" (W.add 3 "no" (W.add 2 "foo" W.empty))).
 
 (* Prove properties using general facts relating fold and add *)
 
-Module ZMO := MMaps.Facts.OrdProperties BinInt.Z ZM.
 
 Definition addup_table tab :=
  ZM.fold (fun k p i => Z.add (Z.pos p) i) tab Z0.
@@ -196,44 +195,34 @@ Definition add_to_table k p tab :=
  | None => ZM.add k p tab
  end.
 
+Definition get_from_table k tab : Z :=
+ match ZM.find k tab with
+ | Some x => Z.pos x
+ | None => 0
+ end.
+
+
 Lemma add_to_table_correct:
  forall k p tab,
   addup_table (add_to_table k p tab) = Z.add (addup_table tab) (Z.pos p).
 Proof.
 intros.
 pose (lift (k: ZM.key) p := Z.pos p).
-pose proof @ZMO.relate_fold_add _ _ _ Z.eq_equiv lift
-  ltac:(intros; auto)
-  Z.add
-  ltac:(intros; subst; auto)
-  Z.add_assoc Z.add_comm
-  Z0
-  Z.add_0_l
-  (fun k p x => Z.add (Z.pos p) x)
-  ltac:(intros; subst; reflexivity).
-unfold addup_table.
-rewrite (H (add_to_table k p tab) k).
-rewrite (H tab k).
-clear H.
-unfold add_to_table.
+unfold addup_table, add_to_table.
+pose proof @ZMF.relate_fold_add positive Z _ Z.eq_equiv (fun _ i => Z.pos i)
+   ltac:(intros; subst; auto) (Z.add)  ltac:(Lia.lia) ltac:(Lia.lia) ltac:(Lia.lia)
+   0 ltac:(Lia.lia)
+   (fun _ p i => Z_as_DT.pos p + i)
+   ltac:(reflexivity)
+   tab k.
+cbv beta in H.
+set (g := fun (_ : ZM.key) (p0 : positive) (i : Z) => Z_as_DT.pos p0 + i) in *.
+clear lift.
+specialize (H p).
+rewrite Z.add_comm.
 destruct (ZM.find k tab) eqn:?H.
-- rewrite ZM.add_spec1.
-  rewrite ZMF.fold_add_ignore.
-  * unfold lift.
-    rewrite Pos.add_comm.
-    rewrite Pos2Z.inj_add.
-    rewrite <- !Z.add_assoc.
-    rewrite (Z.add_comm (Z.pos p)).
-    reflexivity.
-  * intros; subst.
-    destruct k'; try reflexivity;
-    rewrite Pos.compare_refl; reflexivity.
-- rewrite ZM.add_spec1 by (apply H).
-  rewrite ZMF.fold_add_ignore.
-  * set (u := ZM.fold _ _ _).
-    rewrite Z.add_0_l.
-    apply Z.add_comm.
-  * intros; subst.
-    destruct k'; try reflexivity;
-    rewrite Pos.compare_refl; reflexivity.
+ erewrite (H (p+p0)%positive). auto.
+simpl. auto.
+rewrite (H p); auto.
 Qed.
+
