@@ -9,8 +9,8 @@ Follow the instructions on https://github.com/coq-community/templates to regener
 [![Code of Conduct][conduct-shield]][conduct-link]
 [![Zulip][zulip-shield]][zulip-link]
 
-[docker-action-shield]: https://github.com/coq-community/coq-mmaps/workflows/Docker%20CI/badge.svg?branch=master
-[docker-action-link]: https://github.com/coq-community/coq-mmaps/actions?query=workflow:"Docker%20CI"
+[docker-action-shield]: https://github.com/coq-community/coq-mmaps/actions/workflows/docker-action.yml/badge.svg?branch=master
+[docker-action-link]: https://github.com/coq-community/coq-mmaps/actions/workflows/docker-action.yml
 
 [contributing-shield]: https://img.shields.io/badge/contributions-welcome-%23f7931e.svg
 [contributing-link]: https://github.com/coq-community/manifesto/blob/master/CONTRIBUTING.md
@@ -66,10 +66,13 @@ make install
 
 ## Documentation
 
-As a starting point, you may consider [MMaps.Interface](Interface.v)
-and [MMaps.demo](demo.v).
+This library of finite maps is a modernization of
+[FMaps](https://coq.inria.fr/stdlib/Coq.FSets.FMaps.html) in Coq's
+standard library.
+Compared to FMaps, MMaps has a richer interface and provides additional
+finite map implementations, including a performant implementation
+[based on red-black trees](theories/RBT.v).
 
-**Caveat** : This is work-in-progress, and might still change
-in the future, including `MMaps.Interface`.
-
-This is open source: patches, questions, comments are most welcome!
+As starting points for understanding how to use the library,
+we recommend looking at [MMaps.Interface](theories/Interface.v) and
+[MMaps.demo](theories/demo.v).
