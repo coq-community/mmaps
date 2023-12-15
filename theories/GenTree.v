@@ -21,7 +21,7 @@
      - map mapi
 *)
 
-From Coq Require Import Bool PeanoNat BinInt FunInd.
+From Coq Require Import Bool Arith BinInt FunInd.
 From Coq Require Import Orders OrdersFacts OrdersLists.
 From MMaps Require Import Comparisons Interface OrdList.
 
