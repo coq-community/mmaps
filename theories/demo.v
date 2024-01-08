@@ -185,7 +185,6 @@ Compute W.bindings (W.add 1 "yes" (W.add 3 "no" (W.add 2 "foo" W.empty))).
 
 (* Prove properties using general facts relating fold and add *)
 
-
 Definition addup_table tab :=
  ZM.fold (fun k p i => Z.add (Z.pos p) i) tab Z0.
 
@@ -200,7 +199,6 @@ Definition get_from_table k tab : Z :=
  | Some x => Z.pos x
  | None => 0
  end.
-
 
 Lemma add_to_table_correct:
  forall k p tab,
@@ -221,8 +219,7 @@ clear lift.
 specialize (H p).
 rewrite Z.add_comm.
 destruct (ZM.find k tab) eqn:?H.
- erewrite (H (p+p0)%positive). auto.
+erewrite (H (p+p0)%positive). auto.
 simpl. auto.
 rewrite (H p); auto.
 Qed.
-
