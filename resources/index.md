@@ -48,3 +48,4 @@ Related publications:
 ## Authors
 
 - Pierre Letouzey
+- Andrew W. Appel

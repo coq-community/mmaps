@@ -33,6 +33,7 @@ that is meant to complement the Stdlib's MSet library.
 
 - Author(s):
   - Pierre Letouzey (initial)
+  - Andrew W. Appel
 - Coq-community maintainer(s):
   - Pierre Letouzey ([**@letouzey**](https://github.com/letouzey))
   - Karl Palmskog ([**@palmskog**](https://github.com/palmskog))

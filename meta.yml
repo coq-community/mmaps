@@ -25,6 +25,7 @@ publications:
 authors:
 - name: Pierre Letouzey
   initial: true
+- name: Andrew W. Appel  
 
 maintainers:
 - name: Pierre Letouzey
