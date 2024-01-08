@@ -182,3 +182,44 @@ Compute W.bindings (W.add 1 "yes" (W.add 3 "no" (W.add 2 "foo" W.empty))).
 (* For now, [Interface.WS] provides the same operations as [Interface.S]
    (minus [compare]), and the only different specification concerns [bindings],
    which isn't sorted, but only without redundancies. *)
+
+(* Prove properties using general facts relating fold and add *)
+
+Definition addup_table tab :=
+ ZM.fold (fun k p i => Z.add (Z.pos p) i) tab Z0.
+
+Definition add_to_table k p tab :=
+ match ZM.find k tab with
+ | Some x => ZM.add k (p+x)%positive tab
+ | None => ZM.add k p tab
+ end.
+
+Definition get_from_table k tab : Z :=
+ match ZM.find k tab with
+ | Some x => Z.pos x
+ | None => 0
+ end.
+
+Lemma add_to_table_correct:
+ forall k p tab,
+  addup_table (add_to_table k p tab) = Z.add (addup_table tab) (Z.pos p).
+Proof.
+intros.
+pose (lift (k: ZM.key) p := Z.pos p).
+unfold addup_table, add_to_table.
+pose proof @ZMF.relate_fold_add positive Z _ Z.eq_equiv (fun _ i => Z.pos i)
+   ltac:(intros; subst; auto) (Z.add)  ltac:(Lia.lia) ltac:(Lia.lia) ltac:(Lia.lia)
+   0 ltac:(Lia.lia)
+   (fun _ p i => Z_as_DT.pos p + i)
+   ltac:(reflexivity)
+   tab k.
+cbv beta in H.
+set (g := fun (_ : ZM.key) (p0 : positive) (i : Z) => Z_as_DT.pos p0 + i) in *.
+clear lift.
+specialize (H p).
+rewrite Z.add_comm.
+destruct (ZM.find k tab) eqn:?H.
+erewrite (H (p+p0)%positive). auto.
+simpl. auto.
+rewrite (H p); auto.
+Qed.

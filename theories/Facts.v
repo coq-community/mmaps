@@ -2370,6 +2370,426 @@ Section Elt.
   clear. intros x x' Hx e e' He. now rewrite Hx.
  Qed.
 
+Definition keyb_eq [elt] (x y : key * elt) := K.eq (fst x) (fst y) /\ snd x = snd y.
+
+Lemma keyb_eq_equivalence elt : Equivalence (@keyb_eq elt).
+Proof.
+ unfold keyb_eq.
+ split; intros; hnf; intros.
+ split; auto. reflexivity.
+ destruct H; split; auto. symmetry; auto.
+ destruct H, H0; split; try congruence.
+ rewrite H; auto.
+Qed.
+
+Lemma bindings_Equal_imp:
+  forall [elt: Type] (tab1 tab2: t elt), 
+    (forall k y, find k tab1 = Some y -> find k tab2 = Some y) ->
+    (forall x, InA (@keyb_eq elt) x (bindings tab1) -> InA (@keyb_eq elt) x (bindings tab2)).
+Proof.
+ intros.
+ destruct x as [k y].
+ specialize (H k).
+ rewrite !bindings_o in H.
+ pose proof bindings_3w tab1.
+ pose proof bindings_3w tab2.
+ set (al := bindings tab1) in *. clearbody al.
+ set (bl := bindings tab2) in *. clearbody bl.
+ revert bl H H1 H2 y H0; induction al as [ | [? ?]]; simpl; intros.
+ - inversion H0.
+ - inversion H1; clear H1; subst.
+   inversion H0; clear H0; subst.
+   + destruct H3; simpl in *. subst.
+    rewrite (proj2 (eqb_eq _ _)) in H by auto.
+    specialize (H _ (Logic.eq_refl _)).
+    clear - H.
+    induction bl as [ | [? ? ]]. inversion H.
+    simpl in *. destruct (eqb k k0) eqn:?H. inversion H; clear H; subst.
+    left. split; auto. apply eqb_eq; auto.
+    right. auto.
+   + destruct (eqb k k0) eqn:?H.
+     *
+      apply IHal; auto. intros.
+      apply eqb_eq in H0.
+      contradiction H5. clear - H0 H1.
+      induction al as [ | [? ?]]. inversion H1. simpl in *.
+      destruct (eqb k k1) eqn:?H. inversion H1; clear H1; subst. left; hnf. simpl.
+      transitivity k. symmetry; auto. apply eqb_eq; auto.
+      right; auto.
+     * apply IHal; auto; intros.
+Qed. 
+
+Lemma bindings_Equal:
+  forall [elt: Type] (tab1 tab2: t elt), 
+    tab1 == tab2 ->
+    (forall x, InA (@keyb_eq elt) x (bindings tab1) <-> InA (@keyb_eq elt) x (bindings tab2)).
+Proof.
+ intros.
+ destruct x as [k y].
+ split; apply bindings_Equal_imp; intros.
+ rewrite <- (H k0); auto.
+ rewrite (H k0); auto.
+Qed.
+
+Lemma Equal_implies_eqv:
+ forall [elt A: Type]
+     [eqv: A -> A -> Prop] 
+     (eqv_rel: Equivalence eqv)
+     (lift: key -> elt -> A)
+     (lift_prop: forall k k' x, K.eq k k' -> eqv (lift k x) (lift k' x))
+    (f:  A -> A -> A)
+    (f_mor: forall x1 y1, eqv x1 y1 ->
+              forall x2 y2, eqv x2 y2 ->
+              eqv (f x1 x2) (f y1 y2))
+    (f_assoc: forall x y z : A, eqv (f x (f y z)) (f (f x y) z))
+    (f_commut: forall x y : A, eqv (f x y) (f y x))
+    (u: A)
+    (u_unit: forall x, eqv (f u x) x)
+    (g: key -> elt -> A -> A)
+    (g_eqv: forall k x a, eqv (g k x a) (f (lift k x) a))
+    (tab1 tab2: t elt),
+    tab1 == tab2 ->
+    eqv (fold g tab1 u) (fold g tab2 u).
+Proof.
+ intros.
+ assert (ND1 := bindings_3w tab1).
+ assert (ND2 := bindings_3w tab2).
+ assert (Equivalence (eq_key (elt:=elt))). {
+    unfold eq_key, Fst; split; hnf; intros. reflexivity. symmetry; auto. etransitivity; eassumption. 
+   }
+ rewrite !fold_spec.
+ rewrite <- !fold_left_rev_right.
+ transitivity (fold_right (fun p => f (lift (fst p) (snd p))) u (rev (bindings tab1)));
+  [ |  transitivity (fold_right (fun p => f (lift (fst p) (snd p))) u (rev (bindings tab2)))].
+
+ clear u_unit; revert u; induction (rev (bindings tab1)) as [ | [a y] al]; simpl; intros;
+    [reflexivity | ]; rewrite g_eqv; apply f_mor; [reflexivity | ]; apply IHal.
+ 2: symmetry; 
+ clear u_unit; revert u; induction (rev (bindings tab2)) as [ | [a y] al]; simpl; intros;
+    [reflexivity | ]; rewrite g_eqv; apply f_mor; [reflexivity | ]; apply IHal.
+ clear g g_eqv u_unit.
+ assert (forall x, InA (keyb_eq (elt:=elt)) x (rev (bindings tab1)) <->
+                   InA (keyb_eq (elt:=elt)) x (rev (bindings tab2)))
+  by (intros; rewrite !InA_rev; apply bindings_Equal; auto).
+ apply NoDupA_rev in ND1, ND2; auto.
+ change K.t with key in *.
+ set (al := rev (bindings tab1)) in *; clearbody al.
+ set (bl := rev (bindings tab2)) in *; clearbody bl.
+ clear H tab1 tab2.
+ revert bl ND2 H1; induction al as [ | [a x] al]; intros.
+ - inversion ND2; clear ND2; subst. reflexivity.
+   assert (Hx: InA (keyb_eq (elt:=elt)) x nil); [ | inversion Hx].
+   apply H1. left; reflexivity.
+ - assert (exists a': key, K.eq a a' /\ List.In (a',x) bl). {
+    clear - H1 ND2 ND1.
+    inversion ND1; clear ND1; subst.
+    specialize (H1 (a,x)). destruct H1 as [? _]. specialize (H (ltac:(left; reflexivity))).
+    clear - H.
+    induction bl as [ | [b y] bl]; simpl; inversion H; clear H; subst.
+    + destruct H1; simpl in *. subst. exists b; split; auto.
+    + destruct (IHbl H1) as [z [? ?]]. exists z; split; auto.
+   }
+   destruct H as [a' [? ?]].
+   inversion ND1; clear ND1; subst.
+   simpl.   
+   specialize (IHal H6 (List.filter (fun p => negb (eqb (fst p) a')) bl)).
+   etransitivity.
+   apply f_mor. apply (lift_prop a a'); auto.
+   apply IHal; try eassumption. 
+   apply NoDupA_filter; auto.
+  +
+   clear - H1 H5 H H0. rename H0 into EQ0.
+   assert (PR: Proper (keyb_eq (elt:=elt) ==> eq) (fun p : K.t * elt => negb (eqb (fst p) a'))). {
+      clear.
+      hnf; intros. destruct H as [? _]. unfold key in *. 
+      f_equal. destruct (eqb (fst x) a') eqn:?H, (eqb (fst y) a') eqn:?H; try congruence.   
+      apply eqb_eq in H0. rewrite H in H0. apply eqb_eq in H0. congruence.
+      apply eqb_eq in H1. rewrite <- H in H1. apply eqb_eq in H1. congruence.
+   }
+   intros [k y]. specialize (H1 (k,y)).
+   revert bl H1; induction al; intros.
+   split; intro. inversion H0.
+   apply filter_InA in H0; auto.
+   destruct H0. simpl in H2. rewrite <- H1 in H0. inversion H0; clear H0; subst. destruct H4; simpl in *. subst.
+   rewrite H in H0. apply eqb_eq in H0. rewrite H0 in H2. inversion H2. inversion H4.
+   split; intro.
+   assert (InA (keyb_eq (elt:=elt)) (k, y) bl) by (rewrite <- H1; right; auto).
+   apply filter_InA; auto.
+   split; auto. simpl. destruct (eqb k a') eqn:?H; auto. apply eqb_eq in H3. contradiction H5.
+   rewrite <- H in H3. clear - H0 H3.
+   inversion H0; clear H0; subst. left. destruct H1. simpl in *. unfold key in *. rewrite H3 in H; auto.
+   right. induction al as [| [j z] al]; inversion H1; clear H1; subst. left. hnf. simpl. rewrite <- H3. destruct H0; auto.
+   right. apply IHal. auto.
+   apply filter_InA in H0; auto. destruct H0. simpl in H2.
+   rewrite <- H1 in H0. inversion H0; clear H0; subst. destruct H4. simpl in H0. unfold key in H.
+   rewrite H in H0. apply eqb_eq in H0. rewrite H0 in H2. discriminate.
+   auto.
+ +
+  clear IHal H H5 H6 al H1.
+  induction bl. inversion H2.
+  inversion ND2; clear ND2; subst. specialize (IHbl H4).
+  destruct H2.
+  * subst. simpl. apply f_mor. reflexivity.
+    assert (K.eq a' a') by reflexivity. apply eqb_eq in H. rewrite H. simpl.
+    clear IHbl H4 H.
+    induction bl. simpl. reflexivity.
+    assert (~ K.eq a' (fst a0) /\ ~ InA eq_key (a',x) bl). split; contradict H3. left; auto. right; auto. destruct H.
+    simpl. unfold key in *. destruct (eqb (fst a0) a') eqn:?H. apply eqb_eq in H2. symmetry in H2. contradiction.
+    simpl. apply f_mor. reflexivity. auto.
+  * simpl. destruct (eqb (fst a0) a') eqn:?H. apply eqb_eq in H1. 
+    contradiction H3. clear - H1 H.  {
+      induction bl. inversion H. destruct H. subst. left; auto. right; auto.
+    }
+    unfold key in *. rewrite H1. simpl.
+    etransitivity. 2: apply f_mor; [ | apply IHbl; auto].
+    instantiate (1:= (lift (fst a0) (snd a0))).
+    rewrite f_assoc. 
+    etransitivity. apply f_mor. apply f_commut. reflexivity.
+    rewrite <- f_assoc. reflexivity.
+    reflexivity.
+Qed.
+
+Lemma bindings_remove: 
+ forall {elt} k tab k' y,
+  InA (keyb_eq (elt:=elt)) (k',y) (bindings (remove k tab)) <->
+  InA (keyb_eq (elt:=elt)) (k',y) (List.filter (fun p => negb (eqb (fst p) k)) (bindings tab)).
+Proof.
+intros.
+rewrite filter_InA.
+2:{
+intros ? ? [? _]; simpl in *; f_equal.
+unfold key in *.
+destruct (eqb (fst x) k) eqn:?H, (eqb (fst y0) k) eqn:?H; auto.
+apply eqb_eq in H0; rewrite H in H0; apply eqb_eq in H0; congruence.
+apply eqb_eq in H1; rewrite <- H in H1; apply eqb_eq in H1; congruence.
+}
+rewrite <- !bindings_mapsto_iff.
+rewrite remove_mapsto_iff.
+simpl.
+split; intros [? ?]; split; auto.
+destruct (eqb k' k) eqn:?H; auto.
+apply eqb_eq in H1. symmetry in H1; contradiction.
+intro. symmetry in H1. apply eqb_eq in H1. rewrite H1 in H0; discriminate.
+Qed.
+
+(**
+  The lemma [relate_fold_add] is useful when one is interpreting a table as a "fold"
+  of an associative-commutative operator.
+
+  For an example of its use, see sections 8 and 9 of this paper,
+  "VCFloat2: Floating-point Error Analysis in Coq",
+  by Andrew W. Appel and Ariel E. Kellison, in CPP'24: ACM SIGPLAN International Conference
+  on Certified Programs and Proofs, (to appear) January 2024,
+  https://doi.org/10.1145/3636501.3636953
+  or see "Prune.v" in https://github.com/VeriNum/vcfloat
+
+  For a simpler example, see [add_to_table_correct] in the file demo.v.
+*)
+
+Lemma relate_fold_add:
+ forall [elt A: Type]
+     [eqv: A -> A -> Prop] 
+     (eqv_rel: Equivalence eqv)
+     (lift: key -> elt -> A)
+     (lift_prop: forall k k' x, K.eq k k' -> eqv (lift k x) (lift k' x))
+    (f:  A -> A -> A)
+    (f_mor: forall x1 y1, eqv x1 y1 ->
+              forall x2 y2, eqv x2 y2 ->
+              eqv (f x1 x2) (f y1 y2))
+    (f_assoc: forall x y z : A, eqv (f x (f y z)) (f (f x y) z))
+    (f_commut: forall x y : A, eqv (f x y) (f y x))
+    (u: A)
+    (u_unit: forall x, eqv (f u x) x)
+    (g: key -> elt -> A -> A)
+    (g_eqv: forall k x a, eqv (g k x a) (f (lift k x) a))
+    (tab: t elt)
+    (k: key) (new oldnew : elt),
+    eqv (f (lift k new) (match find k tab with Some x => lift k x | None => u end)) (lift k oldnew) ->
+    eqv (f (lift k new) (fold g tab u)) (fold g (add k oldnew tab) u).
+Proof.
+intros.
+set (get k tab := match find k tab with Some x => lift k x | None => u end) in *.
+fold (get k tab) in H.
+assert (forall tab k, eqv (fold g tab u) (f (get k tab) (fold g (remove k tab) u))). {
+  clear H oldnew new tab k.
+  intros.
+  subst get. simpl.
+  set (h := fun (y : key * elt) (x : A) => g (fst y) (snd y) x).
+  assert (DEL: forall al z k e,
+      findA (eqb k) al = Some e -> NoDupA eq_key al ->
+      eqv (fold_right h z al)
+      (f (lift k e) (fold_right h z (List.filter (fun p : K.t * elt => negb (eqb (fst p) k)) al)))). {
+    clear k.
+    intros.
+    induction al as [ | [a x] al]. inversion H. simpl in H.
+    inversion H0; clear H0; subst.
+    destruct (eqb k a) eqn:?H.
+    * inversion H; clear H; subst. clear IHal. apply eqb_eq in H0.
+      simpl. unfold h at 1. rewrite g_eqv. simpl.
+      eapply f_mor. apply lift_prop; symmetry; auto.
+      symmetry in H0. apply eqb_eq in H0; rewrite H0. simpl. apply eqb_eq in H0.
+      induction al; simpl. reflexivity.
+      inversion H4; clear H4; subst.
+      unfold h at 1; rewrite g_eqv. etransitivity. apply f_mor; [reflexivity |]. apply IHal; auto.
+      unfold key in *.
+      destruct (eqb (fst a0) k) eqn:?H.
+      apply eqb_eq in H. contradiction H3. left; hnf. simpl. rewrite H0; symmetry; auto.
+      unfold h at 2. simpl. rewrite g_eqv. reflexivity.
+    * simpl. unfold h at 1. rewrite g_eqv; simpl.
+      rewrite eqb_sym in H0. rewrite H0. simpl. unfold h at 2. simpl.
+      etransitivity; [ | eapply f_mor; [ reflexivity | symmetry; apply g_eqv ]].
+      rewrite f_assoc.
+      etransitivity; [ | eapply f_mor; [ apply f_commut | reflexivity ]]. rewrite <- f_assoc.
+      apply f_mor ; [ reflexivity |].
+      apply IHal; auto.
+  }
+  destruct (find k tab) eqn:?H.
+  - pose proof (bindings_remove k tab).
+    rewrite !fold_spec.
+    set (z := u). clearbody z.
+    rewrite bindings_o in H.
+    rewrite <- !fold_left_rev_right.
+    assert (forall (k' : key) (y : elt),
+      InA (keyb_eq (elt:=elt)) (k', y) (rev (bindings (remove k tab))) <->
+      InA (keyb_eq (elt:=elt)) (k', y)
+        (List.filter (fun p : K.t * elt => negb (eqb (fst p) k)) (rev (bindings tab)))).
+        intros; rewrite <- filter_rev, !InA_rev. auto.
+    clear H0.
+    pose proof (bindings_3w tab).
+    pose proof (bindings_3w (remove k tab)).
+    rewrite findA_rev in H by auto.
+    apply NoDupA_rev in H0; [ |  apply eqk_equiv].
+    apply NoDupA_rev in H2; [ |  apply eqk_equiv].
+    change K.t with key in H,H0,H2.
+    assert (~ InA K.eq k (List.map fst (rev (bindings (remove k tab))))). {
+      intro.
+      rewrite List.map_rev in H3. rewrite InA_rev in H3.
+      rewrite <- in_fst_bindings_iff in H3.
+      apply remove_in_iff in H3. destruct H3. apply H3. reflexivity.
+    }
+    set (bl := rev (bindings (remove k tab))) in *; clearbody bl.
+    set (al := rev (bindings tab)) in *; clearbody al.
+    fold h.
+    rewrite DEL; eauto.
+    apply f_mor; [ reflexivity |].
+    set (al' := List.filter _ _) in *.
+    assert (NoDupA eq_key al'). apply NoDupA_filter; auto.
+    clearbody al'. clear H3. clear al H H0.
+    revert bl H1 H2.
+    induction al' as [ | [a x] al]; inversion H4; clear H4; subst; intros.
+    destruct bl. simpl. reflexivity. specialize (H1 (fst p) (snd p)).
+    assert (InA (keyb_eq (elt:=elt)) (fst p, snd p) nil). rewrite <- H1. destruct p; left; split; auto.
+    reflexivity. inversion H.
+    specialize (IHal H2 (List.filter (fun p : K.t * elt => negb (eqb (fst p) a)) bl)).
+    simpl. unfold h at 1. simpl. rewrite g_eqv.
+    etransitivity. apply f_mor; [reflexivity |].
+    apply IHal.
+    assert (PR: Proper (keyb_eq (elt:=elt) ==> eq) (fun p : K.t * elt => negb (eqb (fst p) a))). {
+      clear.
+      hnf; intros. destruct H as [? _]. unfold key in *. 
+      f_equal. destruct (eqb (fst x) a) eqn:?H, (eqb (fst y) a) eqn:?H; try congruence.   
+      apply eqb_eq in H0. rewrite H in H0. apply eqb_eq in H0. congruence.
+      apply eqb_eq in H1. rewrite <- H in H1. apply eqb_eq in H1. congruence.
+    }
+    intros. rewrite filter_InA by apply PR.
+    rewrite H0, InA_cons. simpl.
+    split; intro. destruct H; auto. destruct H; auto.
+    destruct H; simpl in *; subst. apply eqb_eq in H; rewrite H in H4; inversion H4.
+    split. right; auto.
+    destruct (eqb k' a) eqn:?H; auto. apply eqb_eq in H4.
+    contradiction H1.
+    clear - H H4. induction H. destruct H; simpl in *. left. hnf. simpl. rewrite <- H4; auto.
+    right. auto.
+    apply NoDupA_filter; auto.
+    symmetry. apply DEL; auto.
+    specialize (H0 a x).
+    assert (InA (keyb_eq (elt:=elt)) (a,x) bl). rewrite H0. left. split; auto. reflexivity.
+    clear - H H3.
+    induction bl as [ | [k y] bl]. inversion H.
+    inversion H3; clear H3; subst.
+    inversion H; clear H; subst.
+    destruct H1. simpl in *. subst. apply eqb_eq in H. rewrite H; auto.
+    simpl. destruct (eqb a k) eqn:?H; auto.
+    contradiction H2. apply eqb_eq in H.
+    clear - H1 H.
+    induction bl. inversion H1. inversion H1; clear H1; subst.
+    destruct H2. simpl in H0. left. hnf. simpl. rewrite <- H; auto.
+    right; auto.
+  - rewrite u_unit.
+    assert (tab == remove k tab). symmetry. apply remove_id. intro. apply in_find in H0. contradiction.
+    pose proof bindings_Equal H0.
+    rewrite !fold_spec.
+    pose proof (bindings_3w tab).
+    pose proof (bindings_3w (remove k tab)).
+    assert (forall x, InA (keyb_eq (elt:=elt)) x (rev (bindings tab)) <->
+             InA (keyb_eq (elt:=elt)) x (rev (bindings (remove k tab)))).
+    intros. rewrite !InA_rev; auto. clear H1.
+    apply NoDupA_rev in H2; [ |  apply eqk_equiv].
+    apply NoDupA_rev in H3; [ |  apply eqk_equiv].
+    rewrite <- !fold_left_rev_right.
+    change K.t with key in *.
+    set (bl := rev (bindings (remove k tab))) in *; clearbody bl.
+    set (al := rev (bindings tab)) in *; clearbody al.
+    clear tab H0 H.
+    fold h.
+    revert bl H3 H4; induction al as [ | [a y] al]; intros.
+    destruct bl as [ | [b zz] bl]; simpl. reflexivity.
+    assert (Hx: InA (keyb_eq (elt:=elt)) (b,zz) nil); [ | inversion Hx].
+    rewrite (H4 (b,zz)). left. split; auto. reflexivity.
+    simpl.
+    unfold h at 1. simpl. rewrite g_eqv.
+    inversion H2; clear H2; subst.
+    specialize (IHal H5 (List.filter (fun p : K.t * elt => negb (eqb (fst p) a)) bl)).
+    etransitivity. apply f_mor; [reflexivity |].
+    apply IHal.
+    apply NoDupA_filter; auto.
+    intros [k' x'].
+    assert (PR: Proper (keyb_eq (elt:=elt) ==> eq) (fun p : K.t * elt => negb (eqb (fst p) a))). {
+      clear.
+      hnf; intros. destruct H as [? _]. unfold key in *. 
+      f_equal. destruct (eqb (fst x) a) eqn:?H, (eqb (fst y) a) eqn:?H; try congruence.   
+      apply eqb_eq in H0. rewrite H in H0. apply eqb_eq in H0. congruence.
+      apply eqb_eq in H1. rewrite <- H in H1. apply eqb_eq in H1. congruence.
+    }
+    rewrite filter_InA by apply PR.
+    rewrite <- H4.
+    split; intro.
+    split. right; auto. simpl.
+    destruct (eqb k' a) eqn:?H; auto. apply eqb_eq in H0.
+    contradiction H1.
+    clear - H H0. induction H. destruct H; simpl in *. left. hnf. simpl. rewrite <- H0; auto.
+    right. auto.
+    destruct H; auto. simpl in H0. inversion H; clear H; subst; auto.
+    destruct H6. simpl in H. apply eqb_eq in H. rewrite H in H0. inversion H0.
+    symmetry. apply DEL; auto.
+    assert (InA (keyb_eq (elt:=elt)) (a,y) bl). rewrite <- H4. left; split; reflexivity.
+    clear - H3 H.
+    induction bl as [ | [b x] bl]. inversion H.
+    inversion H3; clear H3; subst.
+    simpl.
+    inversion H; clear H; subst.
+    destruct H1. apply eqb_eq in H. simpl in *; subst.  rewrite H; auto.
+    destruct (eqb a b) eqn:?H; auto.
+    contradiction H2. clear - H1 H.
+    induction bl as [ | [k s] bl]. inversion H1.
+    inversion H1; clear H1; subst.
+    left. hnf; destruct H2; simpl in *. apply eqb_eq in H. rewrite <- H; auto.
+    right; auto.
+}
+etransitivity. apply f_mor; [ reflexivity | apply (H0 _ k)].
+etransitivity; [ | symmetry; apply (H0 _ k)].
+etransitivity; [ | apply f_mor; [ reflexivity | ] ].
+instantiate (1 := fold g (remove k tab) u).
+rewrite f_assoc.
+apply f_mor; [ | reflexivity].
+unfold get.
+rewrite add_spec1.
+apply H.
+apply Equal_implies_eqv with (lift:=lift)(f:=f); auto.
+symmetry.
+apply remove_add_1.
+Qed.
+
 End Properties.
 
 (** ** Properties specific to maps with ordered keys *)
@@ -3007,6 +3427,7 @@ Module OrdProperties (K:OrderedType)(M:S K).
   Defined.
 
   End Compare.
+
  End Elt.
 End OrdProperties.
 
