@@ -1,0 +1,519 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<link href="coqdoc.css" rel="stylesheet" type="text/css" />
+<link href="coqdocjs.css" rel="stylesheet" type="text/css"/>
+<script type="text/javascript" src="config.js"></script>
+<script type="text/javascript" src="coqdocjs.js"></script>
+</head>
+
+<body onload="document.getElementById('content').focus()">
+  <div id="header">
+    <span class="left">
+      <span class="modulename"> <script> document.write(document.title) </script> </span>
+    </span>
+
+    <span class="button" id="toggle-proofs"></span>
+
+    <span class="right">
+      <a href="./../..">Project Website</a>
+      <a href="./indexpage.html">Index</a>
+      <a href="./toc.html">Table of Contents</a>
+    </span>
+</div>
+    <div id="content" tabindex="-1" onblur="document.getElementById('content').focus()">
+    <div id="main">
+<div id="toc">
+<ul class="doclist">
+<li><a href="MMaps.Utils.html#lab1">Finite Modular Maps: bool and list utilities</a>
+
+</li>
+<li><a href="MMaps.Comparisons.html#lab2">Finite Modular Maps: comparison utilities</a>
+
+</li>
+<li><a href="MMaps.Interface.html#lab3">Finite Modular Maps: Main Interface</a>
+<ul class="doclist">
+<li><a href="MMaps.Interface.html#lab4">Weak signature for maps</a>
+
+</li>
+<li><a href="MMaps.Interface.html#lab5">Maps on ordered keys</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="MMaps.Raw.html#lab6">Finite Modular Maps: Raw Interface</a>
+<ul class="doclist">
+<li><a href="MMaps.Raw.html#lab7">Raw maps on ordered keys</a>
+
+</li>
+<li><a href="MMaps.Raw.html#lab8">From Raw.WS to Interface.WS</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="MMaps.Facts.html#lab9">Finite Modular Maps: Functors of Properties</a>
+<ul class="doclist">
+<li><a href="MMaps.Facts.html#lab10">Properties that are common to weak maps and ordered maps</a>
+<ul class="doclist">
+<li><a href="MMaps.Facts.html#lab11">Equal and Eqdom are setoid equalities</a>
+
+</li>
+<li><a href="MMaps.Facts.html#lab12">Earlier specifications (cf. FMaps)</a>
+
+</li>
+<li><a href="MMaps.Facts.html#lab13">Specifications written using equivalences</a>
+
+</li>
+<li><a href="MMaps.Facts.html#lab14">Specifications via the reflect predicate</a>
+
+</li>
+<li><a href="MMaps.Facts.html#lab15">Specifications written using boolean predicates</a>
+
+</li>
+<li><a href="MMaps.Facts.html#lab16">Relations between Equal, Eqdom, Equiv and Equivb</a>
+
+</li>
+<li><a href="MMaps.Facts.html#lab17">Bindings</a>
+
+</li>
+<li><a href="MMaps.Facts.html#lab18">Conversions between maps and association lists</a>
+
+</li>
+<li><a href="MMaps.Facts.html#lab19">Induction principles about fold contributed by S. Lescuyer</a>
+
+</li>
+<li><a href="MMaps.Facts.html#lab20">Additional properties of fold</a>
+
+</li>
+<li><a href="MMaps.Facts.html#lab21">Special case of a fold only on keys</a>
+
+</li>
+<li><a href="MMaps.Facts.html#lab22">Cardinal</a>
+
+</li>
+<li><a href="MMaps.Facts.html#lab23">Properties about filter, partition, for_all, and exists_</a>
+
+</li>
+<li><a href="MMaps.Facts.html#lab24">Extra predicates on maps: Disjoint and Partition</a>
+
+</li>
+<li><a href="MMaps.Facts.html#lab25">Emulation of some functions lacking in the interface</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="MMaps.Facts.html#lab26">Properties specific to maps with ordered keys</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="MMaps.WeakList.html#lab27">Finite Modular Maps: Unordered Lists</a>
+<ul class="doclist">
+<li><a href="MMaps.WeakList.html#lab28">find</a>
+
+</li>
+<li><a href="MMaps.WeakList.html#lab29">mem</a>
+
+</li>
+<li><a href="MMaps.WeakList.html#lab30">empty</a>
+
+</li>
+<li><a href="MMaps.WeakList.html#lab31">is_empty</a>
+
+</li>
+<li><a href="MMaps.WeakList.html#lab32">add</a>
+
+</li>
+<li><a href="MMaps.WeakList.html#lab33">remove</a>
+
+</li>
+<li><a href="MMaps.WeakList.html#lab34">bindings</a>
+
+</li>
+<li><a href="MMaps.WeakList.html#lab35">fold</a>
+
+</li>
+<li><a href="MMaps.WeakList.html#lab36">singleton</a>
+
+</li>
+<li><a href="MMaps.WeakList.html#lab37">equal</a>
+
+</li>
+<li><a href="MMaps.WeakList.html#lab38">map and mapi</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="MMaps.OrdList.html#lab39">Finite Modular Maps: Ordered Lists</a>
+<ul class="doclist">
+<li><a href="MMaps.OrdList.html#lab40">find</a>
+
+</li>
+<li><a href="MMaps.OrdList.html#lab41">mem</a>
+
+</li>
+<li><a href="MMaps.OrdList.html#lab42">empty</a>
+
+</li>
+<li><a href="MMaps.OrdList.html#lab43">is_empty</a>
+
+</li>
+<li><a href="MMaps.OrdList.html#lab44">add</a>
+
+</li>
+<li><a href="MMaps.OrdList.html#lab45">remove</a>
+
+</li>
+<li><a href="MMaps.OrdList.html#lab46">bindings</a>
+
+</li>
+<li><a href="MMaps.OrdList.html#lab47">singleton</a>
+
+</li>
+<li><a href="MMaps.OrdList.html#lab48">fold</a>
+
+</li>
+<li><a href="MMaps.OrdList.html#lab49">equal</a>
+
+</li>
+<li><a href="MMaps.OrdList.html#lab50">map and mapi</a>
+
+</li>
+<li><a href="MMaps.OrdList.html#lab51">merge</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="MMaps.Positive.html#lab52">Finite Modular Maps: Implementation for Positive Keys</a>
+
+</li>
+<li><a href="MMaps.GenTree.html#lab53">Finite Modular Maps: Generic Trees</a>
+<ul class="doclist">
+<li><a href="MMaps.GenTree.html#lab54">Ops: the pure functions</a>
+<ul class="doclist">
+<li><a href="MMaps.GenTree.html#lab55">Trees</a>
+
+</li>
+<li><a href="MMaps.GenTree.html#lab56">The empty map and emptiness test</a>
+
+</li>
+<li><a href="MMaps.GenTree.html#lab57">Membership test</a>
+
+</li>
+<li><a href="MMaps.GenTree.html#lab58">Minimal, maximal, arbitrary bindings</a>
+
+</li>
+<li><a href="MMaps.GenTree.html#lab59">Iteration on elements</a>
+
+</li>
+<li><a href="MMaps.GenTree.html#lab60">Testing universal or existential properties</a>
+
+</li>
+<li><a href="MMaps.GenTree.html#lab61">Comparison of trees</a>
+
+</li>
+<li><a href="MMaps.GenTree.html#lab62">Map</a>
+
+</li>
+<li><a href="MMaps.GenTree.html#lab63">Mapi</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="MMaps.GenTree.html#lab64">Props: correctness proofs for the generic operations</a>
+<ul class="doclist">
+<li><a href="MMaps.GenTree.html#lab65">Occurrence in a tree</a>
+
+</li>
+<li><a href="MMaps.GenTree.html#lab66">Binary search trees</a>
+
+</li>
+<li><a href="MMaps.GenTree.html#lab67">Automation and dedicated tactics</a>
+
+</li>
+<li><a href="MMaps.GenTree.html#lab68">Membership</a>
+
+</li>
+<li><a href="MMaps.GenTree.html#lab69">Empty map</a>
+
+</li>
+<li><a href="MMaps.GenTree.html#lab70">Emptiness test</a>
+
+</li>
+<li><a href="MMaps.GenTree.html#lab71">Elements</a>
+
+</li>
+<li><a href="MMaps.GenTree.html#lab72">Fold</a>
+
+</li>
+<li><a href="MMaps.GenTree.html#lab73">For_all and exists</a>
+
+</li>
+<li><a href="MMaps.GenTree.html#lab74">Comparison</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+
+</li>
+<li><a href="MMaps.AVL.html#lab75">Finite Modular Maps: AVL Trees</a>
+<ul class="doclist">
+<li><a href="MMaps.AVL.html#lab76">Functions</a>
+<ul class="doclist">
+<li><a href="MMaps.AVL.html#lab77">Generic trees instantiated with integer height</a>
+
+</li>
+<li><a href="MMaps.AVL.html#lab78">Basic functions on trees: height and cardinal</a>
+
+</li>
+<li><a href="MMaps.AVL.html#lab79">Singleton set</a>
+
+</li>
+<li><a href="MMaps.AVL.html#lab80">Helper functions</a>
+
+</li>
+<li><a href="MMaps.AVL.html#lab81">Insertion</a>
+
+</li>
+<li><a href="MMaps.AVL.html#lab82">Extraction of minimum binding</a>
+
+</li>
+<li><a href="MMaps.AVL.html#lab83">Appending two disjoint maps of similar heights</a>
+
+</li>
+<li><a href="MMaps.AVL.html#lab84">Deletion</a>
+
+</li>
+<li><a href="MMaps.AVL.html#lab85">Join</a>
+
+</li>
+<li><a href="MMaps.AVL.html#lab86">Splitting</a>
+
+</li>
+<li><a href="MMaps.AVL.html#lab87">Concatenation</a>
+
+</li>
+<li><a href="MMaps.AVL.html#lab88">Filter and partition</a>
+
+</li>
+<li><a href="MMaps.AVL.html#lab89">Map with removal</a>
+
+</li>
+<li><a href="MMaps.AVL.html#lab90">Generalized merge</a>
+
+</li>
+<li><a href="MMaps.AVL.html#lab91">Merge</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="MMaps.AVL.html#lab92">Correctness proofs</a>
+<ul class="doclist">
+<li><a href="MMaps.AVL.html#lab93">Automation and dedicated tactics</a>
+
+</li>
+<li><a href="MMaps.AVL.html#lab94">Helper functions</a>
+
+</li>
+<li><a href="MMaps.AVL.html#lab95">Insertion</a>
+
+</li>
+<li><a href="MMaps.AVL.html#lab96">Extraction of minimum binding</a>
+
+</li>
+<li><a href="MMaps.AVL.html#lab97">Merging two trees</a>
+
+</li>
+<li><a href="MMaps.AVL.html#lab98">Deletion</a>
+
+</li>
+<li><a href="MMaps.AVL.html#lab99">Join</a>
+
+</li>
+<li><a href="MMaps.AVL.html#lab100">Split</a>
+
+</li>
+<li><a href="MMaps.AVL.html#lab101">Concatenation</a>
+
+</li>
+<li><a href="MMaps.AVL.html#lab102">Filter and partition</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="MMaps.AVL.html#lab103">Encapsulation</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="MMaps.AVLproofs.html#lab104">Finite Modular Maps: AVL Proofs</a>
+<ul class="doclist">
+<li><a href="MMaps.AVLproofs.html#lab105">AVL trees</a>
+
+</li>
+<li><a href="MMaps.AVLproofs.html#lab106">Automation and dedicated tactics</a>
+
+</li>
+<li><a href="MMaps.AVLproofs.html#lab107">AVL trees have logarithmic depth</a>
+
+</li>
+<li><a href="MMaps.AVLproofs.html#lab108">The AVL invariant is preserved by set operations</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="MMaps.RBT.html#lab109">Finite Modular Maps: Red-Black Trees</a>
+<ul class="doclist">
+<li><a href="MMaps.RBT.html#lab110">Functions</a>
+<ul class="doclist">
+<li><a href="MMaps.RBT.html#lab111">Generic trees instantiated with Red/Black colors</a>
+
+</li>
+<li><a href="MMaps.RBT.html#lab112">Basic tree</a>
+
+</li>
+<li><a href="MMaps.RBT.html#lab113">Changing root color</a>
+
+</li>
+<li><a href="MMaps.RBT.html#lab114">Balancing</a>
+
+</li>
+<li><a href="MMaps.RBT.html#lab115">Insertion</a>
+
+</li>
+<li><a href="MMaps.RBT.html#lab116">Deletion</a>
+
+</li>
+<li><a href="MMaps.RBT.html#lab117">Tree-ification</a>
+
+</li>
+<li><a href="MMaps.RBT.html#lab118">Map with removal</a>
+
+</li>
+<li><a href="MMaps.RBT.html#lab119">Merge</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="MMaps.RBT.html#lab120">Correctness proofs</a>
+<ul class="doclist">
+<li><a href="MMaps.RBT.html#lab121">Singleton set</a>
+
+</li>
+<li><a href="MMaps.RBT.html#lab122">makeBlack and makeRed</a>
+
+</li>
+<li><a href="MMaps.RBT.html#lab123">Generic handling for red-matching and red-red-matching</a>
+
+</li>
+<li><a href="MMaps.RBT.html#lab124">Balancing for insertion</a>
+
+</li>
+<li><a href="MMaps.RBT.html#lab125">Insertion</a>
+
+</li>
+<li><a href="MMaps.RBT.html#lab126">Balancing for deletion</a>
+
+</li>
+<li><a href="MMaps.RBT.html#lab127">Append for deletion</a>
+
+</li>
+<li><a href="MMaps.RBT.html#lab128">Deletion</a>
+
+</li>
+<li><a href="MMaps.RBT.html#lab129">Treeify</a>
+
+</li>
+<li><a href="MMaps.RBT.html#lab130">Filtering</a>
+
+</li>
+<li><a href="MMaps.RBT.html#lab131">Filter</a>
+
+</li>
+<li><a href="MMaps.RBT.html#lab132">Partition</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="MMaps.RBT.html#lab133">Encapsulation</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="MMaps.RBTproofs.html#lab134">Finite Modular Maps: RBT Proofs</a>
+<ul class="doclist">
+<li><a href="MMaps.RBTproofs.html#lab135">Red-black invariants</a>
+
+</li>
+<li><a href="MMaps.RBTproofs.html#lab136">Basic tactics and results about red-black trees</a>
+
+</li>
+<li><a href="MMaps.RBTproofs.html#lab137">A red-black tree has a logarithmic depth</a>
+
+</li>
+<li><a href="MMaps.RBTproofs.html#lab138">Singleton</a>
+
+</li>
+<li><a href="MMaps.RBTproofs.html#lab139">makeBlack and makeRed</a>
+
+</li>
+<li><a href="MMaps.RBTproofs.html#lab140">Balancing</a>
+
+</li>
+<li><a href="MMaps.RBTproofs.html#lab141">Insertion</a>
+
+</li>
+<li><a href="MMaps.RBTproofs.html#lab142">Deletion</a>
+
+</li>
+<li><a href="MMaps.RBTproofs.html#lab143">Treeify</a>
+
+</li>
+</ul>
+
+</li>
+<li><a href="MMaps.MMaps.html#lab144">Finite Modular Maps: Exports</a>
+
+</li>
+<li><a href="MMaps.demo.html#lab145">Finite Modular Maps: The Demo</a>
+<ul class="doclist">
+<li><a href="MMaps.demo.html#lab146">Some more intense tests</a>
+
+</li>
+<li><a href="MMaps.demo.html#lab147">The Facts</a>
+
+</li>
+<li><a href="MMaps.demo.html#lab148">The Weak Maps</a>
+
+</li>
+</ul>
+
+</li>
+</ul>
+</div>
+</div>
+<div id="footer">
+  Generated by <a href="http://coq.inria.fr">coqdoc</a> and improved with <a href="https://github.com/palmskog/coqdocjs">CoqdocJS</a> as adapted for <a href="https://github.com/coq-community">coq-community</a>
+</div>
+</div>
+</body>
+
+</html>
