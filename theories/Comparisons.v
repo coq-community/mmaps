@@ -25,8 +25,8 @@ Definition Trans {A} (cmp:A->A->comparison) :=
   forall c x y z, cmp x y = c -> cmp y z = c -> cmp x z = c.
 
 Class SymTrans {A} (cmp:A->A->comparison) := {
-  sym :> Sym cmp;
-  tra :> Trans cmp
+  sym : Sym cmp;
+  tra : Trans cmp
 }.
 
 (** [SymTrans] implies the following compatibility rules *)
